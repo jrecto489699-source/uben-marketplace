@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCategory } from "@/context/CategoryContext";
 
 export interface Product {
@@ -31,6 +31,12 @@ export default function ProductCarousel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const { active } = useCategory();
   const displayTitle = dynamicTitle ? `Trending in ${active}` : title;
+
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -232, behavior: "smooth" });
+    }
+  };
 
   const scrollRight = () => {
     if (scrollRef.current) {
@@ -95,7 +101,16 @@ export default function ProductCarousel({
             ))}
           </div>
 
-          {/* Arrow button */}
+          {/* Left arrow */}
+          <button
+            onClick={scrollLeft}
+            className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={18} color="white" strokeWidth={2.5} />
+          </button>
+
+          {/* Right arrow */}
           <button
             onClick={scrollRight}
             className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
