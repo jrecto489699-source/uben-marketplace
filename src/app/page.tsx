@@ -1,65 +1,64 @@
-import Image from "next/image";
+import Navbar from "@/components/Navbar";
+import Hero from "@/components/Hero";
+import ProductCarousel, { type Product } from "@/components/ProductCarousel";
+import FeatureCards from "@/components/FeatureCards";
+import Footer from "@/components/Footer";
 
-export default function Home() {
+const printableProducts: Product[] = [
+  { id: 1, title: "Alphabet Tracing Pack (A–Z PDF)",      salePrice: "$4", originalPrice: "$7",  seller: "Tiny Sprout Studio",  image: "/images/Alphabet Tracing.png" },
+  { id: 2, title: "Under-the-Sea Coloring Book",          salePrice: "$5", originalPrice: "$8",  seller: "Crayon & Co.",         image: "/images/Under-the-Sea Coloring Book.png" },
+  { id: 3, title: "Phonics Starter Bundle (40 pages)",    salePrice: "$9", originalPrice: "$14", seller: "Acorn Learning Lab",   image: "/images/Phonics Starter Bundle.png" },
+  { id: 4, title: "Bedtime Storybook: Lulu & the Moon",   salePrice: "$6", originalPrice: "$10", seller: "Sunshine Stories",     image: "/images/Bedtime Storybook.png" },
+  { id: 5, title: "Birthday Party Printable Kit",         salePrice: "$8", originalPrice: "$13", seller: "Honey Bee Prints",     image: "/images/Birthday Party Printable Kit.png" },
+  { id: 6, title: "Daily Routine Chart for Kids",         salePrice: "$3", originalPrice: "$5",  seller: "Bright Beans Studio",  image: "/images/Daily Routine Chart for Kids.png" },
+  { id: 7, title: "ABC Flash Card Set (26 cards)",        salePrice: "$5", originalPrice: "$8",  seller: "Little Letter Co.",    image: "/images/ABC Flash Card Set (26 cards).png" },
+];
+
+const classroomProducts: Product[] = [
+  { id: 8,  title: "Weather & Seasons Sorting Cards",       salePrice: "$4", originalPrice: "$7",  seller: "Meadow Lane Prints",  image: "/images/Weather & Seasons Sorting.png" },
+  { id: 9,  title: "Dinosaur Coloring Bundle (30 pages)",   salePrice: "$6", originalPrice: "$10", seller: "The Crayon Atelier",  image: "/images/Dinosaur Coloring Bundle.png" },
+  { id: 10, title: "Pre-K Writing Practice Pack",           salePrice: "$7", originalPrice: "$11", seller: "Paper Moon Studio",   image: "/images/Pre-K Writing Practice Pack.png" },
+  { id: 11, title: "Nature Explorer Activity Book",         salePrice: "$8", originalPrice: "$12", seller: "Wild Oak Learning",   image: "/images/Nature Explorer Activity Book.png" },
+  { id: 12, title: "Valentine's Day Party Kit",             salePrice: "$7", originalPrice: "$11", seller: "Sweet Pea Press",     image: "/images/Valentine's Day Party Kit for kids.png" },
+  { id: 13, title: "Sight Words Flash Card Set",            salePrice: "$5", originalPrice: "$8",  seller: "Little Knot Co.",     image: "/images/Sight Words Flash Card Set.png" },
+  { id: 14, title: "Daily Gratitude Journal for Kids",      salePrice: "$4", originalPrice: "$6",  seller: "Morning Light Studio",image: "/images/Daily Gratitude Journal for Kids.png" },
+];
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      <Navbar />
+      <main className="flex-1">
+        <Hero />
+
+        <div className="max-w-7xl mx-auto px-6">
+          <hr className="border-border-muted" />
+        </div>
+
+        <ProductCarousel
+          title="Trending in Printables"
+          dynamicTitle
+          viewAllHref="#"
+          products={printableProducts}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        <div className="max-w-7xl mx-auto px-6">
+          <hr className="border-border-muted" />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <FeatureCards />
+
+        <div className="max-w-7xl mx-auto px-6">
+          <hr className="border-border-muted" />
         </div>
+
+        <ProductCarousel
+          title="Top Classroom Picks"
+          viewAllHref="#"
+          products={classroomProducts}
+        />
       </main>
-    </div>
+      <Footer />
+    </>
   );
 }
