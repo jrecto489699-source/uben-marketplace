@@ -1,11 +1,11 @@
 export default function FeatureCards() {
   return (
-    <section className="py-12 md:py-14">
+    <section className="py-8 md:py-10">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid md:grid-cols-2 gap-5">
 
           {/* ── Teal card ─────────────────────────────────────────────── */}
-          <div className="relative rounded-2xl bg-teal-deep px-8 py-6 flex flex-col justify-between gap-3 overflow-hidden border border-[#0f3a3f]">
+          <div className="relative rounded-2xl bg-teal-deep px-8 py-4 flex flex-col justify-between gap-3 overflow-hidden border border-[#0f3a3f]">
             <div className="flex flex-col gap-3">
               <p className="text-xs font-medium tracking-widest text-cream/60 uppercase">Curated Bundles</p>
               <h2 className="font-serif text-2xl md:text-3xl leading-tight tracking-tight text-cream">
@@ -24,7 +24,7 @@ export default function FeatureCards() {
 
           {/* ── Storybook card ────────────────────────────────────────── */}
           <div
-            className="relative rounded-2xl px-8 py-6 flex flex-row items-end justify-between gap-4 overflow-hidden border-2 cursor-pointer"
+            className="relative rounded-2xl px-8 py-4 flex flex-row items-end justify-between gap-4 overflow-hidden border-2 cursor-pointer"
             style={{ backgroundColor: "#FEF3E2", borderColor: "#F0C08A" }}
           >
             {/* Warm blob */}
@@ -60,7 +60,7 @@ export default function FeatureCards() {
             </div>
 
             {/* Right: illustration cluster */}
-            <div className="relative shrink-0 w-40 h-28 z-10">
+            <div className="relative shrink-0 w-36 h-20 z-10">
               {/* Rainbow */}
               <div className="absolute bottom-0 left-0 w-20 h-10 rounded-t-full border-[6px] border-b-0" style={{ borderColor: "#F28C63" }} />
               <div className="absolute bottom-0 left-2.5 w-15 h-8 rounded-t-full border-[5px] border-b-0" style={{ borderColor: "#F5C45A" }} />
@@ -76,10 +76,10 @@ export default function FeatureCards() {
               </svg>
 
               {/* BIG animals */}
-              <span className="absolute top-0 right-0 select-none leading-none drop-shadow-sm" style={{ fontSize: 72 }}>🐰</span>
-              <span className="absolute bottom-0 right-16 select-none leading-none drop-shadow-sm" style={{ fontSize: 56 }}>🐻</span>
-              <span className="absolute top-1 right-20 select-none leading-none" style={{ fontSize: 32 }}>📖</span>
-              <span className="absolute bottom-1 right-0 select-none leading-none" style={{ fontSize: 24, color: "#F28C63" }}>♥</span>
+              <span className="absolute top-0 right-0 select-none leading-none drop-shadow-sm" style={{ fontSize: 58 }}>🐰</span>
+              <span className="absolute bottom-0 right-14 select-none leading-none drop-shadow-sm" style={{ fontSize: 44 }}>🐻</span>
+              <span className="absolute top-1 right-16 select-none leading-none" style={{ fontSize: 26 }}>📖</span>
+              <span className="absolute bottom-1 right-0 select-none leading-none" style={{ fontSize: 20, color: "#F28C63" }}>♥</span>
             </div>
           </div>
 
