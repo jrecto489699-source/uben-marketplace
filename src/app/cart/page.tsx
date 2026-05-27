@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { ShoppingCart, Trash2, X, CreditCard, Check, Lock } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -55,12 +55,12 @@ function StripeCardForm({
       const { clientSecret, error: apiError } = await res.json();
       if (apiError) { setError(apiError); setLoading(false); return; }
 
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) return;
+      const cardNumberElement = elements.getElement(CardNumberElement);
+      if (!cardNumberElement) return;
 
       const { error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
-          card: cardElement,
+          card: cardNumberElement,
           billing_details: { email },
         },
       });
@@ -82,22 +82,49 @@ function StripeCardForm({
     <div className="space-y-4">
       <p className="text-xs font-semibold tracking-widest text-ink-muted uppercase">Card details</p>
 
-      {/* Stripe CardElement */}
-      <div className="p-4 rounded-xl border border-border-muted bg-white focus-within:border-ink transition-colors min-h-[48px]">
-        <CardElement
-          options={{
-            hidePostalCode: true,
-            style: {
-              base: {
-                fontSize: "14px",
-                color: "#222222",
-                fontFamily: "Inter, system-ui, sans-serif",
-                "::placeholder": { color: "#999999" },
+      {/* Card number */}
+      <div>
+        <label className="block text-xs font-medium text-ink-muted mb-1.5">Card number</label>
+        <div className="p-3.5 rounded-xl border border-border-muted bg-white focus-within:border-ink transition-colors">
+          <CardNumberElement
+            options={{
+              style: {
+                base: { fontSize: "14px", color: "#222222", fontFamily: "Inter, system-ui, sans-serif", "::placeholder": { color: "#999999" } },
+                invalid: { color: "#e53e3e" },
               },
-              invalid: { color: "#e53e3e" },
-            },
-          }}
-        />
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Expiry + CVC */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-ink-muted mb-1.5">Expiry date</label>
+          <div className="p-3.5 rounded-xl border border-border-muted bg-white focus-within:border-ink transition-colors">
+            <CardExpiryElement
+              options={{
+                style: {
+                  base: { fontSize: "14px", color: "#222222", fontFamily: "Inter, system-ui, sans-serif", "::placeholder": { color: "#999999" } },
+                  invalid: { color: "#e53e3e" },
+                },
+              }}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-ink-muted mb-1.5">Security code</label>
+          <div className="p-3.5 rounded-xl border border-border-muted bg-white focus-within:border-ink transition-colors">
+            <CardCvcElement
+              options={{
+                style: {
+                  base: { fontSize: "14px", color: "#222222", fontFamily: "Inter, system-ui, sans-serif", "::placeholder": { color: "#999999" } },
+                  invalid: { color: "#e53e3e" },
+                },
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {error && (
