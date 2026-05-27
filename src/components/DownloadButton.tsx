@@ -25,17 +25,7 @@ export default function DownloadButton({ purchaseId, productTitle }: Props) {
         return;
       }
 
-      // Trigger file download via temporary anchor element.
-      // target="_blank" is a fallback for browsers that ignore
-      // the download attribute on cross-origin URLs.
-      const a = document.createElement("a");
-      a.href = data.url;
-      a.download = data.filename;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      window.open(data.url, "_blank", "noopener,noreferrer");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

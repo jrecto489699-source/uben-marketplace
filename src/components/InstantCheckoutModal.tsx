@@ -92,7 +92,7 @@ function PaymentForm({
         const dlRes = await fetch(`/api/download/${purchase.id}`);
         const dlData = await dlRes.json();
         if (dlRes.ok && dlData.url) {
-          window.location.href = dlData.url;
+          window.open(dlData.url, "_blank", "noopener,noreferrer");
         }
       }
 
