@@ -22,12 +22,12 @@ const categories = [
 ];
 
 const DEFAULT_SUGGESTIONS = [
-  { label: "Worksheets",    slug: "worksheets",  emoji: "📝" },
-  { label: "Coloring Pages", slug: "coloring",   emoji: "🎨" },
-  { label: "Storybooks",    slug: "storybooks",  emoji: "📚" },
-  { label: "Flashcards",    slug: "flashcards",  emoji: "🃏" },
-  { label: "Activity Packs", slug: "activities", emoji: "✂️" },
-  { label: "Party Kits",    slug: "party-kits",  emoji: "🎉" },
+  { label: "Worksheets",    slug: "worksheets",  image: "/images/Alphabet Tracing.png" },
+  { label: "Coloring Pages", slug: "coloring",   image: "/images/Under-the-Sea Coloring Book.png" },
+  { label: "Storybooks",    slug: "storybooks",  image: "/images/Bedtime Storybook.png" },
+  { label: "Flashcards",    slug: "flashcards",  image: "/images/ABC Flash Card Set (26 cards).png" },
+  { label: "Activity Packs", slug: "activities", image: "/images/Nature Explorer Activity Book.png" },
+  { label: "Party Kits",    slug: "party-kits",  image: "/images/Birthday Party Printable Kit.png" },
 ];
 
 // ── Search suggestions dropdown ───────────────────────────────────────────────
@@ -61,15 +61,18 @@ function SearchDropdown({ query, onClose }: { query: string; onClose: () => void
             <TrendingUp size={11} strokeWidth={2.5} />
             Popular searches
           </p>
-          {DEFAULT_SUGGESTIONS.map(({ label, slug, emoji }) => (
+          {DEFAULT_SUGGESTIONS.map(({ label, slug, image }) => (
             <button
               key={slug}
               onMouseDown={(e) => { e.preventDefault(); go(`/all?category=${slug}`); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-card-hover transition-colors duration-150 text-left"
             >
-              <span className="w-8 h-8 rounded-lg bg-card-hover flex items-center justify-center text-base shrink-0 select-none">
-                {emoji}
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={image}
+                alt={label}
+                className="w-8 h-8 rounded-lg object-cover bg-card-hover shrink-0"
+              />
               <span className="text-sm font-medium text-ink">{label}</span>
             </button>
           ))}
@@ -80,15 +83,18 @@ function SearchDropdown({ query, onClose }: { query: string; onClose: () => void
       {!isEmpty && (matchedProducts.length > 0 || matchedCategories.length > 0) && (
         <div className="p-3 space-y-1">
           {/* Category matches */}
-          {matchedCategories.map(({ label, slug, emoji }) => (
+          {matchedCategories.map(({ label, slug, image }) => (
             <button
               key={slug}
               onMouseDown={(e) => { e.preventDefault(); go(`/all?category=${slug}`); }}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-card-hover transition-colors duration-150 text-left"
             >
-              <span className="w-7 h-7 rounded-lg bg-card-hover flex items-center justify-center text-sm shrink-0 select-none">
-                {emoji}
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={image}
+                alt={label}
+                className="w-7 h-7 rounded-lg object-cover bg-card-hover shrink-0"
+              />
               <div>
                 <p className="text-sm font-medium text-ink">{label}</p>
                 <p className="text-[10px] text-ink-muted">Browse category</p>
