@@ -5,7 +5,6 @@ import FeatureCards from "@/components/FeatureCards";
 import Footer from "@/components/Footer";
 import {
   printableProducts,
-  worksheetProducts,
   coloringProducts,
   storybookProducts,
   activityProducts,
@@ -35,13 +34,6 @@ export default function HomePage() {
           dynamicTitle
           viewAllHref="/all?category=printables"
           products={printableProducts}
-        />
-        <Divider />
-
-        <ProductCarousel
-          title="Worksheets"
-          viewAllHref="/all?category=worksheets"
-          products={worksheetProducts}
         />
         <Divider />
 
