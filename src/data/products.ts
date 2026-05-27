@@ -99,3 +99,31 @@ export const allProducts: Product[] = [
   ...flashcardProducts,
   ...partyKitProducts,
 ];
+
+export function getProductById(id: number): Product | undefined {
+  return allProducts.find((p) => p.id === id);
+}
+
+export function getRelatedProducts(product: Product, count = 6): Product[] {
+  const same = allProducts.filter((p) => {
+    if (p.id === product.id) return false;
+    const sameSeller = p.seller === product.seller;
+    const samePriceRange =
+      Math.abs(
+        parseFloat(p.salePrice.replace(/[^0-9.]/g, "")) -
+          parseFloat(product.salePrice.replace(/[^0-9.]/g, ""))
+      ) <= 3;
+    return sameSeller || samePriceRange;
+  });
+  return same.slice(0, count);
+}
+
+export function getCategoryLabel(product: Product): string {
+  if (worksheetProducts.find((p) => p.id === product.id)) return "Worksheets";
+  if (coloringProducts.find((p) => p.id === product.id))  return "Coloring";
+  if (storybookProducts.find((p) => p.id === product.id)) return "Storybooks";
+  if (activityProducts.find((p) => p.id === product.id))  return "Activities";
+  if (flashcardProducts.find((p) => p.id === product.id)) return "Flashcards";
+  if (partyKitProducts.find((p) => p.id === product.id))  return "Party Kits";
+  return "Printables";
+}

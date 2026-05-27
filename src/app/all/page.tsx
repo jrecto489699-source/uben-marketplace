@@ -185,7 +185,7 @@ function ProductGrid() {
           {displayed.map((product) => {
             const pct = discountPct(product.salePrice, product.originalPrice);
             return (
-              <article key={product.id} className="group cursor-pointer">
+              <a key={product.id} href={`/product/${product.id}`} className="group cursor-pointer block">
                 <div className="relative aspect-square rounded-xl overflow-hidden bg-card-hover mb-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -223,7 +223,7 @@ function ProductGrid() {
                     <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
                   </div>
                 </div>
-              </article>
+              </a>
             );
           })}
         </div>

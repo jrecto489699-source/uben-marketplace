@@ -68,8 +68,9 @@ export default function ProductCarousel({
             className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2"
           >
             {products.map((product) => (
-              <article
+              <a
                 key={product.id}
+                href={`/product/${product.id}`}
                 className="snap-start shrink-0 w-52 group cursor-pointer"
               >
                 <div className="aspect-square rounded-xl overflow-hidden bg-card-hover mb-3">
@@ -91,7 +92,7 @@ export default function ProductCarousel({
                     <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
                   </div>
                 </div>
-              </article>
+              </a>
             ))}
           </div>
 
