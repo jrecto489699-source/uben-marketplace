@@ -5,6 +5,8 @@ import { ShoppingCart, Trash2, X, CreditCard, Check, Lock } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import AuthModal from "@/components/AuthModal";
 
 function discountPct(sale: string, original: string) {
   const s = parseFloat(sale.replace(/[^0-9.]/g, ""));
@@ -274,7 +276,9 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
 
 export default function CartPage() {
   const { items, removeFromCart, cartCount } = useCart();
+  const { user } = useAuth();
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const subtotal = items.reduce((sum, { product }) => {
     return sum + parseFloat(product.salePrice.replace(/[^0-9.]/g, ""));
@@ -403,7 +407,7 @@ export default function CartPage() {
                   </div>
 
                   <button
-                    onClick={() => setShowCheckout(true)}
+                    onClick={() => user ? setShowCheckout(true) : setShowAuthModal(true)}
                     className="w-full h-12 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] active:scale-[0.98] transition-all duration-200 mb-3"
                   >
                     Proceed to Checkout
@@ -425,6 +429,12 @@ export default function CartPage() {
 
       {showCheckout && (
         <CheckoutModal total={subtotal} onClose={() => setShowCheckout(false)} />
+      )}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          message="You need to sign in to proceed to checkout."
+        />
       )}
     </>
   );

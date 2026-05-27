@@ -1,13 +1,15 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { use } from "react";
+import { use, useState } from "react";
 import { Star, Heart, ShoppingCart, Download, ChevronRight, Check, FileText, Infinity, Shield } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getProductById, getRelatedProducts, getCategoryLabel } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { useAuth } from "@/context/AuthContext";
+import AuthModal from "@/components/AuthModal";
 
 function discountPct(sale: string, original: string) {
   const s = parseFloat(sale.replace(/[^0-9.]/g, ""));
@@ -57,6 +59,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
   const { addToCart, isInCart } = useCart();
   const { toggleFavorite, isFavorited } = useFavorites();
+  const { user } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const related = getRelatedProducts(product, 6);
   const category = getCategoryLabel(product);
@@ -185,6 +189,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 </button>
                 {product.instantDownload && (
                   <button
+                    onClick={() => { if (!user) setShowAuthModal(true); }}
                     className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200"
                   >
                     <Download size={16} strokeWidth={2} />
@@ -311,6 +316,12 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         </div>
       </main>
       <Footer />
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          message="You need to sign in to download this product."
+        />
+      )}
     </>
   );
 }
