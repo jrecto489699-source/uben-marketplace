@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search, Heart, ShoppingCart, Menu, X, User, ChevronDown } from "lucide-react";
+import { Search, Heart, ShoppingCart, Menu, X, User, ChevronDown, TrendingUp } from "lucide-react";
 import UbenLogo from "@/components/UbenLogo";
 import { useCategory } from "@/context/CategoryContext";
 import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { allProducts } from "@/data/products";
 
 const categories = [
   { label: "Printables",  slug: "printables"  },
@@ -20,6 +21,146 @@ const categories = [
   { label: "Holiday",     slug: "holiday",    badge: "New" },
 ];
 
+const DEFAULT_SUGGESTIONS = [
+  { label: "Worksheets",    slug: "worksheets",  emoji: "📝" },
+  { label: "Coloring Pages", slug: "coloring",   emoji: "🎨" },
+  { label: "Storybooks",    slug: "storybooks",  emoji: "📚" },
+  { label: "Flashcards",    slug: "flashcards",  emoji: "🃏" },
+  { label: "Activity Packs", slug: "activities", emoji: "✂️" },
+  { label: "Party Kits",    slug: "party-kits",  emoji: "🎉" },
+];
+
+// ── Search suggestions dropdown ───────────────────────────────────────────────
+function SearchDropdown({ query, onClose }: { query: string; onClose: () => void }) {
+  const q = query.trim().toLowerCase();
+
+  const matchedProducts = q
+    ? allProducts
+        .filter((p) => p.title.toLowerCase().includes(q) || p.seller.toLowerCase().includes(q))
+        .slice(0, 5)
+    : [];
+
+  const matchedCategories = q
+    ? DEFAULT_SUGGESTIONS.filter((c) => c.label.toLowerCase().includes(q))
+    : [];
+
+  const isEmpty = !q;
+
+  function go(href: string) {
+    onClose();
+    window.location.href = href;
+  }
+
+  return (
+    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-50">
+
+      {/* Default state — popular categories */}
+      {isEmpty && (
+        <div className="p-3">
+          <p className="px-3 py-1.5 text-[10px] font-bold tracking-widest text-ink-muted uppercase flex items-center gap-1.5">
+            <TrendingUp size={11} strokeWidth={2.5} />
+            Popular searches
+          </p>
+          {DEFAULT_SUGGESTIONS.map(({ label, slug, emoji }) => (
+            <button
+              key={slug}
+              onMouseDown={(e) => { e.preventDefault(); go(`/all?category=${slug}`); }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-card-hover transition-colors duration-150 text-left"
+            >
+              <span className="w-8 h-8 rounded-lg bg-card-hover flex items-center justify-center text-base shrink-0 select-none">
+                {emoji}
+              </span>
+              <span className="text-sm font-medium text-ink">{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Typed state — product + category matches */}
+      {!isEmpty && (matchedProducts.length > 0 || matchedCategories.length > 0) && (
+        <div className="p-3 space-y-1">
+          {/* Category matches */}
+          {matchedCategories.map(({ label, slug, emoji }) => (
+            <button
+              key={slug}
+              onMouseDown={(e) => { e.preventDefault(); go(`/all?category=${slug}`); }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-card-hover transition-colors duration-150 text-left"
+            >
+              <span className="w-7 h-7 rounded-lg bg-card-hover flex items-center justify-center text-sm shrink-0 select-none">
+                {emoji}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-ink">{label}</p>
+                <p className="text-[10px] text-ink-muted">Browse category</p>
+              </div>
+            </button>
+          ))}
+
+          {/* Product matches */}
+          {matchedProducts.length > 0 && (
+            <>
+              {matchedCategories.length > 0 && (
+                <div className="h-px bg-border-muted my-1" />
+              )}
+              {matchedProducts.map((product) => (
+                <button
+                  key={product.id}
+                  onMouseDown={(e) => { e.preventDefault(); go(`/product/${product.id}`); }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-card-hover transition-colors duration-150 text-left"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={product.image}
+                    alt={product.title}
+                    className="w-9 h-9 rounded-lg object-cover bg-card-hover shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-ink truncate">{product.title}</p>
+                    <p className="text-[10px] text-ink-muted truncate">{product.seller}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-sale-green shrink-0">{product.salePrice}</span>
+                </button>
+              ))}
+            </>
+          )}
+
+          {/* Search all results */}
+          <div className="h-px bg-border-muted my-1" />
+          <button
+            onMouseDown={(e) => { e.preventDefault(); go(`/all?search=${encodeURIComponent(query.trim())}`); }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-card-hover transition-colors duration-150 text-left"
+          >
+            <span className="w-7 h-7 rounded-lg bg-ink flex items-center justify-center shrink-0">
+              <Search size={13} color="white" strokeWidth={2.5} />
+            </span>
+            <p className="text-sm font-medium text-ink">
+              Search for <span className="font-semibold">&ldquo;{query.trim()}&rdquo;</span>
+            </p>
+          </button>
+        </div>
+      )}
+
+      {/* No matches */}
+      {!isEmpty && matchedProducts.length === 0 && matchedCategories.length === 0 && (
+        <div className="p-3">
+          <button
+            onMouseDown={(e) => { e.preventDefault(); go(`/all?search=${encodeURIComponent(query.trim())}`); }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-card-hover transition-colors duration-150 text-left"
+          >
+            <span className="w-7 h-7 rounded-lg bg-ink flex items-center justify-center shrink-0">
+              <Search size={13} color="white" strokeWidth={2.5} />
+            </span>
+            <p className="text-sm font-medium text-ink">
+              Search for <span className="font-semibold">&ldquo;{query.trim()}&rdquo;</span>
+            </p>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Category strip ─────────────────────────────────────────────────────────────
 function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; setMobileOpen: (v: boolean) => void }) {
   const { active, setActive } = useCategory();
   const pathname = usePathname();
@@ -28,7 +169,7 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
 
   return (
     <>
-      {/* ── Row 2: Category strip — desktop ── */}
+      {/* Desktop category strip */}
       <div className="hidden md:block border-t border-border-muted">
         <div className="max-w-7xl mx-auto px-6">
           <ul className="flex items-center gap-1 h-10">
@@ -64,7 +205,7 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
         </div>
       </div>
 
-      {/* ── Mobile drawer ── */}
+      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="md:hidden border-b border-border-muted bg-cream">
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-0.5">
@@ -93,19 +234,38 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
   );
 }
 
+// ── Navbar ─────────────────────────────────────────────────────────────────────
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [desktopFocused, setDesktopFocused] = useState(false);
-  const [mobileFocused, setMobileFocused] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(false);
+  const [mobileOpen2, setMobileOpen2] = useState(false);
   const { cartCount } = useCart();
   const { favoriteCount } = useFavorites();
+  const desktopRef = useRef<HTMLDivElement>(null);
+  const mobileRef = useRef<HTMLDivElement>(null);
 
   function handleSearch() {
     const q = query.trim();
     if (!q) return;
+    setDesktopOpen(false);
+    setMobileOpen2(false);
     window.location.href = `/all?search=${encodeURIComponent(q)}`;
   }
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (desktopRef.current && !desktopRef.current.contains(e.target as Node)) {
+        setDesktopOpen(false);
+      }
+      if (mobileRef.current && !mobileRef.current.contains(e.target as Node)) {
+        setMobileOpen2(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-cream">
@@ -124,40 +284,53 @@ export default function Navbar() {
           <ChevronDown size={12} strokeWidth={2.5} />
         </button>
 
-        {/* Search bar — desktop only */}
-        <div
-          className={[
-            "hidden md:flex flex-1 items-center min-w-0 bg-white rounded-full transition-all duration-200",
-            desktopFocused
-              ? "border border-brand/60 shadow-[0_0_0_3px_rgba(184,135,58,0.10)]"
-              : "border border-border-muted",
-          ].join(" ")}
-        >
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setDesktopFocused(true)}
-            onBlur={() => setDesktopFocused(false)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Search printables, worksheets, activity packs…"
-            className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-3 py-[10px]"
-          />
-          <div className="hidden xl:flex items-center shrink-0 pr-1">
-            <div className="w-px h-4 bg-border-muted mr-2" />
-            <button className="flex items-center gap-1 text-[12px] font-medium text-ink-muted hover:text-ink transition-colors duration-200 px-2 py-1 rounded-full hover:bg-card-hover whitespace-nowrap">
-              All categories
-              <ChevronDown size={11} strokeWidth={2.5} />
+        {/* Desktop search bar with dropdown */}
+        <div ref={desktopRef} className="hidden md:flex relative flex-1 min-w-0">
+          <div
+            className={[
+              "w-full flex items-center bg-white rounded-full transition-all duration-200",
+              desktopOpen
+                ? "border border-brand/60 shadow-[0_0_0_3px_rgba(184,135,58,0.10)]"
+                : "border border-border-muted",
+            ].join(" ")}
+          >
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setDesktopOpen(true)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder="Search printables, worksheets, activity packs…"
+              className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-3 py-[10px]"
+            />
+            <div className="hidden xl:flex items-center shrink-0 pr-1">
+              <div className="w-px h-4 bg-border-muted mr-2" />
+              <button className="flex items-center gap-1 text-[12px] font-medium text-ink-muted hover:text-ink transition-colors duration-200 px-2 py-1 rounded-full hover:bg-card-hover whitespace-nowrap">
+                All categories
+                <ChevronDown size={11} strokeWidth={2.5} />
+              </button>
+            </div>
+            {query && (
+              <button
+                type="button"
+                onClick={() => { setQuery(""); setDesktopOpen(true); }}
+                className="shrink-0 p-2 mr-1 text-ink-muted hover:text-ink transition-colors duration-200"
+              >
+                <X size={13} strokeWidth={2.5} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSearch}
+              className="shrink-0 flex items-center gap-1.5 h-8 px-4 m-1 rounded-full bg-transparent text-ink text-[12.5px] font-medium hover:bg-ink hover:text-cream active:scale-95 transition-all duration-150 whitespace-nowrap"
+            >
+              <Search size={12} strokeWidth={2.5} />
+              Search
             </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSearch}
-            className="shrink-0 flex items-center gap-1.5 h-8 px-4 m-1 rounded-full bg-transparent text-ink text-[12.5px] font-medium hover:bg-ink hover:text-cream active:scale-95 transition-all duration-150 whitespace-nowrap"
-          >
-            <Search size={12} strokeWidth={2.5} />
-            Search
-          </button>
+          {desktopOpen && (
+            <SearchDropdown query={query} onClose={() => setDesktopOpen(false)} />
+          )}
         </div>
 
         {/* Auth — desktop */}
@@ -227,12 +400,12 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* ── Mobile search row ── */}
-      <div className="md:hidden px-4 pb-3">
+      {/* ── Mobile search row with dropdown ── */}
+      <div ref={mobileRef} className="md:hidden px-4 pb-3 relative">
         <div
           className={[
             "flex items-center bg-white rounded-full transition-all duration-200",
-            mobileFocused
+            mobileOpen2
               ? "border border-brand/60 shadow-[0_0_0_3px_rgba(184,135,58,0.10)]"
               : "border border-border-muted",
           ].join(" ")}
@@ -241,12 +414,20 @@ export default function Navbar() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setMobileFocused(true)}
-            onBlur={() => setMobileFocused(false)}
+            onFocus={() => setMobileOpen2(true)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search products…"
             className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-4 py-2.5"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => { setQuery(""); setMobileOpen2(true); }}
+              className="shrink-0 p-2 text-ink-muted hover:text-ink transition-colors duration-200"
+            >
+              <X size={13} strokeWidth={2.5} />
+            </button>
+          )}
           <button
             type="button"
             onClick={handleSearch}
@@ -255,9 +436,12 @@ export default function Navbar() {
             <Search size={14} strokeWidth={2.5} />
           </button>
         </div>
+        {mobileOpen2 && (
+          <SearchDropdown query={query} onClose={() => setMobileOpen2(false)} />
+        )}
       </div>
 
-      {/* Category strip + mobile drawer — wrapped in Suspense for useSearchParams */}
+      {/* Category strip + mobile drawer */}
       <Suspense fallback={<div className="h-10 border-t border-border-muted" />}>
         <CategoryStrip mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       </Suspense>
