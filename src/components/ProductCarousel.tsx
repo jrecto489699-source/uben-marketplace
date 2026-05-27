@@ -99,7 +99,7 @@ export default function ProductCarousel({
           {canScrollLeft && (
             <button
               onClick={scrollLeft}
-              className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
+              className="flex absolute -left-3 md:-left-4 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
               aria-label="Scroll left"
             >
               <ChevronLeft size={18} color="white" strokeWidth={2.5} />
@@ -110,7 +110,7 @@ export default function ProductCarousel({
           {canScrollRight && (
             <button
               onClick={scrollRight}
-              className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
+              className="flex absolute -right-3 md:-right-4 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
               aria-label="Scroll right"
             >
               <ChevronRight size={18} color="white" strokeWidth={2.5} />
