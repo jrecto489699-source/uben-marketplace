@@ -49,13 +49,6 @@ export default function Navbar() {
               : "border border-border-muted",
           ].join(" ")}
         >
-          {/* Left search icon */}
-          <Search
-            size={15}
-            strokeWidth={2}
-            className="shrink-0 ml-4 text-ink-muted"
-          />
-
           {/* Input */}
           <input
             type="text"
