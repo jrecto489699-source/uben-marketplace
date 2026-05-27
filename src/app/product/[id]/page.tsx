@@ -11,6 +11,7 @@ import { useFavorites } from "@/context/FavoritesContext";
 import { useAuth } from "@/context/AuthContext";
 import { usePurchases } from "@/context/PurchasesContext";
 import AuthModal from "@/components/AuthModal";
+import InstantCheckoutModal from "@/components/InstantCheckoutModal";
 
 function discountPct(sale: string, original: string) {
   const s = parseFloat(sale.replace(/[^0-9.]/g, ""));
@@ -63,6 +64,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const { user } = useAuth();
   const { isOwned } = usePurchases();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showInstantCheckout, setShowInstantCheckout] = useState(false);
   const owned = isOwned(product.id);
 
   const related = getRelatedProducts(product, 6);
@@ -202,7 +204,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     </button>
                     {product.instantDownload && (
                       <button
-                        onClick={() => { if (!user) setShowAuthModal(true); }}
+                        onClick={() => user ? setShowInstantCheckout(true) : setShowAuthModal(true)}
                         className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200"
                       >
                         <Download size={16} strokeWidth={2} />
@@ -346,6 +348,12 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         <AuthModal
           onClose={() => setShowAuthModal(false)}
           message="You need to sign in to download this product."
+        />
+      )}
+      {showInstantCheckout && (
+        <InstantCheckoutModal
+          product={product}
+          onClose={() => setShowInstantCheckout(false)}
         />
       )}
     </>

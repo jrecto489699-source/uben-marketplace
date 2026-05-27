@@ -19,14 +19,14 @@ interface Purchase {
 interface PurchasesContextValue {
   purchases: Purchase[];
   isOwned: (productId: number) => boolean;
-  savePurchases: (products: Product[]) => Promise<void>;
+  savePurchases: (products: Product[]) => Promise<Purchase[]>;
   loading: boolean;
 }
 
 const PurchasesContext = createContext<PurchasesContextValue>({
   purchases: [],
   isOwned: () => false,
-  savePurchases: async () => {},
+  savePurchases: async () => [],
   loading: true,
 });
 
@@ -54,8 +54,8 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     return purchases.some((p) => p.product_id === productId);
   }
 
-  async function savePurchases(products: Product[]) {
-    if (!user) return;
+  async function savePurchases(products: Product[]): Promise<Purchase[]> {
+    if (!user) return [];
     const rows = products.map((p) => ({
       user_id: user.id,
       product_id: p.id,
@@ -65,6 +65,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     }));
     const { data } = await supabase.from("purchases").insert(rows).select();
     if (data) setPurchases((prev) => [...data, ...prev]);
+    return data ?? [];
   }
 
   return (
