@@ -79,7 +79,7 @@ export default function Navbar() {
           {/* Search button */}
           <button
             type="submit"
-            className="shrink-0 flex items-center gap-1.5 h-8 px-4 m-1 rounded-full bg-ink text-cream text-[12.5px] font-medium hover:bg-[#3a3a3a] active:scale-95 transition-all duration-150 whitespace-nowrap"
+            className="shrink-0 flex items-center gap-1.5 h-8 px-4 m-1 rounded-full bg-transparent text-ink text-[12.5px] font-medium hover:bg-ink hover:text-cream active:scale-95 transition-all duration-150 whitespace-nowrap"
           >
             <Search size={12} strokeWidth={2.5} />
             Search
