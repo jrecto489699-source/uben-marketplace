@@ -83,6 +83,7 @@ function StripeCardForm({
       <div className="p-4 rounded-xl border border-border-muted bg-white focus-within:border-ink transition-colors">
         <CardElement
           options={{
+            hidePostalCode: true,
             style: {
               base: {
                 fontSize: "14px",
