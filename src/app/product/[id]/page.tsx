@@ -33,7 +33,7 @@ const TAGS_BY_CATEGORY: Record<string, string[]> = {
 const DESCRIPTION_BY_CATEGORY: Record<string, string> = {
   Worksheets:  "A beautifully designed, print-ready worksheet pack perfect for early learners. Each page is crafted to build foundational skills in a fun, engaging way — ideal for home learning, classroom use, or supplementary practice.",
   Coloring:    "A vibrant, print-ready coloring pack filled with charming illustrations that spark creativity and imagination. Perfect for quiet time, classroom art sessions, or rainy-day activities.",
-  Storybooks:  "A enchanting printable storybook designed to inspire a love of reading in young children. Rich illustrations and age-appropriate language make it perfect for bedtime stories or read-aloud sessions.",
+  Storybooks:  "An enchanting printable storybook designed to inspire a love of reading in young children. Rich illustrations and age-appropriate language make it perfect for bedtime stories or read-aloud sessions.",
   Activities:  "An engaging activity pack packed with hands-on learning experiences. Designed to make education feel like play, with curriculum-aligned content that parents and teachers love.",
   Flashcards:  "A comprehensive flashcard set designed to build vocabulary, recognition, and memory skills. Bright visuals and clear text make learning intuitive and effective for early learners.",
   "Party Kits":"A complete printable party kit packed with everything you need for an unforgettable celebration. Just download, print, and delight — no running to the store required.",
@@ -75,7 +75,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           <nav className="flex items-center gap-1.5 text-xs text-ink-muted mb-8">
             <a href="/" className="hover:text-ink transition-colors duration-200">Home</a>
             <ChevronRight size={12} strokeWidth={2} />
-            <a href={`/all?category=${category.toLowerCase().replace(" ", "-")}`} className="hover:text-ink transition-colors duration-200">{category}</a>
+            <a href={`/all?category=${category.toLowerCase().replace(/\s+/g, "-")}`} className="hover:text-ink transition-colors duration-200">{category}</a>
             <ChevronRight size={12} strokeWidth={2} />
             <span className="text-ink truncate max-w-[200px]">{product.title}</span>
           </nav>

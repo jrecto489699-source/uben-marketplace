@@ -24,7 +24,7 @@ export default function FeatureCards() {
 
           {/* ── Storybook card ────────────────────────────────────────── */}
           <div
-            className="relative rounded-2xl px-8 py-4 flex flex-row items-end justify-between gap-4 overflow-hidden border-2 cursor-pointer"
+            className="relative rounded-2xl px-8 py-4 flex flex-row items-end justify-between gap-4 overflow-hidden border-2"
             style={{ backgroundColor: "#FEF3E2", borderColor: "#F0C08A" }}
           >
             {/* Warm blob */}

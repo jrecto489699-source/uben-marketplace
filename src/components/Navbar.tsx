@@ -20,7 +20,6 @@ const categories = [
   { label: "Holiday",     slug: "holiday",    badge: "New" },
 ];
 
-// Isolated component so useSearchParams gets its own Suspense boundary
 function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; setMobileOpen: (v: boolean) => void }) {
   const { active, setActive } = useCategory();
   const pathname = usePathname();
@@ -69,11 +68,6 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
       {mobileOpen && (
         <div className="md:hidden border-b border-border-muted bg-cream">
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-0.5">
-            <button className="flex items-center gap-2.5 px-3 py-3 text-sm font-medium text-ink rounded-xl hover:bg-card-hover transition-colors duration-200 text-left">
-              <User size={15} strokeWidth={1.75} />
-              Sign in
-            </button>
-            <div className="my-2 h-px bg-border-muted" />
             <p className="px-3 pb-1 text-[11px] font-semibold tracking-widest text-ink-muted uppercase">
               Browse
             </p>
@@ -102,7 +96,8 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [focused, setFocused] = useState(false);
+  const [desktopFocused, setDesktopFocused] = useState(false);
+  const [mobileFocused, setMobileFocused] = useState(false);
   const { cartCount } = useCart();
   const { favoriteCount } = useFavorites();
 
@@ -123,17 +118,17 @@ export default function Navbar() {
           <UbenLogo variant="dark" size={34} />
         </a>
 
-        {/* Browse pill */}
+        {/* Browse pill — desktop only */}
         <button className="hidden lg:flex items-center gap-1.5 shrink-0 h-9 px-4 rounded-full border border-border-muted text-[13px] font-medium text-ink hover:bg-card-hover transition-colors duration-200">
           Browse
           <ChevronDown size={12} strokeWidth={2.5} />
         </button>
 
-        {/* Search bar — desktop only in Row 1 */}
+        {/* Search bar — desktop only */}
         <div
           className={[
             "hidden md:flex flex-1 items-center min-w-0 bg-white rounded-full transition-all duration-200",
-            focused
+            desktopFocused
               ? "border border-brand/60 shadow-[0_0_0_3px_rgba(184,135,58,0.10)]"
               : "border border-border-muted",
           ].join(" ")}
@@ -142,8 +137,8 @@ export default function Navbar() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onFocus={() => setDesktopFocused(true)}
+            onBlur={() => setDesktopFocused(false)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search printables, worksheets, activity packs…"
             className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-3 py-[10px]"
@@ -237,7 +232,7 @@ export default function Navbar() {
         <div
           className={[
             "flex items-center bg-white rounded-full transition-all duration-200",
-            focused
+            mobileFocused
               ? "border border-brand/60 shadow-[0_0_0_3px_rgba(184,135,58,0.10)]"
               : "border border-border-muted",
           ].join(" ")}
@@ -246,8 +241,8 @@ export default function Navbar() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onFocus={() => setMobileFocused(true)}
+            onBlur={() => setMobileFocused(false)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search products…"
             className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-4 py-2.5"

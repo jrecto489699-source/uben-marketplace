@@ -6,8 +6,6 @@ import { useCategory } from "@/context/CategoryContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import type { Product } from "@/data/products";
 
-export type { Product };
-
 interface ProductCarouselProps {
   title: string;
   dynamicTitle?: boolean;

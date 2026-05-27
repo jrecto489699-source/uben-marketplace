@@ -6,7 +6,6 @@ import { Star, SlidersHorizontal, X, Heart } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useFavorites } from "@/context/FavoritesContext";
-import { useCart } from "@/context/CartContext";
 import {
   allProducts, printableProducts, classroomProducts,
   worksheetProducts, coloringProducts, storybookProducts,
@@ -94,7 +93,6 @@ function ProductGrid() {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("Relevancy");
   const { toggleFavorite, isFavorited } = useFavorites();
-  const { addToCart } = useCart();
 
   function toggleFilter(f: string) {
     setActiveFilters((prev) =>
@@ -186,13 +184,19 @@ function ProductGrid() {
       {displayed.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="font-serif text-2xl text-ink mb-2">No products found</p>
-          <p className="text-sm text-ink-muted mb-6">Try removing a filter to see more results.</p>
-          <button
-            onClick={() => setActiveFilters([])}
-            className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-medium hover:bg-[#3a3a3a] transition-colors duration-200"
-          >
-            Clear filters
-          </button>
+          <p className="text-sm text-ink-muted mb-6">
+            {searchQuery
+              ? `No results for "${searchParams.get("search")}". Try a different search term.`
+              : "Try removing a filter to see more results."}
+          </p>
+          {!searchQuery && (
+            <button
+              onClick={() => setActiveFilters([])}
+              className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-medium hover:bg-[#3a3a3a] transition-colors duration-200"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       )}
 
