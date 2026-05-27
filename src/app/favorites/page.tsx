@@ -102,11 +102,12 @@ export default function FavoritesPage() {
                         <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
                       </div>
                       <button
-                        onClick={() => addToCart(product)}
-                        className={`w-full h-9 rounded-full text-xs font-semibold transition-all duration-200 active:scale-[0.98] ${
+                        onClick={() => !inCart && addToCart(product)}
+                        disabled={inCart}
+                        className={`w-full h-9 rounded-full text-xs font-semibold transition-all duration-200 ${
                           inCart
-                            ? "bg-[#3a3a3a] text-cream"
-                            : "bg-ink text-cream hover:bg-[#3a3a3a]"
+                            ? "bg-[#3a3a3a] text-cream cursor-default"
+                            : "bg-ink text-cream hover:bg-[#3a3a3a] active:scale-[0.98]"
                         }`}
                       >
                         {inCart ? "Added to Cart ✓" : "Add to Cart"}

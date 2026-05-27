@@ -172,11 +172,12 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               {/* CTA buttons */}
               <div className="flex flex-col gap-3 mb-6">
                 <button
-                  onClick={() => addToCart(product)}
-                  className={`w-full h-12 rounded-full text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 ${
+                  onClick={() => !isInCart(product.id) && addToCart(product)}
+                  disabled={isInCart(product.id)}
+                  className={`w-full h-12 rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
                     isInCart(product.id)
-                      ? "bg-[#3a3a3a] text-cream"
-                      : "bg-ink text-cream hover:bg-[#3a3a3a]"
+                      ? "bg-[#3a3a3a] text-cream cursor-default"
+                      : "bg-ink text-cream hover:bg-[#3a3a3a] active:scale-[0.98]"
                   }`}
                 >
                   <ShoppingCart size={16} strokeWidth={2} />
@@ -184,11 +185,16 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 </button>
                 {product.instantDownload && (
                   <button
-                    onClick={() => addToCart(product)}
-                    className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200"
+                    onClick={() => !isInCart(product.id) && addToCart(product)}
+                    disabled={isInCart(product.id)}
+                    className={`w-full h-12 rounded-full border-2 text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
+                      isInCart(product.id)
+                        ? "border-[#134A4F] bg-[#134A4F] text-cream cursor-default"
+                        : "border-[#134A4F] text-[#134A4F] hover:bg-[#134A4F] hover:text-cream active:scale-[0.98]"
+                    }`}
                   >
                     <Download size={16} strokeWidth={2} />
-                    Instant Download — {product.salePrice}
+                    {isInCart(product.id) ? "Added to Cart ✓" : `Instant Download — ${product.salePrice}`}
                   </button>
                 )}
                 <button
