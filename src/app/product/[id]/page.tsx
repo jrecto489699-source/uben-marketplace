@@ -299,26 +299,24 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                             {relPct}% off
                           </span>
                         )}
-                        {/* Add to cart button on hover */}
-                        <div className="absolute bottom-0 left-0 right-0 px-2 pb-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
-                          <button
-                            onClick={() => { if (!isInCart(rel.id)) addToCart(rel); }}
-                            className="w-full h-8 rounded-full bg-white text-ink text-[11px] font-semibold shadow-md hover:bg-ink hover:text-cream transition-colors duration-150"
-                          >
-                            {isInCart(rel.id) ? "Added ✓" : "Add to cart"}
-                          </button>
-                        </div>
                       </div>
                       <a href={`/product/${rel.id}`}>
                         <p className="text-[11px] text-ink-muted truncate mb-0.5">{rel.seller}</p>
                         <h3 className="text-xs font-medium text-ink truncate leading-snug group-hover:underline underline-offset-2 transition-all duration-200 mb-1">
                           {rel.title}
                         </h3>
-                        <div className="flex items-baseline gap-1">
+                        <div className="flex items-baseline gap-1 mb-2">
                           <span className="text-xs font-semibold text-sale-green">{rel.salePrice}</span>
                           <span className="text-[10px] text-ink-muted line-through">{rel.originalPrice}</span>
                         </div>
                       </a>
+                      {/* Add to cart button on hover */}
+                      <button
+                        onClick={() => { if (!isInCart(rel.id)) addToCart(rel); }}
+                        className="w-full h-8 rounded-full bg-ink text-cream text-[11px] font-semibold opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 hover:bg-[#3a3a3a]"
+                      >
+                        {isInCart(rel.id) ? "Added ✓" : "Add to cart"}
+                      </button>
                     </div>
                   );
                 })}
