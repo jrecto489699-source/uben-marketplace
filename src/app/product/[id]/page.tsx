@@ -283,30 +283,43 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 {related.map((rel) => {
                   const relPct = discountPct(rel.salePrice, rel.originalPrice);
                   return (
-                    <a key={rel.id} href={`/product/${rel.id}`} className="group cursor-pointer">
+                    <div key={rel.id} className="group cursor-pointer">
                       <div className="relative aspect-square rounded-xl overflow-hidden bg-card-hover mb-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={rel.image}
-                          alt={rel.title}
-                          loading="lazy"
-                          className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
-                        />
+                        <a href={`/product/${rel.id}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={rel.image}
+                            alt={rel.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
+                          />
+                        </a>
                         {relPct !== null && (
                           <span className="absolute top-1.5 left-1.5 bg-sale-green text-cream text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                             {relPct}% off
                           </span>
                         )}
+                        {/* Add to cart button on hover */}
+                        <div className="absolute bottom-0 left-0 right-0 px-2 pb-2 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                          <button
+                            onClick={() => { if (!isInCart(rel.id)) addToCart(rel); }}
+                            className="w-full h-8 rounded-full bg-white text-ink text-[11px] font-semibold shadow-md hover:bg-ink hover:text-cream transition-colors duration-150"
+                          >
+                            {isInCart(rel.id) ? "Added ✓" : "Add to cart"}
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-ink-muted truncate mb-0.5">{rel.seller}</p>
-                      <h3 className="text-xs font-medium text-ink truncate leading-snug group-hover:underline underline-offset-2 transition-all duration-200 mb-1">
-                        {rel.title}
-                      </h3>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xs font-semibold text-sale-green">{rel.salePrice}</span>
-                        <span className="text-[10px] text-ink-muted line-through">{rel.originalPrice}</span>
-                      </div>
-                    </a>
+                      <a href={`/product/${rel.id}`}>
+                        <p className="text-[11px] text-ink-muted truncate mb-0.5">{rel.seller}</p>
+                        <h3 className="text-xs font-medium text-ink truncate leading-snug group-hover:underline underline-offset-2 transition-all duration-200 mb-1">
+                          {rel.title}
+                        </h3>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xs font-semibold text-sale-green">{rel.salePrice}</span>
+                          <span className="text-[10px] text-ink-muted line-through">{rel.originalPrice}</span>
+                        </div>
+                      </a>
+                    </div>
                   );
                 })}
               </div>
