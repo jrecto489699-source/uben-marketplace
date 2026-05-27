@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCategory } from "@/context/CategoryContext";
 import type { Product } from "@/data/products";
@@ -9,7 +9,6 @@ export type { Product };
 
 interface ProductCarouselProps {
   title: string;
-  /** When true, the title becomes "Trending in <active category>" */
   dynamicTitle?: boolean;
   viewAllHref?: string;
   products: Product[];
@@ -25,17 +24,26 @@ export default function ProductCarousel({
   const { active } = useCategory();
   const displayTitle = dynamicTitle ? `Trending in ${active}` : title;
 
-  const scrollLeft = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -232, behavior: "smooth" });
-    }
-  };
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
-  const scrollRight = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 232, behavior: "smooth" });
-    }
-  };
+  const updateArrows = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateArrows();
+    el.addEventListener("scroll", updateArrows, { passive: true });
+    return () => el.removeEventListener("scroll", updateArrows);
+  }, [updateArrows]);
+
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -232, behavior: "smooth" });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 232, behavior: "smooth" });
 
   return (
     <section className="py-12 md:py-14">
@@ -64,7 +72,6 @@ export default function ProductCarousel({
                 key={product.id}
                 className="snap-start shrink-0 w-52 group cursor-pointer"
               >
-                {/* Image */}
                 <div className="aspect-square rounded-xl overflow-hidden bg-card-hover mb-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -74,43 +81,41 @@ export default function ProductCarousel({
                     className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
                   />
                 </div>
-
-                {/* Meta */}
                 <div className="px-0.5">
                   <p className="text-xs text-ink-muted mb-0.5 truncate">{product.seller}</p>
                   <h3 className="text-sm font-medium text-ink truncate leading-snug group-hover:underline underline-offset-2 transition-all duration-200">
                     {product.title}
                   </h3>
                   <div className="flex items-baseline gap-1.5 mt-1">
-                    <span className="text-sm font-semibold text-sale-green">
-                      {product.salePrice}
-                    </span>
-                    <span className="text-xs text-ink-muted line-through">
-                      {product.originalPrice}
-                    </span>
+                    <span className="text-sm font-semibold text-sale-green">{product.salePrice}</span>
+                    <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
                   </div>
                 </div>
               </article>
             ))}
           </div>
 
-          {/* Left arrow */}
-          <button
-            onClick={scrollLeft}
-            className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft size={18} color="white" strokeWidth={2.5} />
-          </button>
+          {/* Left arrow — only when scrolled right */}
+          {canScrollLeft && (
+            <button
+              onClick={scrollLeft}
+              className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={18} color="white" strokeWidth={2.5} />
+            </button>
+          )}
 
-          {/* Right arrow */}
-          <button
-            onClick={scrollRight}
-            className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
-            aria-label="Scroll right"
-          >
-            <ChevronRight size={18} color="white" strokeWidth={2.5} />
-          </button>
+          {/* Right arrow — only when more content to the right */}
+          {canScrollRight && (
+            <button
+              onClick={scrollRight}
+              className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ink items-center justify-center shadow-lg hover:bg-[#3a3a3a] transition-colors duration-200 z-10"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={18} color="white" strokeWidth={2.5} />
+            </button>
+          )}
         </div>
       </div>
     </section>
