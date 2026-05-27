@@ -51,6 +51,8 @@ function PaymentForm({
 
   async function handlePay() {
     if (!stripe || !elements) return;
+    // Open tab synchronously — Safari blocks window.open() after await
+    const downloadWin = window.open("", "_blank");
     setLoading(true);
     setError("");
 
@@ -76,6 +78,7 @@ function PaymentForm({
       });
 
       if (stripeError) {
+        downloadWin?.close();
         setError(stripeError.message || "Payment failed. Please try again.");
         setLoading(false);
         return;
@@ -92,12 +95,16 @@ function PaymentForm({
         const dlRes = await fetch(`/api/download/${purchase.id}`);
         const dlData = await dlRes.json();
         if (dlRes.ok && dlData.url) {
-          window.open(dlData.url, "_blank", "noopener,noreferrer");
+          if (downloadWin) downloadWin.location.href = dlData.url;
+          else window.open(dlData.url, "_blank", "noopener,noreferrer");
+        } else {
+          downloadWin?.close();
         }
       }
 
       onSuccess();
     } catch {
+      downloadWin?.close();
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);

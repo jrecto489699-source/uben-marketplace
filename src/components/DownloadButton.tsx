@@ -13,6 +13,9 @@ export default function DownloadButton({ purchaseId, productTitle }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleDownload() {
+    // Open the tab synchronously — Safari blocks window.open() after await
+    const win = window.open("", "_blank");
+
     setLoading(true);
     setError(null);
 
@@ -21,12 +24,15 @@ export default function DownloadButton({ purchaseId, productTitle }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
+        win?.close();
         setError(data.error || "Download failed. Please try again.");
         return;
       }
 
-      window.open(data.url, "_blank", "noopener,noreferrer");
+      if (win) win.location.href = data.url;
+      else window.location.href = data.url; // fallback
     } catch {
+      win?.close();
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
