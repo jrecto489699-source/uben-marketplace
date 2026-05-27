@@ -409,14 +409,38 @@ export default function Navbar() {
         {/* Mobile icons */}
         <div className="flex md:hidden items-center shrink-0 gap-0.5 ml-auto">
           {user ? (
-            <button
-              onClick={signOut}
-              className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap"
-            >
-              <div className="w-5 h-5 rounded-full bg-ink text-cream flex items-center justify-center text-[10px] font-bold">
+            <div ref={userMenuRef} className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-ink text-cream text-[11px] font-bold hover:bg-[#3a3a3a] transition-colors duration-200"
+              >
                 {(user.user_metadata?.full_name || user.email || "U")[0].toUpperCase()}
-              </div>
-            </button>
+              </button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-border-muted">
+                    <p className="text-xs font-semibold text-ink truncate">{user.user_metadata?.full_name || "My Account"}</p>
+                    <p className="text-[11px] text-ink-muted truncate">{user.email}</p>
+                  </div>
+                  <a
+                    href="/downloads"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"
+                  >
+                    <Download size={14} strokeWidth={1.75} />
+                    My Downloads
+                  </a>
+                  <div className="h-px bg-border-muted" />
+                  <button
+                    onClick={() => { setUserMenuOpen(false); signOut(); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"
+                  >
+                    <LogOut size={14} strokeWidth={1.75} />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <a href="/signin" className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
               <User size={13} strokeWidth={1.75} />
