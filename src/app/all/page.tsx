@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Star, SlidersHorizontal, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -12,11 +13,22 @@ const CATEGORY_SETS: Record<string, Product[]> = {
   classroom: classroomProducts,
 };
 
-const FILTERS = ["On sale", "Uben's Picks", "Instant Download", "Under $5"];
+const SORT_OPTIONS = [
+  "Relevancy",
+  "Price: Low to High",
+  "Price: High to Low",
+  "Most Popular",
+  "Newest",
+] as const;
+type SortOption = (typeof SORT_OPTIONS)[number];
+
+function parsePrice(str: string) {
+  return parseFloat(str.replace(/[^0-9.]/g, "")) || 0;
+}
 
 function discountPct(sale: string, original: string) {
-  const s = parseFloat(sale.replace(/[^0-9.]/g, ""));
-  const o = parseFloat(original.replace(/[^0-9.]/g, ""));
+  const s = parsePrice(sale);
+  const o = parsePrice(original);
   if (!o) return null;
   return Math.round((1 - s / o) * 100);
 }
@@ -25,16 +37,54 @@ function formatCount(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
-export default function AllProductsPage() {
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState("Relevancy");
+function applyFilters(products: Product[], filters: string[]): Product[] {
+  let result = [...products];
 
-  const params =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : null;
-  const categoryKey = params?.get("category") ?? "all";
-  const products = CATEGORY_SETS[categoryKey] ?? allProducts;
+  if (filters.includes("On sale")) {
+    // keep products with at least 30% off
+    result = result.filter((p) => {
+      const pct = discountPct(p.salePrice, p.originalPrice);
+      return pct !== null && pct >= 30;
+    });
+  }
+
+  if (filters.includes("Uben's Picks")) {
+    // top-rated: 4.8 stars and above
+    result = result.filter((p) => (p.rating ?? 0) >= 4.8);
+  }
+
+  if (filters.includes("Instant Download")) {
+    // printables are all instant downloads (ids 1–7)
+    result = result.filter((p) => p.id <= 7);
+  }
+
+  if (filters.includes("Under $5")) {
+    result = result.filter((p) => parsePrice(p.salePrice) < 5);
+  }
+
+  return result;
+}
+
+function applySort(products: Product[], sort: SortOption): Product[] {
+  const arr = [...products];
+  switch (sort) {
+    case "Price: Low to High":
+      return arr.sort((a, b) => parsePrice(a.salePrice) - parsePrice(b.salePrice));
+    case "Price: High to Low":
+      return arr.sort((a, b) => parsePrice(b.salePrice) - parsePrice(a.salePrice));
+    case "Most Popular":
+      return arr.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
+    case "Newest":
+      return arr.sort((a, b) => b.id - a.id);
+    default:
+      return arr;
+  }
+}
+
+export default function AllProductsPage() {
+  const searchParams = useSearchParams();
+  const categoryKey = searchParams.get("category") ?? "all";
+  const baseProducts = CATEGORY_SETS[categoryKey] ?? allProducts;
 
   const pageTitle =
     categoryKey === "printables"
@@ -43,14 +93,26 @@ export default function AllProductsPage() {
       ? "Classroom Picks"
       : "All Products";
 
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<SortOption>("Relevancy");
+
   function toggleFilter(f: string) {
     setActiveFilters((prev) =>
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]
     );
   }
 
-  const displayed =
-    activeFilters.includes("On sale") ? products : products;
+  const displayed = useMemo(() => {
+    const filtered = applyFilters(baseProducts, activeFilters);
+    return applySort(filtered, sortBy);
+  }, [baseProducts, activeFilters, sortBy]);
+
+  const FILTERS: { label: string; description: string }[] = [
+    { label: "On sale",          description: "30%+ off" },
+    { label: "Uben's Picks",     description: "4.8★ and above" },
+    { label: "Instant Download", description: "Printables only" },
+    { label: "Under $5",         description: "Sale price under $5" },
+  ];
 
   return (
     <>
@@ -63,41 +125,50 @@ export default function AllProductsPage() {
           </h1>
 
           {/* Filter bar */}
-          <div className="flex flex-wrap items-center gap-2 mb-8">
-            {/* Sort */}
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            {/* Sort dropdown */}
             <div className="relative">
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="appearance-none pl-4 pr-8 py-2 rounded-full border border-border-muted text-sm text-ink bg-cream cursor-pointer hover:border-ink transition-colors duration-200 focus:outline-none"
               >
-                <option>Relevancy</option>
-                <option>Price: Low to High</option>
-                <option>Price: High to Low</option>
-                <option>Most Popular</option>
-                <option>Newest</option>
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
               </select>
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted text-xs">▾</span>
             </div>
 
             {/* Filter chips */}
-            {FILTERS.map((f) => {
-              const active = activeFilters.includes(f);
+            {FILTERS.map(({ label }) => {
+              const active = activeFilters.includes(label);
               return (
                 <button
-                  key={f}
-                  onClick={() => toggleFilter(f)}
+                  key={label}
+                  onClick={() => toggleFilter(label)}
+                  title={FILTERS.find((f) => f.label === label)?.description}
                   className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors duration-200 ${
                     active
                       ? "bg-ink text-cream border-ink"
                       : "bg-cream text-ink border-border-muted hover:border-ink"
                   }`}
                 >
-                  {f}
+                  {label}
                   {active && <X size={12} strokeWidth={2.5} />}
                 </button>
               );
             })}
+
+            {/* Clear all — only shown when filters are active */}
+            {activeFilters.length > 0 && (
+              <button
+                onClick={() => setActiveFilters([])}
+                className="text-xs text-ink-muted underline underline-offset-2 hover:text-ink transition-colors duration-200 ml-1"
+              >
+                Clear all
+              </button>
+            )}
 
             <button className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border-muted text-sm text-ink hover:border-ink transition-colors duration-200">
               <SlidersHorizontal size={14} />
@@ -107,57 +178,78 @@ export default function AllProductsPage() {
 
           {/* Result count */}
           <p className="text-xs text-ink-muted mb-6">
-            {displayed.length} results
+            {displayed.length} {displayed.length === 1 ? "result" : "results"}
+            {activeFilters.length > 0 && (
+              <span className="ml-1 text-ink-muted">
+                · filtered from {baseProducts.length}
+              </span>
+            )}
           </p>
 
+          {/* Empty state */}
+          {displayed.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <p className="font-serif text-2xl text-ink mb-2">No products found</p>
+              <p className="text-sm text-ink-muted mb-6">Try removing a filter to see more results.</p>
+              <button
+                onClick={() => setActiveFilters([])}
+                className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-medium hover:bg-[#3a3a3a] transition-colors duration-200"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+
           {/* Product grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8">
-            {displayed.map((product) => {
-              const pct = discountPct(product.salePrice, product.originalPrice);
-              return (
-                <article key={product.id} className="group cursor-pointer">
-                  {/* Image */}
-                  <div className="relative aspect-square rounded-xl overflow-hidden bg-card-hover mb-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={product.image}
-                      alt={product.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
-                    />
-                    {pct && (
-                      <span className="absolute top-2 left-2 bg-sale-green text-cream text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                        {pct}% off
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Meta */}
-                  <div>
-                    <p className="text-xs text-ink-muted mb-0.5 truncate">{product.seller}</p>
-                    <h3 className="text-sm font-medium text-ink leading-snug line-clamp-2 group-hover:underline underline-offset-2 transition-all duration-200 mb-1">
-                      {product.title}
-                    </h3>
-
-                    {/* Rating */}
-                    {product.rating && (
-                      <div className="flex items-center gap-1 mb-1">
-                        <Star size={11} className="fill-[#D4A017] text-[#D4A017]" strokeWidth={0} />
-                        <span className="text-xs font-semibold text-ink">{product.rating.toFixed(1)}</span>
-                        <span className="text-xs text-ink-muted">({formatCount(product.reviewCount ?? 0)})</span>
-                      </div>
-                    )}
-
-                    {/* Price */}
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <span className="text-sm font-semibold text-sale-green">{product.salePrice}</span>
-                      <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
+          {displayed.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8">
+              {displayed.map((product) => {
+                const pct = discountPct(product.salePrice, product.originalPrice);
+                return (
+                  <article key={product.id} className="group cursor-pointer">
+                    {/* Image */}
+                    <div className="relative aspect-square rounded-xl overflow-hidden bg-card-hover mb-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={product.image}
+                        alt={product.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
+                      />
+                      {pct !== null && (
+                        <span className="absolute top-2 left-2 bg-sale-green text-cream text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                          {pct}% off
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+
+                    {/* Meta */}
+                    <div>
+                      <p className="text-xs text-ink-muted mb-0.5 truncate">{product.seller}</p>
+                      <h3 className="text-sm font-medium text-ink leading-snug line-clamp-2 group-hover:underline underline-offset-2 transition-all duration-200 mb-1">
+                        {product.title}
+                      </h3>
+
+                      {/* Rating */}
+                      {product.rating && (
+                        <div className="flex items-center gap-1 mb-1">
+                          <Star size={11} className="fill-[#D4A017] text-[#D4A017]" strokeWidth={0} />
+                          <span className="text-xs font-semibold text-ink">{product.rating.toFixed(1)}</span>
+                          <span className="text-xs text-ink-muted">({formatCount(product.reviewCount ?? 0)})</span>
+                        </div>
+                      )}
+
+                      {/* Price */}
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <span className="text-sm font-semibold text-sale-green">{product.salePrice}</span>
+                        <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
       </main>
       <Footer />
