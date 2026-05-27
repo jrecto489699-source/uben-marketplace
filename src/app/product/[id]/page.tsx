@@ -2,7 +2,7 @@
 
 import { notFound } from "next/navigation";
 import { use } from "react";
-import { Star, Heart, ShoppingCart, Download, ChevronRight, Check, FileText, RefreshCw, Shield } from "lucide-react";
+import { Star, Heart, ShoppingCart, Download, ChevronRight, Check, FileText, Infinity, Shield } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getProductById, getRelatedProducts, getCategoryLabel } from "@/data/products";
@@ -101,8 +101,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 </div>
                 <div className="w-px h-4 bg-border-muted" />
                 <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-                  <RefreshCw size={13} strokeWidth={1.75} className="text-ink" />
-                  30-day returns
+                  <Infinity size={13} strokeWidth={1.75} className="text-ink" />
+                  Unlimited access
                 </div>
                 <div className="w-px h-4 bg-border-muted" />
                 <div className="flex items-center gap-1.5 text-xs text-ink-muted">
