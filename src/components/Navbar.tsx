@@ -215,7 +215,7 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
       {mobileOpen && (
         <div className="md:hidden border-b border-border-muted bg-cream">
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-0.5">
-            <p className="px-3 pb-1 text-[11px] font-semibold tracking-widest text-ink-muted uppercase">
+            <p className="px-3 pb-1 text-[11px] font-bold tracking-widest text-ink uppercase">
               Browse
             </p>
             {categories.map(({ label, slug, badge }) => (
