@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Source_Serif_4 } from "next/font/google";
 import { CategoryProvider } from "@/context/CategoryContext";
 import { CartProvider } from "@/context/CartContext";
@@ -20,6 +20,12 @@ const sourceSerif = Source_Serif_4({
 export const metadata: Metadata = {
   title: "Uben — Digital Products for Kids",
   description: "Printables, worksheets, coloring pages, and storybooks from independent designers — for parents, teachers, and homeschoolers.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-visual",
 };
 
 export default function RootLayout({
