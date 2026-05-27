@@ -364,15 +364,10 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <>
-              <a href="/signin" className="flex items-center gap-1.5 h-9 px-3.5 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
-                <User size={14} strokeWidth={1.75} />
-                Sign in
-              </a>
-              <a href="/signup" className="flex items-center h-9 px-4 text-[13px] font-semibold text-cream bg-ink rounded-full hover:bg-[#3a3a3a] transition-colors duration-200 whitespace-nowrap">
-                Sign up
-              </a>
-            </>
+            <a href="/signin" className="flex items-center gap-1.5 h-9 px-3.5 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
+              <User size={14} strokeWidth={1.75} />
+              Sign in
+            </a>
           )}
           <div className="w-px h-4 bg-border-muted mx-1" />
           <div className="relative group">
