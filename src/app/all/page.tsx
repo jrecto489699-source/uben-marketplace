@@ -74,6 +74,7 @@ function applySort(products: Product[], sort: SortOption): Product[] {
 function ProductGrid() {
   const searchParams = useSearchParams();
   const categoryKey = searchParams.get("category") ?? "all";
+  const searchQuery = searchParams.get("search")?.trim().toLowerCase() ?? "";
   const baseProducts = CATEGORY_SETS[categoryKey] ?? allProducts;
 
   const PAGE_TITLES: Record<string, string> = {
@@ -86,7 +87,9 @@ function ProductGrid() {
     "party-kits": "Party Kits",
     classroom:    "Top Classroom Picks",
   };
-  const pageTitle = PAGE_TITLES[categoryKey] ?? "All Products";
+  const pageTitle = searchQuery
+    ? `Results for "${searchParams.get("search")}"`
+    : (PAGE_TITLES[categoryKey] ?? "All Products");
 
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("Relevancy");
@@ -99,9 +102,18 @@ function ProductGrid() {
     );
   }
 
+  const searchFiltered = useMemo(() => {
+    if (!searchQuery) return baseProducts;
+    return allProducts.filter(
+      (p) =>
+        p.title.toLowerCase().includes(searchQuery) ||
+        p.seller.toLowerCase().includes(searchQuery)
+    );
+  }, [baseProducts, searchQuery]);
+
   const displayed = useMemo(
-    () => applySort(applyFilters(baseProducts, activeFilters), sortBy),
-    [baseProducts, activeFilters, sortBy]
+    () => applySort(applyFilters(searchFiltered, activeFilters), sortBy),
+    [searchFiltered, activeFilters, sortBy]
   );
 
   const FILTERS = ["On sale", "Uben's Picks", "Instant Download", "Under $5"];
@@ -164,7 +176,8 @@ function ProductGrid() {
       {/* Result count */}
       <p className="text-xs text-ink-muted mb-6">
         {displayed.length} {displayed.length === 1 ? "result" : "results"}
-        {activeFilters.length > 0 && (
+        {searchQuery && <span className="ml-1">· searching across all products</span>}
+        {activeFilters.length > 0 && !searchQuery && (
           <span className="ml-1">· filtered from {baseProducts.length}</span>
         )}
       </p>

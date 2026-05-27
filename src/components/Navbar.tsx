@@ -106,6 +106,12 @@ export default function Navbar() {
   const { cartCount } = useCart();
   const { favoriteCount } = useFavorites();
 
+  function handleSearch() {
+    const q = query.trim();
+    if (!q) return;
+    window.location.href = `/all?search=${encodeURIComponent(q)}`;
+  }
+
   return (
     <header className="sticky top-0 z-50 bg-cream">
 
@@ -138,6 +144,7 @@ export default function Navbar() {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search printables, worksheets, activity packs…"
             className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-3 py-[10px]"
           />
@@ -149,7 +156,8 @@ export default function Navbar() {
             </button>
           </div>
           <button
-            type="submit"
+            type="button"
+            onClick={handleSearch}
             className="shrink-0 flex items-center gap-1.5 h-8 px-4 m-1 rounded-full bg-transparent text-ink text-[12.5px] font-medium hover:bg-ink hover:text-cream active:scale-95 transition-all duration-150 whitespace-nowrap"
           >
             <Search size={12} strokeWidth={2.5} />
