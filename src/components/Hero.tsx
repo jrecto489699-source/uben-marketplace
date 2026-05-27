@@ -19,7 +19,7 @@ export default function Hero() {
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
             <a
-              href="#"
+              href="/all"
               className="inline-flex items-center px-6 py-3 rounded-full bg-ink text-cream text-sm font-medium hover:bg-[#3a3a3a] transition-colors duration-200"
             >
               Start printing

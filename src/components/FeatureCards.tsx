@@ -15,7 +15,7 @@ export default function FeatureCards() {
               </h2>
             </div>
             <a
-              href="#"
+              href="/all?category=printables"
               className="mt-1 self-start inline-flex items-center px-5 py-2.5 rounded-full bg-cream text-teal-deep text-sm font-semibold hover:bg-[#EDE8E0] transition-colors duration-200"
             >
               Explore bundles
@@ -51,7 +51,7 @@ export default function FeatureCards() {
                 Stories worth reading again and again.
               </p>
               <a
-                href="#"
+                href="/all?category=storybooks"
                 className="mt-1 self-start inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity duration-200"
                 style={{ backgroundColor: "#E8806A" }}
               >
