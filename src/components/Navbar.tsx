@@ -1,27 +1,106 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Search, Heart, ShoppingCart, Menu, X, User, ChevronDown } from "lucide-react";
 import UbenLogo from "@/components/UbenLogo";
 import { useCategory } from "@/context/CategoryContext";
 
 const categories = [
-  { label: "Printables" },
-  { label: "Worksheets" },
-  { label: "Coloring" },
-  { label: "Activities" },
-  { label: "Storybooks" },
-  { label: "Flashcards" },
-  { label: "Party Kits" },
-  { label: "Classroom" },
-  { label: "Holiday", badge: "New" },
+  { label: "Printables",  slug: "printables"  },
+  { label: "Worksheets",  slug: "worksheets"  },
+  { label: "Coloring",    slug: "coloring"    },
+  { label: "Activities",  slug: "activities"  },
+  { label: "Storybooks",  slug: "storybooks"  },
+  { label: "Flashcards",  slug: "flashcards"  },
+  { label: "Party Kits",  slug: "party-kits"  },
+  { label: "Classroom",   slug: "classroom"   },
+  { label: "Holiday",     slug: "holiday",    badge: "New" },
 ];
+
+// Isolated component so useSearchParams gets its own Suspense boundary
+function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; setMobileOpen: (v: boolean) => void }) {
+  const { active, setActive } = useCategory();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentSlug = pathname === "/all" ? (searchParams.get("category") ?? "") : "";
+
+  return (
+    <>
+      {/* ── Row 2: Category strip — desktop ── */}
+      <div className="hidden md:block border-t border-border-muted">
+        <div className="max-w-7xl mx-auto px-6">
+          <ul className="flex items-center gap-1 h-10">
+            {categories.map(({ label, slug, badge }) => {
+              const isActive = currentSlug === slug || (currentSlug === "" && active === label);
+              return (
+                <li key={label}>
+                  <a
+                    href={`/all?category=${slug}`}
+                    onClick={() => setActive(label)}
+                    className={[
+                      "relative flex items-center gap-1.5 px-3 h-7 rounded-full text-[13px] transition-colors duration-200 whitespace-nowrap",
+                      isActive
+                        ? "font-semibold text-ink"
+                        : "font-medium text-ink-muted hover:text-ink hover:bg-card-hover",
+                    ].join(" ")}
+                  >
+                    {label}
+                    {badge && (
+                      <span className="px-1.5 py-px rounded text-[9px] font-bold tracking-wide bg-red-100 text-red-600">
+                        {badge}
+                      </span>
+                    )}
+                    <span
+                      className="absolute bottom-0 left-2 right-2 h-[2px] bg-ink rounded-full origin-center transition-transform duration-200"
+                      style={{ transform: isActive ? "scaleX(1)" : "scaleX(0)" }}
+                    />
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+
+      {/* ── Mobile drawer ── */}
+      {mobileOpen && (
+        <div className="md:hidden border-b border-border-muted bg-cream">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-0.5">
+            <button className="flex items-center gap-2.5 px-3 py-3 text-sm font-medium text-ink rounded-xl hover:bg-card-hover transition-colors duration-200 text-left">
+              <User size={15} strokeWidth={1.75} />
+              Sign in
+            </button>
+            <div className="my-2 h-px bg-border-muted" />
+            <p className="px-3 pb-1 text-[11px] font-semibold tracking-widest text-ink-muted uppercase">
+              Browse
+            </p>
+            {categories.map(({ label, slug, badge }) => (
+              <a
+                key={label}
+                href={`/all?category=${slug}`}
+                onClick={() => { setActive(label); setMobileOpen(false); }}
+                className="flex items-center justify-between px-3 py-2.5 text-sm text-ink-muted rounded-xl hover:bg-card-hover hover:text-ink transition-colors duration-200"
+              >
+                {label}
+                {badge && (
+                  <span className="px-1.5 py-px rounded text-[10px] font-bold bg-red-100 text-red-600">
+                    {badge}
+                  </span>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
-  const { active, setActive } = useCategory();
 
   return (
     <header className="sticky top-0 z-50 bg-cream">
@@ -34,13 +113,13 @@ export default function Navbar() {
           <UbenLogo variant="dark" size={34} />
         </a>
 
-        {/* Browse pill — desktop */}
+        {/* Browse pill */}
         <button className="hidden lg:flex items-center gap-1.5 shrink-0 h-9 px-4 rounded-full border border-border-muted text-[13px] font-medium text-ink hover:bg-card-hover transition-colors duration-200">
           Browse
           <ChevronDown size={12} strokeWidth={2.5} />
         </button>
 
-        {/* ── Search bar ── */}
+        {/* Search bar */}
         <div
           className={[
             "flex-1 flex items-center min-w-0 bg-white rounded-full transition-all duration-200",
@@ -49,7 +128,6 @@ export default function Navbar() {
               : "border border-border-muted",
           ].join(" ")}
         >
-          {/* Input */}
           <input
             type="text"
             value={query}
@@ -59,8 +137,6 @@ export default function Navbar() {
             placeholder="Search printables, worksheets, activity packs…"
             className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-3 py-[10px]"
           />
-
-          {/* Category filter — visible on xl */}
           <div className="hidden xl:flex items-center shrink-0 pr-1">
             <div className="w-px h-4 bg-border-muted mr-2" />
             <button className="flex items-center gap-1 text-[12px] font-medium text-ink-muted hover:text-ink transition-colors duration-200 px-2 py-1 rounded-full hover:bg-card-hover whitespace-nowrap">
@@ -68,8 +144,6 @@ export default function Navbar() {
               <ChevronDown size={11} strokeWidth={2.5} />
             </button>
           </div>
-
-          {/* Search button */}
           <button
             type="submit"
             className="shrink-0 flex items-center gap-1.5 h-8 px-4 m-1 rounded-full bg-transparent text-ink text-[12.5px] font-medium hover:bg-ink hover:text-cream active:scale-95 transition-all duration-150 whitespace-nowrap"
@@ -79,20 +153,16 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* ── Auth actions — desktop ── */}
+        {/* Auth — desktop */}
         <nav className="hidden md:flex items-center shrink-0 gap-0.5">
           <button className="flex items-center gap-1.5 h-9 px-3.5 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
             <User size={14} strokeWidth={1.75} />
             Sign in
           </button>
-
           <div className="w-px h-4 bg-border-muted mx-1" />
-
           <button className="p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
             <Heart size={17} strokeWidth={1.75} />
           </button>
-
-          {/* Cart with item count */}
           <button className="relative p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
             <ShoppingCart size={17} strokeWidth={1.75} />
             <span className="absolute top-[5px] right-[5px] min-w-[14px] h-[14px] rounded-full bg-red-500 flex items-center justify-center text-white text-[9px] font-bold leading-none px-[3px]">
@@ -101,7 +171,7 @@ export default function Navbar() {
           </button>
         </nav>
 
-        {/* ── Mobile: compact icons + hamburger ── */}
+        {/* Mobile icons */}
         <div className="flex md:hidden items-center shrink-0 gap-0.5">
           <button className="p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
             <Heart size={17} strokeWidth={1.75} />
@@ -122,76 +192,12 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* ── Row 2: Category strip — desktop ── */}
-      <div className="hidden md:block border-t border-border-muted">
-        <div className="max-w-7xl mx-auto px-6">
-          <ul className="flex items-center gap-1 h-10">
-            {categories.map(({ label, badge }) => {
-              const isActive = active === label;
-              return (
-                <li key={label}>
-                  <button
-                    onClick={() => setActive(label)}
-                    className={[
-                      "relative flex items-center gap-1.5 px-3 h-7 rounded-full text-[13px] transition-colors duration-200 whitespace-nowrap",
-                      isActive
-                        ? "font-semibold text-ink"
-                        : "font-medium text-ink-muted hover:text-ink hover:bg-card-hover",
-                    ].join(" ")}
-                  >
-                    {label}
-                    {badge && (
-                      <span className="px-1.5 py-px rounded text-[9px] font-bold tracking-wide bg-red-100 text-red-600">
-                        {badge}
-                      </span>
-                    )}
-                    {/* Bottom line indicator */}
-                    <span
-                      className="absolute bottom-0 left-2 right-2 h-[2px] bg-ink rounded-full origin-center transition-transform duration-200"
-                      style={{ transform: isActive ? "scaleX(1)" : "scaleX(0)" }}
-                    />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </div>
+      {/* Category strip + mobile drawer — wrapped in Suspense for useSearchParams */}
+      <Suspense fallback={<div className="h-10 border-t border-border-muted" />}>
+        <CategoryStrip mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      </Suspense>
 
-      {/* Bottom border line */}
       <div className="border-b border-border-muted" />
-
-      {/* ── Mobile drawer ── */}
-      {mobileOpen && (
-        <div className="md:hidden border-b border-border-muted bg-cream">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-0.5">
-            <button className="flex items-center gap-2.5 px-3 py-3 text-sm font-medium text-ink rounded-xl hover:bg-card-hover transition-colors duration-200 text-left">
-              <User size={15} strokeWidth={1.75} />
-              Sign in
-            </button>
-
-            <div className="my-2 h-px bg-border-muted" />
-
-            <p className="px-3 pb-1 text-[11px] font-semibold tracking-widest text-ink-muted uppercase">
-              Browse
-            </p>
-            {categories.map(({ label, badge }) => (
-              <a
-                key={label}
-                href="#"
-                className="flex items-center justify-between px-3 py-2.5 text-sm text-ink-muted rounded-xl hover:bg-card-hover hover:text-ink transition-colors duration-200"
-              >
-                {label}
-                {badge && (
-                  <span className="px-1.5 py-px rounded text-[10px] font-bold bg-red-100 text-red-600">
-                    {badge}
-                  </span>
-                )}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
     </header>
   );
 }
