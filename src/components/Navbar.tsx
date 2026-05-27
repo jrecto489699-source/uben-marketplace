@@ -202,6 +202,10 @@ export default function Navbar() {
 
         {/* Mobile icons */}
         <div className="flex md:hidden items-center shrink-0 gap-0.5">
+          <button className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
+            <User size={13} strokeWidth={1.75} />
+            Sign in
+          </button>
           <a href="/favorites" className="relative p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200 flex items-center justify-center">
             <Heart size={17} strokeWidth={1.75} />
             {favoriteCount > 0 && (

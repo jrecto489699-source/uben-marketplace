@@ -1,7 +1,7 @@
 
 export default function Hero() {
   return (
-    <section className="max-w-7xl mx-auto px-6 py-12 md:py-16">
+    <section className="max-w-7xl mx-auto px-6 pt-3 pb-6 md:py-16">
       <div className="grid md:grid-cols-2 gap-8 items-center">
         {/* Left: editorial copy */}
         <div className="flex flex-col gap-6 md:pr-8">
