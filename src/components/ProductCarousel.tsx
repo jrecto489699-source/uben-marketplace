@@ -3,16 +3,9 @@
 import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCategory } from "@/context/CategoryContext";
+import type { Product } from "@/data/products";
 
-export interface Product {
-  id: number;
-  title: string;
-  salePrice: string;
-  originalPrice: string;
-  seller: string;
-  /** Local path e.g. "/images/My Product.png" or a full https:// URL */
-  image: string;
-}
+export type { Product };
 
 interface ProductCarouselProps {
   title: string;
