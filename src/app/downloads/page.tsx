@@ -1,8 +1,9 @@
 "use client";
 
-import { Download, FileText, ShoppingBag } from "lucide-react";
+import { FileText, ShoppingBag, Download } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import DownloadButton from "@/components/DownloadButton";
 import { usePurchases } from "@/context/PurchasesContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -68,7 +69,7 @@ export default function DownloadsPage() {
             </div>
           )}
 
-          {/* Purchases grid */}
+          {/* Purchases list */}
           {!loading && purchases.length > 0 && (
             <div className="flex flex-col gap-4">
               {purchases.map((purchase) => (
@@ -95,24 +96,27 @@ export default function DownloadsPage() {
                     </a>
                     <p className="text-xs text-ink-muted mb-1">Paid {purchase.sale_price}</p>
                     <p className="text-xs text-ink-muted mb-3">Purchased {formatDate(purchase.created_at)}</p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#134A4F] bg-[#134A4F]/10 px-2.5 py-1 rounded-full">
                         <FileText size={10} strokeWidth={2} />
                         PDF File
                       </span>
+                      {purchase.download_count != null && purchase.download_count > 0 && (
+                        <span className="text-[11px] text-ink-muted">
+                          {purchase.download_count} {purchase.download_count === 1 ? "download" : "downloads"}
+                          {purchase.last_downloaded_at && (
+                            <> · Last {formatDate(purchase.last_downloaded_at)}</>
+                          )}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   {/* Download button */}
-                  <div className="shrink-0 flex items-center">
-                    <button
-                      onClick={() => alert("Your file is ready! In production this would download the PDF.")}
-                      className="flex items-center gap-2 h-10 px-4 rounded-full bg-ink text-cream text-xs font-semibold hover:bg-[#3a3a3a] active:scale-95 transition-all duration-200 whitespace-nowrap"
-                    >
-                      <Download size={13} strokeWidth={2} />
-                      Download
-                    </button>
-                  </div>
+                  <DownloadButton
+                    purchaseId={purchase.id}
+                    productTitle={purchase.product_title}
+                  />
                 </div>
               ))}
             </div>

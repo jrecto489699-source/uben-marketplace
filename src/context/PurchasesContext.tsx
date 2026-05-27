@@ -12,6 +12,8 @@ interface Purchase {
   product_image: string;
   sale_price: string;
   created_at: string;
+  download_count?: number;
+  last_downloaded_at?: string | null;
 }
 
 interface PurchasesContextValue {
