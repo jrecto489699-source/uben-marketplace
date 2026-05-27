@@ -176,7 +176,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               {/* CTA buttons */}
               <div className="flex flex-col gap-3 mb-6">
                 <button
-                  onClick={() => !isInCart(product.id) && addToCart(product)}
+                  onClick={() => { if (!isInCart(product.id)) { addToCart(product); } window.location.href = "/cart"; }}
                   disabled={isInCart(product.id)}
                   className={`w-full h-12 rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
                     isInCart(product.id)
