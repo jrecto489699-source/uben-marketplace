@@ -1,6 +1,7 @@
 "use client";
 
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ShoppingCart, Trash2, X, CreditCard, Check, Lock } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
@@ -12,8 +13,217 @@ function discountPct(sale: string, original: string) {
   return Math.round((1 - s / o) * 100);
 }
 
+function formatCard(val: string) {
+  return val.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
+}
+function formatExpiry(val: string) {
+  const digits = val.replace(/\D/g, "").slice(0, 4);
+  if (digits.length >= 3) return digits.slice(0, 2) + "/" + digits.slice(2);
+  return digits;
+}
+
+type PaymentMethod = "card" | "paypal" | "gcash";
+type CheckoutStep = "method" | "details" | "success";
+
+function CheckoutModal({ total, onClose }: { total: number; onClose: () => void }) {
+  const [step, setStep] = useState<CheckoutStep>("method");
+  const [method, setMethod] = useState<PaymentMethod>("card");
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const { items, removeFromCart } = useCart();
+
+  function handlePay() {
+    if (method === "card") {
+      if (!name || cardNumber.replace(/\s/g, "").length < 16 || expiry.length < 5 || cvv.length < 3) return;
+    }
+    if (!email) return;
+    setStep("success");
+    // Clear cart after "payment"
+    items.forEach((i) => removeFromCart(i.product.id));
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-md bg-cream rounded-3xl shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border-muted">
+          <div>
+            <h2 className="font-serif text-xl font-semibold text-ink">
+              {step === "success" ? "Order Confirmed!" : "Checkout"}
+            </h2>
+            {step !== "success" && (
+              <p className="text-xs text-ink-muted mt-0.5">Total: <span className="font-semibold text-ink">${total.toFixed(2)}</span></p>
+            )}
+          </div>
+          {step !== "success" && (
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-card-hover transition-colors duration-200">
+              <X size={16} strokeWidth={2} className="text-ink-muted" />
+            </button>
+          )}
+        </div>
+
+        <div className="px-6 py-5">
+
+          {/* ── Step: Success ── */}
+          {step === "success" && (
+            <div className="flex flex-col items-center text-center py-6">
+              <div className="w-16 h-16 rounded-full bg-sale-green/10 flex items-center justify-center mb-4">
+                <Check size={28} strokeWidth={2.5} className="text-sale-green" />
+              </div>
+              <p className="font-serif text-2xl font-semibold text-ink mb-2">Thank you!</p>
+              <p className="text-sm text-ink-muted mb-1">Your payment was successful.</p>
+              <p className="text-sm text-ink-muted mb-6">Your downloads have been sent to your email.</p>
+              <button
+                onClick={onClose}
+                className="px-8 py-2.5 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] transition-colors duration-200"
+              >
+                Done
+              </button>
+            </div>
+          )}
+
+          {/* ── Step: Payment method ── */}
+          {step === "method" && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold tracking-widest text-ink-muted uppercase mb-3">Select payment method</p>
+
+              {([
+                { id: "card",   label: "Credit / Debit Card", sub: "Visa, Mastercard, Amex" },
+                { id: "paypal", label: "PayPal",               sub: "Pay via your PayPal account" },
+                { id: "gcash",  label: "GCash",                sub: "Pay via GCash wallet" },
+              ] as { id: PaymentMethod; label: string; sub: string }[]).map(({ id, label, sub }) => (
+                <button
+                  key={id}
+                  onClick={() => setMethod(id)}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all duration-200 ${
+                    method === id
+                      ? "border-ink bg-white shadow-sm"
+                      : "border-border-muted bg-white/50 hover:border-ink/40"
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${method === id ? "bg-ink" : "bg-card-hover"}`}>
+                    {id === "card"   && <CreditCard size={16} strokeWidth={1.75} className={method === id ? "text-cream" : "text-ink-muted"} />}
+                    {id === "paypal" && <span className={`text-sm font-bold ${method === id ? "text-cream" : "text-ink-muted"}`}>PP</span>}
+                    {id === "gcash"  && <span className={`text-xs font-bold ${method === id ? "text-cream" : "text-ink-muted"}`}>G</span>}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">{label}</p>
+                    <p className="text-xs text-ink-muted">{sub}</p>
+                  </div>
+                  <div className={`ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${method === id ? "border-ink bg-ink" : "border-border-muted"}`}>
+                    {method === id && <div className="w-1.5 h-1.5 rounded-full bg-cream" />}
+                  </div>
+                </button>
+              ))}
+
+              {/* Email field (all methods) */}
+              <div className="pt-2">
+                <label className="block text-xs font-medium text-ink-muted mb-1.5">Email for download link</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  className="w-full h-11 px-4 rounded-xl border border-border-muted bg-white text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink transition-colors duration-200"
+                />
+              </div>
+
+              <button
+                onClick={() => method === "card" ? setStep("details") : handlePay()}
+                disabled={!email}
+                className="w-full h-12 mt-2 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all duration-200"
+              >
+                {method === "card" ? "Continue to Card Details" : `Pay $${total.toFixed(2)}`}
+              </button>
+            </div>
+          )}
+
+          {/* ── Step: Card details ── */}
+          {step === "details" && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold tracking-widest text-ink-muted uppercase mb-3">Card details</p>
+
+              <div>
+                <label className="block text-xs font-medium text-ink-muted mb-1.5">Cardholder name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full name on card"
+                  className="w-full h-11 px-4 rounded-xl border border-border-muted bg-white text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink transition-colors duration-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-ink-muted mb-1.5">Card number</label>
+                <input
+                  type="text"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(formatCard(e.target.value))}
+                  placeholder="1234 5678 9012 3456"
+                  className="w-full h-11 px-4 rounded-xl border border-border-muted bg-white text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink transition-colors duration-200 tracking-wider"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-ink-muted mb-1.5">Expiry</label>
+                  <input
+                    type="text"
+                    value={expiry}
+                    onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                    placeholder="MM/YY"
+                    className="w-full h-11 px-4 rounded-xl border border-border-muted bg-white text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink transition-colors duration-200"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-ink-muted mb-1.5">CVV</label>
+                  <input
+                    type="text"
+                    value={cvv}
+                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    placeholder="123"
+                    className="w-full h-11 px-4 rounded-xl border border-border-muted bg-white text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink transition-colors duration-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setStep("method")}
+                  className="h-12 px-5 rounded-full border border-border-muted text-sm font-medium text-ink hover:border-ink hover:bg-card-hover transition-colors duration-200"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handlePay}
+                  disabled={!name || cardNumber.replace(/\s/g, "").length < 16 || expiry.length < 5 || cvv.length < 3}
+                  className="flex-1 h-12 rounded-full bg-ink text-cream text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#3a3a3a] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all duration-200"
+                >
+                  <Lock size={13} strokeWidth={2} />
+                  Pay ${total.toFixed(2)}
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CartPage() {
   const { items, removeFromCart, cartCount } = useCart();
+  const [showCheckout, setShowCheckout] = useState(false);
 
   const subtotal = items.reduce((sum, { product }) => {
     return sum + parseFloat(product.salePrice.replace(/[^0-9.]/g, ""));
@@ -68,7 +278,6 @@ export default function CartPage() {
                       key={product.id}
                       className="flex gap-4 p-4 bg-white rounded-2xl border border-border-muted"
                     >
-                      {/* Image */}
                       <a href={`/product/${product.id}`} className="shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -78,7 +287,6 @@ export default function CartPage() {
                         />
                       </a>
 
-                      {/* Details */}
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-ink-muted mb-0.5 truncate">{product.seller}</p>
                         <a href={`/product/${product.id}`}>
@@ -100,7 +308,6 @@ export default function CartPage() {
                         )}
                       </div>
 
-                      {/* Remove */}
                       <div className="shrink-0 flex items-center">
                         <button
                           onClick={() => removeFromCart(product.id)}
@@ -144,7 +351,10 @@ export default function CartPage() {
                     </div>
                   </div>
 
-                  <button className="w-full h-12 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] active:scale-[0.98] transition-all duration-200 mb-3">
+                  <button
+                    onClick={() => setShowCheckout(true)}
+                    className="w-full h-12 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] active:scale-[0.98] transition-all duration-200 mb-3"
+                  >
                     Proceed to Checkout
                   </button>
                   <a
@@ -161,6 +371,10 @@ export default function CartPage() {
         </div>
       </main>
       <Footer />
+
+      {showCheckout && (
+        <CheckoutModal total={subtotal} onClose={() => setShowCheckout(false)} />
+      )}
     </>
   );
 }
