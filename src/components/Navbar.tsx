@@ -129,10 +129,10 @@ export default function Navbar() {
           <ChevronDown size={12} strokeWidth={2.5} />
         </button>
 
-        {/* Search bar */}
+        {/* Search bar — desktop only in Row 1 */}
         <div
           className={[
-            "flex-1 flex items-center min-w-0 bg-white rounded-full transition-all duration-200",
+            "hidden md:flex flex-1 items-center min-w-0 bg-white rounded-full transition-all duration-200",
             focused
               ? "border border-brand/60 shadow-[0_0_0_3px_rgba(184,135,58,0.10)]"
               : "border border-border-muted",
@@ -224,6 +224,36 @@ export default function Navbar() {
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X size={19} /> : <Menu size={19} />}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Mobile search row ── */}
+      <div className="md:hidden px-4 pb-3">
+        <div
+          className={[
+            "flex items-center bg-white rounded-full transition-all duration-200",
+            focused
+              ? "border border-brand/60 shadow-[0_0_0_3px_rgba(184,135,58,0.10)]"
+              : "border border-border-muted",
+          ].join(" ")}
+        >
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="Search products…"
+            className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-4 py-2.5"
+          />
+          <button
+            type="button"
+            onClick={handleSearch}
+            className="shrink-0 flex items-center justify-center w-9 h-9 m-1 rounded-full bg-ink text-cream hover:bg-[#3a3a3a] active:scale-95 transition-all duration-150"
+          >
+            <Search size={14} strokeWidth={2.5} />
           </button>
         </div>
       </div>
