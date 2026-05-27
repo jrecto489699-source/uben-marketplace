@@ -187,7 +187,7 @@ function PaymentForm({
           ) : (
             <>
               <Lock size={13} strokeWidth={2} />
-              Pay {product.salePrice} &amp; Download
+              {"Pay " + product.salePrice + " · Download"}
             </>
           )}
         </button>
