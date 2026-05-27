@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search, Heart, ShoppingCart, Menu, X, User, ChevronDown, TrendingUp } from "lucide-react";
+import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp } from "lucide-react";
 import UbenLogo from "@/components/UbenLogo";
 import { useCategory } from "@/context/CategoryContext";
 import { useCart } from "@/context/CartContext";
@@ -284,12 +284,6 @@ export default function Navbar() {
           <UbenLogo variant="dark" size={34} />
         </a>
 
-        {/* Browse pill — desktop only */}
-        <button className="hidden lg:flex items-center gap-1.5 shrink-0 h-9 px-4 rounded-full border border-border-muted text-[13px] font-medium text-ink hover:bg-card-hover transition-colors duration-200">
-          Browse
-          <ChevronDown size={12} strokeWidth={2.5} />
-        </button>
-
         {/* Desktop search bar with dropdown */}
         <div ref={desktopRef} className="hidden md:flex relative flex-1 min-w-0">
           <div
@@ -309,13 +303,6 @@ export default function Navbar() {
               placeholder="Search printables, worksheets, activity packs…"
               className="flex-1 min-w-0 bg-transparent text-[13.5px] text-ink placeholder:text-ink-muted outline-none px-3 py-[10px]"
             />
-            <div className="hidden xl:flex items-center shrink-0 pr-1">
-              <div className="w-px h-4 bg-border-muted mr-2" />
-              <button className="flex items-center gap-1 text-[12px] font-medium text-ink-muted hover:text-ink transition-colors duration-200 px-2 py-1 rounded-full hover:bg-card-hover whitespace-nowrap">
-                All categories
-                <ChevronDown size={11} strokeWidth={2.5} />
-              </button>
-            </div>
             {query && (
               <button
                 type="button"
