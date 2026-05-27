@@ -59,7 +59,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const product = getProductById(Number(id));
   if (!product) notFound();
 
-  const { addToCart, isInCart } = useCart();
+  const { addToCart, removeFromCart, isInCart } = useCart();
   const { toggleFavorite, isFavorited } = useFavorites();
   const { user } = useAuth();
   const { isOwned } = usePurchases();
@@ -329,8 +329,12 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                       </a>
                       {/* Add to cart button on hover */}
                       <button
-                        onClick={() => { if (!isInCart(rel.id)) addToCart(rel); }}
-                        className="w-full h-8 rounded-full bg-ink text-cream text-[11px] font-semibold transition-all duration-200 hover:bg-[#3a3a3a] md:opacity-0 md:translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0"
+                        onClick={() => isInCart(rel.id) ? removeFromCart(rel.id) : addToCart(rel)}
+                        className={`w-full h-8 rounded-full text-[11px] font-semibold border transition-all duration-200 md:opacity-0 md:translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0 ${
+                          isInCart(rel.id)
+                            ? "bg-ink text-cream border-ink hover:bg-[#3a3a3a] hover:border-[#3a3a3a]"
+                            : "bg-transparent text-ink border-ink/30 hover:border-ink hover:bg-card-hover"
+                        }`}
                       >
                         {isInCart(rel.id) ? "Added ✓" : "Add to cart"}
                       </button>
