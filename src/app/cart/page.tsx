@@ -95,34 +95,74 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
             <div className="space-y-3">
               <p className="text-xs font-semibold tracking-widest text-ink-muted uppercase mb-3">Select payment method</p>
 
-              {([
-                { id: "card",   label: "Credit / Debit Card", sub: "Visa, Mastercard, Amex" },
-                { id: "paypal", label: "PayPal",               sub: "Pay via your PayPal account" },
-                { id: "gcash",  label: "GCash",                sub: "Pay via GCash wallet" },
-              ] as { id: PaymentMethod; label: string; sub: string }[]).map(({ id, label, sub }) => (
-                <button
-                  key={id}
-                  onClick={() => setMethod(id)}
-                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all duration-200 ${
-                    method === id
-                      ? "border-ink bg-white shadow-sm"
-                      : "border-border-muted bg-white/50 hover:border-ink/40"
-                  }`}
-                >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${method === id ? "bg-ink" : "bg-card-hover"}`}>
-                    {id === "card"   && <CreditCard size={16} strokeWidth={1.75} className={method === id ? "text-cream" : "text-ink-muted"} />}
-                    {id === "paypal" && <span className={`text-sm font-bold ${method === id ? "text-cream" : "text-ink-muted"}`}>PP</span>}
-                    {id === "gcash"  && <span className={`text-xs font-bold ${method === id ? "text-cream" : "text-ink-muted"}`}>G</span>}
+              {/* Credit / Debit Card */}
+              <button
+                onClick={() => setMethod("card")}
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-all duration-200 ${
+                  method === "card" ? "border-ink bg-white shadow-sm" : "border-border-muted bg-white/50 hover:border-ink/40"
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${method === "card" ? "bg-ink" : "bg-card-hover"}`}>
+                  <CreditCard size={16} strokeWidth={1.75} className={method === "card" ? "text-cream" : "text-ink-muted"} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-ink mb-1.5">Credit / Debit Card</p>
+                  <div className="flex items-center gap-1.5">
+                    {/* Visa */}
+                    <span className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-[#1A1F71] text-white text-[9px] font-black tracking-wider">VISA</span>
+                    {/* Mastercard */}
+                    <span className="inline-flex items-center h-5 rounded overflow-hidden border border-border-muted bg-white px-0.5 gap-0.5">
+                      <span className="w-3.5 h-3.5 rounded-full bg-[#EB001B] opacity-90" />
+                      <span className="w-3.5 h-3.5 rounded-full bg-[#F79E1B] opacity-90 -ml-1.5" />
+                    </span>
+                    {/* Amex */}
+                    <span className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-[#2E77BC] text-white text-[8px] font-bold tracking-wide">AMEX</span>
+                    {/* JCB */}
+                    <span className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-[#003087] text-white text-[8px] font-bold tracking-wide">JCB</span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-ink">{label}</p>
-                    <p className="text-xs text-ink-muted">{sub}</p>
-                  </div>
-                  <div className={`ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${method === id ? "border-ink bg-ink" : "border-border-muted"}`}>
-                    {method === id && <div className="w-1.5 h-1.5 rounded-full bg-cream" />}
-                  </div>
-                </button>
-              ))}
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${method === "card" ? "border-ink bg-ink" : "border-border-muted"}`}>
+                  {method === "card" && <div className="w-1.5 h-1.5 rounded-full bg-cream" />}
+                </div>
+              </button>
+
+              {/* PayPal */}
+              <button
+                onClick={() => setMethod("paypal")}
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-all duration-200 ${
+                  method === "paypal" ? "border-ink bg-white shadow-sm" : "border-border-muted bg-white/50 hover:border-ink/40"
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#003087] flex items-center justify-center shrink-0">
+                  <span className="text-white text-[11px] font-black italic tracking-tight">P<span className="text-[#009CDE]">P</span></span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-ink">PayPal</p>
+                  <p className="text-xs text-ink-muted">Pay via your PayPal account</p>
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${method === "paypal" ? "border-ink bg-ink" : "border-border-muted"}`}>
+                  {method === "paypal" && <div className="w-1.5 h-1.5 rounded-full bg-cream" />}
+                </div>
+              </button>
+
+              {/* GCash */}
+              <button
+                onClick={() => setMethod("gcash")}
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-all duration-200 ${
+                  method === "gcash" ? "border-ink bg-white shadow-sm" : "border-border-muted bg-white/50 hover:border-ink/40"
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#007DFE] flex items-center justify-center shrink-0">
+                  <span className="text-white text-[11px] font-black tracking-tight">G</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-ink">GCash</p>
+                  <p className="text-xs text-ink-muted">Pay via GCash wallet</p>
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${method === "gcash" ? "border-ink bg-ink" : "border-border-muted"}`}>
+                  {method === "gcash" && <div className="w-1.5 h-1.5 rounded-full bg-cream" />}
+                </div>
+              </button>
 
               {/* Email field (all methods) */}
               <div className="pt-2">
@@ -163,7 +203,18 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-ink-muted mb-1.5">Card number</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-ink-muted">Card number</label>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-flex items-center justify-center h-4 px-1 rounded bg-[#1A1F71] text-white text-[8px] font-black tracking-wider">VISA</span>
+                    <span className="inline-flex items-center h-4 rounded overflow-hidden border border-border-muted bg-white px-0.5 gap-0">
+                      <span className="w-3 h-3 rounded-full bg-[#EB001B] opacity-90" />
+                      <span className="w-3 h-3 rounded-full bg-[#F79E1B] opacity-90 -ml-1" />
+                    </span>
+                    <span className="inline-flex items-center justify-center h-4 px-1 rounded bg-[#2E77BC] text-white text-[7px] font-bold tracking-wide">AMEX</span>
+                    <span className="inline-flex items-center justify-center h-4 px-1 rounded bg-[#003087] text-white text-[7px] font-bold tracking-wide">JCB</span>
+                  </div>
+                </div>
                 <input
                   type="text"
                   value={cardNumber}
