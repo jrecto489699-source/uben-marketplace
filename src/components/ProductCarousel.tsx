@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { useCategory } from "@/context/CategoryContext";
 import type { Product } from "@/data/products";
 
@@ -73,7 +73,7 @@ export default function ProductCarousel({
                 href={`/product/${product.id}`}
                 className="snap-start shrink-0 w-52 group cursor-pointer"
               >
-                <div className="aspect-square rounded-xl overflow-hidden bg-card-hover mb-3">
+                <div className="relative aspect-square rounded-xl overflow-hidden bg-card-hover mb-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={product.image}
@@ -81,6 +81,13 @@ export default function ProductCarousel({
                     loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
                   />
+                  <button
+                    onClick={(e) => e.preventDefault()}
+                    className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200 hover:bg-white hover:scale-110"
+                    aria-label="Save to favorites"
+                  >
+                    <Heart size={13} strokeWidth={1.75} className="text-ink" />
+                  </button>
                 </div>
                 <div className="px-0.5">
                   <p className="text-xs text-ink-muted mb-0.5 truncate">{product.seller}</p>
