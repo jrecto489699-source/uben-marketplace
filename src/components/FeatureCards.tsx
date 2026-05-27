@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 export default function FeatureCards() {
   return (
     <section className="py-12 md:py-14">
@@ -26,30 +24,25 @@ export default function FeatureCards() {
             </a>
           </div>
 
-          {/* Image-led card */}
-          <div className="relative rounded-2xl overflow-hidden min-h-72 group cursor-pointer">
-            <Image
-              src="https://picsum.photos/seed/storybook-reading-child-bed/800/600"
-              alt="Storybooks and reading packs for kids"
-              fill
-              className="object-cover transition-transform duration-200 ease-out group-hover:scale-105"
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
-            <div className="absolute inset-0 bg-ink/30" />
-            <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-10">
-              <p className="text-xs font-medium tracking-widest text-cream/75 uppercase mb-2">
+          {/* Flat color card — warm amber */}
+          <div className="rounded-2xl min-h-72 p-10 md:p-12 flex flex-col justify-between cursor-pointer" style={{ backgroundColor: "#C4955A" }}>
+            <div className="flex flex-col gap-5">
+              <p className="text-xs font-medium tracking-widest text-[#F5F1EA]/70 uppercase">
                 New this week
               </p>
-              <h2 className="font-serif text-3xl md:text-4xl leading-tight tracking-tight text-cream mb-4">
-                Storybooks &amp; Reading Packs
+              <h2 className="font-serif text-3xl md:text-4xl leading-tight tracking-tight text-[#F5F1EA]">
+                Storybooks &amp;
+                <br />Reading Packs
+                <br />
+                <span className="text-[#F5F1EA]/70 font-light italic">Stories worth reading again and again.</span>
               </h2>
-              <a
-                href="#"
-                className="self-start text-sm font-medium text-cream underline underline-offset-4 hover:text-cream/80 transition-colors duration-200"
-              >
-                Shop now →
-              </a>
             </div>
+            <a
+              href="#"
+              className="mt-8 self-start inline-flex items-center px-6 py-3 rounded-full bg-[#F5F1EA] text-[#C4955A] text-sm font-medium hover:bg-[#EDE8E0] transition-colors duration-200"
+            >
+              Shop now →
+            </a>
           </div>
         </div>
       </div>

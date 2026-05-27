@@ -54,7 +54,7 @@ export default function ProductCarousel({
           </h2>
           <a
             href={viewAllHref}
-            className="inline-flex items-center px-4 py-2 rounded-full bg-ink text-cream text-xs font-medium hover:bg-[#3a3a3a] transition-colors duration-200"
+            className="inline-flex items-center px-4 py-2 rounded-full border border-ink text-ink text-xs font-medium hover:bg-ink hover:text-cream transition-colors duration-200"
           >
             View all
           </a>
