@@ -330,7 +330,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                       {/* Add to cart button on hover */}
                       <button
                         onClick={() => { if (!isInCart(rel.id)) addToCart(rel); }}
-                        className="w-full h-8 rounded-full bg-ink text-cream text-[11px] font-semibold opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 hover:bg-[#3a3a3a]"
+                        className="w-full h-8 rounded-full bg-ink text-cream text-[11px] font-semibold transition-all duration-200 hover:bg-[#3a3a3a] md:opacity-0 md:translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0"
                       >
                         {isInCart(rel.id) ? "Added ✓" : "Add to cart"}
                       </button>
