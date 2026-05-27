@@ -160,15 +160,25 @@ export default function Navbar() {
             Sign in
           </button>
           <div className="w-px h-4 bg-border-muted mx-1" />
-          <button className="p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
-            <Heart size={17} strokeWidth={1.75} />
-          </button>
-          <button className="relative p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
-            <ShoppingCart size={17} strokeWidth={1.75} />
-            <span className="absolute top-[5px] right-[5px] min-w-[14px] h-[14px] rounded-full bg-red-500 flex items-center justify-center text-white text-[9px] font-bold leading-none px-[3px]">
-              3
+          <div className="relative group">
+            <button className="p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
+              <Heart size={17} strokeWidth={1.75} />
+            </button>
+            <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 rounded-md bg-ink text-cream text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              Favorites
             </span>
-          </button>
+          </div>
+          <div className="relative group">
+            <button className="relative p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
+              <ShoppingCart size={17} strokeWidth={1.75} />
+              <span className="absolute top-[5px] right-[5px] min-w-[14px] h-[14px] rounded-full bg-red-500 flex items-center justify-center text-white text-[9px] font-bold leading-none px-[3px]">
+                3
+              </span>
+            </button>
+            <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 rounded-md bg-ink text-cream text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              Cart
+            </span>
+          </div>
         </nav>
 
         {/* Mobile icons */}
