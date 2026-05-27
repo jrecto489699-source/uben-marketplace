@@ -9,6 +9,7 @@ import { getProductById, getRelatedProducts, getCategoryLabel } from "@/data/pro
 import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useAuth } from "@/context/AuthContext";
+import { usePurchases } from "@/context/PurchasesContext";
 import AuthModal from "@/components/AuthModal";
 
 function discountPct(sale: string, original: string) {
@@ -60,7 +61,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const { addToCart, isInCart } = useCart();
   const { toggleFavorite, isFavorited } = useFavorites();
   const { user } = useAuth();
+  const { isOwned } = usePurchases();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const owned = isOwned(product.id);
 
   const related = getRelatedProducts(product, 6);
   const category = getCategoryLabel(product);
@@ -175,26 +178,38 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
               {/* CTA buttons */}
               <div className="flex flex-col gap-3 mb-6">
-                <button
-                  onClick={() => { if (!isInCart(product.id)) { addToCart(product); } window.location.href = "/cart"; }}
-                  disabled={isInCart(product.id)}
-                  className={`w-full h-12 rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
-                    isInCart(product.id)
-                      ? "bg-[#3a3a3a] text-cream cursor-default"
-                      : "bg-ink text-cream hover:bg-[#3a3a3a] active:scale-[0.98]"
-                  }`}
-                >
-                  <ShoppingCart size={16} strokeWidth={2} />
-                  {isInCart(product.id) ? "Added to Cart ✓" : "Add to Cart"}
-                </button>
-                {product.instantDownload && (
-                  <button
-                    onClick={() => { if (!user) setShowAuthModal(true); }}
-                    className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200"
+                {owned ? (
+                  <a
+                    href="/downloads"
+                    className="w-full h-12 rounded-full bg-sale-green text-cream text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
                   >
                     <Download size={16} strokeWidth={2} />
-                    Instant Download — {product.salePrice}
-                  </button>
+                    Go to My Downloads
+                  </a>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { if (!isInCart(product.id)) { addToCart(product); } window.location.href = "/cart"; }}
+                      disabled={isInCart(product.id)}
+                      className={`w-full h-12 rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
+                        isInCart(product.id)
+                          ? "bg-[#3a3a3a] text-cream cursor-default"
+                          : "bg-ink text-cream hover:bg-[#3a3a3a] active:scale-[0.98]"
+                      }`}
+                    >
+                      <ShoppingCart size={16} strokeWidth={2} />
+                      {isInCart(product.id) ? "Added to Cart ✓" : "Add to Cart"}
+                    </button>
+                    {product.instantDownload && (
+                      <button
+                        onClick={() => { if (!user) setShowAuthModal(true); }}
+                        className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200"
+                      >
+                        <Download size={16} strokeWidth={2} />
+                        Instant Download — {product.salePrice}
+                      </button>
+                    )}
+                  </>
                 )}
                 <button
                   onClick={() => toggleFavorite(product.id)}

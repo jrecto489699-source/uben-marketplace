@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp, LogOut, ChevronDown } from "lucide-react";
+import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp, LogOut, ChevronDown, Download } from "lucide-react";
 import UbenLogo from "@/components/UbenLogo";
 import { useCategory } from "@/context/CategoryContext";
 import { useCart } from "@/context/CartContext";
@@ -353,6 +353,14 @@ export default function Navbar() {
                     <p className="text-xs font-semibold text-ink truncate">{user.user_metadata?.full_name || "My Account"}</p>
                     <p className="text-[11px] text-ink-muted truncate">{user.email}</p>
                   </div>
+                  <a
+                    href="/downloads"
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"
+                  >
+                    <Download size={14} strokeWidth={1.75} />
+                    My Downloads
+                  </a>
+                  <div className="h-px bg-border-muted" />
                   <button
                     onClick={signOut}
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"

@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { usePurchases } from "@/context/PurchasesContext";
 import AuthModal from "@/components/AuthModal";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -32,7 +33,7 @@ function StripeCardForm({
 }: {
   total: number;
   email: string;
-  onSuccess: () => void;
+  onSuccess: () => Promise<void>;
   onBack: () => void;
 }) {
   const stripe = useStripe();
@@ -135,10 +136,12 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
   const [method, setMethod] = useState<PaymentMethod>("card");
   const [email, setEmail] = useState("");
   const { items, removeFromCart } = useCart();
+  const { savePurchases } = usePurchases();
 
-  function handleSuccess() {
-    setStep("success");
+  async function handleSuccess() {
+    await savePurchases(items.map((i) => i.product));
     items.forEach((i) => removeFromCart(i.product.id));
+    setStep("success");
   }
 
   return (

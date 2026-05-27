@@ -4,6 +4,7 @@ import { CategoryProvider } from "@/context/CategoryContext";
 import { CartProvider } from "@/context/CartContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { PurchasesProvider } from "@/context/PurchasesContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -41,13 +42,15 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-cream text-ink">
         <AuthProvider>
-          <CategoryProvider>
-            <CartProvider>
-              <FavoritesProvider>
-                {children}
-              </FavoritesProvider>
-            </CartProvider>
-          </CategoryProvider>
+          <PurchasesProvider>
+            <CategoryProvider>
+              <CartProvider>
+                <FavoritesProvider>
+                  {children}
+                </FavoritesProvider>
+              </CartProvider>
+            </CategoryProvider>
+          </PurchasesProvider>
         </AuthProvider>
       </body>
     </html>
