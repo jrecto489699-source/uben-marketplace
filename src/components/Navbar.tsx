@@ -201,7 +201,7 @@ export default function Navbar() {
         </nav>
 
         {/* Mobile icons */}
-        <div className="flex md:hidden items-center shrink-0 gap-0.5">
+        <div className="flex md:hidden items-center shrink-0 gap-0.5 ml-auto">
           <button className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
             <User size={13} strokeWidth={1.75} />
             Sign in
