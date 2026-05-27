@@ -87,19 +87,12 @@ function PaymentForm({
       const purchase = saved[0];
 
       if (purchase?.id) {
-        // Trigger automatic download
+        // Trigger automatic download — window.location.href is reliable
+        // after async operations (no popup blocker issues)
         const dlRes = await fetch(`/api/download/${purchase.id}`);
         const dlData = await dlRes.json();
-
         if (dlRes.ok && dlData.url) {
-          const a = document.createElement("a");
-          a.href = dlData.url;
-          a.download = dlData.filename;
-          a.target = "_blank";
-          a.rel = "noopener noreferrer";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+          window.location.href = dlData.url;
         }
       }
 
@@ -210,7 +203,7 @@ export default function InstantCheckoutModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={!done ? onClose : undefined} />
 
-      <div className="relative w-full max-w-md bg-cream rounded-3xl shadow-2xl">
+      <div className="relative z-10 w-full max-w-md bg-cream rounded-3xl shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border-muted">
