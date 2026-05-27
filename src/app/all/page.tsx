@@ -5,12 +5,23 @@ import { useSearchParams } from "next/navigation";
 import { Star, SlidersHorizontal, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { allProducts, printableProducts, classroomProducts, type Product } from "@/data/products";
+import {
+  allProducts, printableProducts, classroomProducts,
+  worksheetProducts, coloringProducts, storybookProducts,
+  activityProducts, flashcardProducts, partyKitProducts,
+  type Product,
+} from "@/data/products";
 
 const CATEGORY_SETS: Record<string, Product[]> = {
-  all: allProducts,
+  all:        allProducts,
   printables: printableProducts,
-  classroom: classroomProducts,
+  worksheets: worksheetProducts,
+  coloring:   coloringProducts,
+  storybooks: storybookProducts,
+  activities: activityProducts,
+  flashcards: flashcardProducts,
+  "party-kits": partyKitProducts,
+  classroom:  classroomProducts,
 };
 
 const SORT_OPTIONS = [
@@ -63,10 +74,17 @@ function ProductGrid() {
   const categoryKey = searchParams.get("category") ?? "all";
   const baseProducts = CATEGORY_SETS[categoryKey] ?? allProducts;
 
-  const pageTitle =
-    categoryKey === "printables" ? "Printable Downloads"
-    : categoryKey === "classroom" ? "Classroom Picks"
-    : "All Products";
+  const PAGE_TITLES: Record<string, string> = {
+    printables:   "Printable Downloads",
+    worksheets:   "Worksheets",
+    coloring:     "Coloring Books & Pages",
+    storybooks:   "Storybooks",
+    activities:   "Activities",
+    flashcards:   "Flashcards",
+    "party-kits": "Party Kits",
+    classroom:    "Top Classroom Picks",
+  };
+  const pageTitle = PAGE_TITLES[categoryKey] ?? "All Products";
 
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("Relevancy");
