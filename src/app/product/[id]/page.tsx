@@ -184,18 +184,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   {isInCart(product.id) ? "Added to Cart ✓" : "Add to Cart"}
                 </button>
                 {product.instantDownload && (
-                  <button
-                    onClick={() => !isInCart(product.id) && addToCart(product)}
-                    disabled={isInCart(product.id)}
-                    className={`w-full h-12 rounded-full border-2 text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
-                      isInCart(product.id)
-                        ? "border-[#134A4F] bg-[#134A4F] text-cream cursor-default"
-                        : "border-[#134A4F] text-[#134A4F] hover:bg-[#134A4F] hover:text-cream active:scale-[0.98]"
-                    }`}
+                  <a
+                    href="/cart"
+                    onClick={() => { if (!isInCart(product.id)) addToCart(product); }}
+                    className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200"
                   >
                     <Download size={16} strokeWidth={2} />
-                    {isInCart(product.id) ? "Added to Cart ✓" : `Instant Download — ${product.salePrice}`}
-                  </button>
+                    Instant Download — {product.salePrice}
+                  </a>
                 )}
                 <button
                   onClick={() => toggleFavorite(product.id)}
