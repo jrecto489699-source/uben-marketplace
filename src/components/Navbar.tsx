@@ -2,11 +2,12 @@
 
 import { useState, Suspense, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp } from "lucide-react";
+import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp, LogOut, ChevronDown } from "lucide-react";
 import UbenLogo from "@/components/UbenLogo";
 import { useCategory } from "@/context/CategoryContext";
 import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { useAuth } from "@/context/AuthContext";
 import { allProducts } from "@/data/products";
 
 const categories = [
@@ -246,10 +247,13 @@ export default function Navbar() {
   const [query, setQuery] = useState("");
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen2, setMobileOpen2] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { cartCount } = useCart();
   const { favoriteCount } = useFavorites();
+  const { user, signOut } = useAuth();
   const desktopRef = useRef<HTMLDivElement>(null);
   const mobileRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   function handleSearch() {
     const q = query.trim();
@@ -267,6 +271,9 @@ export default function Navbar() {
       }
       if (mobileRef.current && !mobileRef.current.contains(e.target as Node)) {
         setMobileOpen2(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -328,10 +335,45 @@ export default function Navbar() {
 
         {/* Auth — desktop */}
         <nav className="hidden md:flex items-center shrink-0 gap-0.5">
-          <button className="flex items-center gap-1.5 h-9 px-3.5 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
-            <User size={14} strokeWidth={1.75} />
-            Sign in
-          </button>
+          {user ? (
+            <div ref={userMenuRef} className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-1.5 h-9 px-3 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200"
+              >
+                <div className="w-6 h-6 rounded-full bg-ink text-cream flex items-center justify-center text-[11px] font-bold shrink-0">
+                  {(user.user_metadata?.full_name || user.email || "U")[0].toUpperCase()}
+                </div>
+                <span className="max-w-[100px] truncate">{user.user_metadata?.full_name || user.email?.split("@")[0]}</span>
+                <ChevronDown size={12} strokeWidth={2.5} />
+              </button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-border-muted">
+                    <p className="text-xs font-semibold text-ink truncate">{user.user_metadata?.full_name || "My Account"}</p>
+                    <p className="text-[11px] text-ink-muted truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={signOut}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"
+                  >
+                    <LogOut size={14} strokeWidth={1.75} />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <a href="/signin" className="flex items-center gap-1.5 h-9 px-3.5 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
+                <User size={14} strokeWidth={1.75} />
+                Sign in
+              </a>
+              <a href="/signup" className="flex items-center h-9 px-4 text-[13px] font-semibold text-cream bg-ink rounded-full hover:bg-[#3a3a3a] transition-colors duration-200 whitespace-nowrap">
+                Sign up
+              </a>
+            </>
+          )}
           <div className="w-px h-4 bg-border-muted mx-1" />
           <div className="relative group">
             <a href="/favorites" className="relative p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200 flex items-center justify-center">
@@ -363,10 +405,21 @@ export default function Navbar() {
 
         {/* Mobile icons */}
         <div className="flex md:hidden items-center shrink-0 gap-0.5 ml-auto">
-          <button className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
-            <User size={13} strokeWidth={1.75} />
-            Sign in
-          </button>
+          {user ? (
+            <button
+              onClick={signOut}
+              className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap"
+            >
+              <div className="w-5 h-5 rounded-full bg-ink text-cream flex items-center justify-center text-[10px] font-bold">
+                {(user.user_metadata?.full_name || user.email || "U")[0].toUpperCase()}
+              </div>
+            </button>
+          ) : (
+            <a href="/signin" className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
+              <User size={13} strokeWidth={1.75} />
+              Sign in
+            </a>
+          )}
           <a href="/favorites" className="relative p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200 flex items-center justify-center">
             <Heart size={17} strokeWidth={1.75} />
             {favoriteCount > 0 && (

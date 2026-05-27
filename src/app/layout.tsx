@@ -3,6 +3,7 @@ import { Inter, Source_Serif_4 } from "next/font/google";
 import { CategoryProvider } from "@/context/CategoryContext";
 import { CartProvider } from "@/context/CartContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -39,13 +40,15 @@ export default function RootLayout({
       className={`${inter.variable} ${sourceSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-cream text-ink">
-        <CategoryProvider>
-          <CartProvider>
-            <FavoritesProvider>
-              {children}
-            </FavoritesProvider>
-          </CartProvider>
-        </CategoryProvider>
+        <AuthProvider>
+          <CategoryProvider>
+            <CartProvider>
+              <FavoritesProvider>
+                {children}
+              </FavoritesProvider>
+            </CartProvider>
+          </CategoryProvider>
+        </AuthProvider>
       </body>
     </html>
   );
