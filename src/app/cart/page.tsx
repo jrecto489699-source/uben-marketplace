@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart, Trash2, Plus, Minus } from "lucide-react";
+import { ShoppingCart, Trash2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
@@ -13,16 +13,16 @@ function discountPct(sale: string, original: string) {
 }
 
 export default function CartPage() {
-  const { items, removeFromCart, updateQuantity, cartCount } = useCart();
+  const { items, removeFromCart, cartCount } = useCart();
 
-  const subtotal = items.reduce((sum, { product, quantity }) => {
-    return sum + parseFloat(product.salePrice.replace(/[^0-9.]/g, "")) * quantity;
+  const subtotal = items.reduce((sum, { product }) => {
+    return sum + parseFloat(product.salePrice.replace(/[^0-9.]/g, ""));
   }, 0);
 
-  const savings = items.reduce((sum, { product, quantity }) => {
+  const savings = items.reduce((sum, { product }) => {
     const sale = parseFloat(product.salePrice.replace(/[^0-9.]/g, ""));
     const orig = parseFloat(product.originalPrice.replace(/[^0-9.]/g, ""));
-    return sum + (orig - sale) * quantity;
+    return sum + (orig - sale);
   }, 0);
 
   return (
@@ -61,7 +61,7 @@ export default function CartPage() {
 
               {/* Cart items */}
               <div className="flex-1 space-y-4">
-                {items.map(({ product, quantity }) => {
+                {items.map(({ product }) => {
                   const pct = discountPct(product.salePrice, product.originalPrice);
                   return (
                     <div
@@ -100,8 +100,8 @@ export default function CartPage() {
                         )}
                       </div>
 
-                      {/* Quantity + remove */}
-                      <div className="flex flex-col items-end justify-between shrink-0">
+                      {/* Remove */}
+                      <div className="shrink-0 flex items-center">
                         <button
                           onClick={() => removeFromCart(product.id)}
                           className="p-1.5 text-ink-muted hover:text-red-500 hover:bg-red-50 rounded-full transition-colors duration-200"
@@ -109,23 +109,6 @@ export default function CartPage() {
                         >
                           <Trash2 size={14} strokeWidth={1.75} />
                         </button>
-                        <div className="flex items-center gap-2 border border-border-muted rounded-full px-2 py-1">
-                          <button
-                            onClick={() => updateQuantity(product.id, quantity - 1)}
-                            className="w-5 h-5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors duration-200"
-                            aria-label="Decrease"
-                          >
-                            <Minus size={11} strokeWidth={2.5} />
-                          </button>
-                          <span className="text-sm font-medium text-ink w-4 text-center">{quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(product.id, quantity + 1)}
-                            className="w-5 h-5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors duration-200"
-                            aria-label="Increase"
-                          >
-                            <Plus size={11} strokeWidth={2.5} />
-                          </button>
-                        </div>
                       </div>
                     </div>
                   );
@@ -139,7 +122,7 @@ export default function CartPage() {
 
                   <div className="space-y-2 mb-4 text-sm">
                     <div className="flex justify-between text-ink-muted">
-                      <span>Subtotal ({cartCount} {cartCount === 1 ? "item" : "items"})</span>
+                      <span>Subtotal ({items.length} {items.length === 1 ? "item" : "items"})</span>
                       <span>${subtotal.toFixed(2)}</span>
                     </div>
                     {savings > 0 && (
