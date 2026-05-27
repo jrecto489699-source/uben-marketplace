@@ -10,7 +10,9 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 function discountPct(sale: string, original: string) {
   const s = parseFloat(sale.replace(/[^0-9.]/g, ""));
@@ -80,7 +82,7 @@ function StripeCardForm({
       <p className="text-xs font-semibold tracking-widest text-ink-muted uppercase">Card details</p>
 
       {/* Stripe CardElement */}
-      <div className="p-4 rounded-xl border border-border-muted bg-white focus-within:border-ink transition-colors">
+      <div className="p-4 rounded-xl border border-border-muted bg-white focus-within:border-ink transition-colors min-h-[48px]">
         <CardElement
           options={{
             hidePostalCode: true,
@@ -143,7 +145,7 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={step !== "success" ? onClose : undefined} />
 
-      <div className="relative w-full max-w-md bg-cream rounded-3xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md bg-cream rounded-3xl shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border-muted">
