@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Star, SlidersHorizontal, X, Heart } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useFavorites } from "@/context/FavoritesContext";
+import { useCart } from "@/context/CartContext";
 import {
   allProducts, printableProducts, classroomProducts,
   worksheetProducts, coloringProducts, storybookProducts,
@@ -88,6 +90,8 @@ function ProductGrid() {
 
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("Relevancy");
+  const { toggleFavorite, isFavorited } = useFavorites();
+  const { addToCart } = useCart();
 
   function toggleFilter(f: string) {
     setActiveFilters((prev) =>
@@ -205,11 +209,15 @@ function ProductGrid() {
                     </span>
                   )}
                   <button
-                    onClick={(e) => e.preventDefault()}
+                    onClick={(e) => { e.preventDefault(); toggleFavorite(product.id); }}
                     className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200 hover:bg-white hover:scale-110"
                     aria-label="Save to favorites"
                   >
-                    <Heart size={14} strokeWidth={1.75} className="text-ink" />
+                    <Heart
+                      size={14}
+                      strokeWidth={1.75}
+                      className={isFavorited(product.id) ? "fill-red-500 text-red-500" : "text-ink"}
+                    />
                   </button>
                 </div>
 

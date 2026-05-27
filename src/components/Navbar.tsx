@@ -5,6 +5,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Search, Heart, ShoppingCart, Menu, X, User, ChevronDown } from "lucide-react";
 import UbenLogo from "@/components/UbenLogo";
 import { useCategory } from "@/context/CategoryContext";
+import { useCart } from "@/context/CartContext";
+import { useFavorites } from "@/context/FavoritesContext";
 
 const categories = [
   { label: "Printables",  slug: "printables"  },
@@ -101,6 +103,8 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const { cartCount } = useCart();
+  const { favoriteCount } = useFavorites();
 
   return (
     <header className="sticky top-0 z-50 bg-cream">
@@ -161,20 +165,27 @@ export default function Navbar() {
           </button>
           <div className="w-px h-4 bg-border-muted mx-1" />
           <div className="relative group">
-            <button className="p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
+            <a href="/favorites" className="relative p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200 flex items-center justify-center">
               <Heart size={17} strokeWidth={1.75} />
-            </button>
+              {favoriteCount > 0 && (
+                <span className="absolute top-[5px] right-[5px] min-w-[14px] h-[14px] rounded-full bg-red-500 flex items-center justify-center text-white text-[9px] font-bold leading-none px-[3px]">
+                  {favoriteCount}
+                </span>
+              )}
+            </a>
             <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 rounded-md bg-ink text-cream text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               Favorites
             </span>
           </div>
           <div className="relative group">
-            <button className="relative p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
+            <a href="/cart" className="relative p-2.5 text-ink rounded-full hover:bg-card-hover transition-colors duration-200 flex items-center justify-center">
               <ShoppingCart size={17} strokeWidth={1.75} />
-              <span className="absolute top-[5px] right-[5px] min-w-[14px] h-[14px] rounded-full bg-red-500 flex items-center justify-center text-white text-[9px] font-bold leading-none px-[3px]">
-                3
-              </span>
-            </button>
+              {cartCount > 0 && (
+                <span className="absolute top-[5px] right-[5px] min-w-[14px] h-[14px] rounded-full bg-red-500 flex items-center justify-center text-white text-[9px] font-bold leading-none px-[3px]">
+                  {cartCount}
+                </span>
+              )}
+            </a>
             <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 rounded-md bg-ink text-cream text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               Cart
             </span>
@@ -183,15 +194,22 @@ export default function Navbar() {
 
         {/* Mobile icons */}
         <div className="flex md:hidden items-center shrink-0 gap-0.5">
-          <button className="p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
+          <a href="/favorites" className="relative p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200 flex items-center justify-center">
             <Heart size={17} strokeWidth={1.75} />
-          </button>
-          <button className="relative p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200">
+            {favoriteCount > 0 && (
+              <span className="absolute top-[3px] right-[3px] w-3.5 h-3.5 rounded-full bg-red-500 flex items-center justify-center text-white text-[8px] font-bold">
+                {favoriteCount}
+              </span>
+            )}
+          </a>
+          <a href="/cart" className="relative p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200 flex items-center justify-center">
             <ShoppingCart size={17} strokeWidth={1.75} />
-            <span className="absolute top-[3px] right-[3px] w-3.5 h-3.5 rounded-full bg-red-500 flex items-center justify-center text-white text-[8px] font-bold">
-              3
-            </span>
-          </button>
+            {cartCount > 0 && (
+              <span className="absolute top-[3px] right-[3px] w-3.5 h-3.5 rounded-full bg-red-500 flex items-center justify-center text-white text-[8px] font-bold">
+                {cartCount}
+              </span>
+            )}
+          </a>
           <button
             className="p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200"
             onClick={() => setMobileOpen(!mobileOpen)}

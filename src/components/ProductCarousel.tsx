@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { useCategory } from "@/context/CategoryContext";
+import { useFavorites } from "@/context/FavoritesContext";
 import type { Product } from "@/data/products";
 
 export type { Product };
@@ -22,6 +23,7 @@ export default function ProductCarousel({
 }: ProductCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { active } = useCategory();
+  const { toggleFavorite, isFavorited } = useFavorites();
   const displayTitle = dynamicTitle ? `Trending in ${active}` : title;
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -82,11 +84,15 @@ export default function ProductCarousel({
                     className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
                   />
                   <button
-                    onClick={(e) => e.preventDefault()}
+                    onClick={(e) => { e.preventDefault(); toggleFavorite(product.id); }}
                     className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200 hover:bg-white hover:scale-110"
                     aria-label="Save to favorites"
                   >
-                    <Heart size={13} strokeWidth={1.75} className="text-ink" />
+                    <Heart
+                      size={13}
+                      strokeWidth={1.75}
+                      className={isFavorited(product.id) ? "fill-red-500 text-red-500" : "text-ink"}
+                    />
                   </button>
                 </div>
                 <div className="px-0.5">

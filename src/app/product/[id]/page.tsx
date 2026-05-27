@@ -6,6 +6,8 @@ import { Star, Heart, ShoppingCart, Download, ChevronRight, Check, FileText, Ref
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getProductById, getRelatedProducts, getCategoryLabel } from "@/data/products";
+import { useCart } from "@/context/CartContext";
+import { useFavorites } from "@/context/FavoritesContext";
 
 function discountPct(sale: string, original: string) {
   const s = parseFloat(sale.replace(/[^0-9.]/g, ""));
@@ -52,6 +54,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const product = getProductById(Number(id));
   if (!product) notFound();
+
+  const { addToCart, isInCart } = useCart();
+  const { toggleFavorite, isFavorited } = useFavorites();
 
   const related = getRelatedProducts(product, 6);
   const category = getCategoryLabel(product);
@@ -166,19 +171,40 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
               {/* CTA buttons */}
               <div className="flex flex-col gap-3 mb-6">
-                <button className="w-full h-12 rounded-full bg-ink text-cream text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#3a3a3a] active:scale-[0.98] transition-all duration-200">
+                <button
+                  onClick={() => addToCart(product)}
+                  className={`w-full h-12 rounded-full text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 ${
+                    isInCart(product.id)
+                      ? "bg-[#3a3a3a] text-cream"
+                      : "bg-ink text-cream hover:bg-[#3a3a3a]"
+                  }`}
+                >
                   <ShoppingCart size={16} strokeWidth={2} />
-                  Add to Cart
+                  {isInCart(product.id) ? "Added to Cart ✓" : "Add to Cart"}
                 </button>
                 {product.instantDownload && (
-                  <button className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200">
+                  <button
+                    onClick={() => addToCart(product)}
+                    className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200"
+                  >
                     <Download size={16} strokeWidth={2} />
                     Instant Download — {product.salePrice}
                   </button>
                 )}
-                <button className="w-full h-11 rounded-full border border-border-muted text-ink text-sm font-medium flex items-center justify-center gap-2 hover:border-ink hover:bg-card-hover active:scale-[0.98] transition-all duration-200">
-                  <Heart size={15} strokeWidth={1.75} />
-                  Save to Favorites
+                <button
+                  onClick={() => toggleFavorite(product.id)}
+                  className={`w-full h-11 rounded-full border text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 ${
+                    isFavorited(product.id)
+                      ? "border-red-400 bg-red-50 text-red-500"
+                      : "border-border-muted text-ink hover:border-ink hover:bg-card-hover"
+                  }`}
+                >
+                  <Heart
+                    size={15}
+                    strokeWidth={1.75}
+                    className={isFavorited(product.id) ? "fill-red-500 text-red-500" : ""}
+                  />
+                  {isFavorited(product.id) ? "Saved to Favorites" : "Save to Favorites"}
                 </button>
               </div>
 
