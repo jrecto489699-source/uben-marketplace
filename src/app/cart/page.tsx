@@ -46,20 +46,15 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal — bottom sheet on mobile, centered card on sm+ */}
-      <div className="relative w-full sm:max-w-md bg-cream rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[90vh]">
-
-        {/* Drag handle — mobile only */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
-          <div className="w-10 h-1 rounded-full bg-border-muted" />
-        </div>
+      {/* Modal */}
+      <div className="relative w-full max-w-md bg-cream rounded-3xl shadow-2xl overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-3 sm:pt-6 pb-4 border-b border-border-muted shrink-0">
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border-muted">
           <div>
             <h2 className="font-serif text-xl font-semibold text-ink">
               {step === "success" ? "Order Confirmed!" : "Checkout"}
@@ -75,7 +70,7 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
           )}
         </div>
 
-        <div className="px-6 py-5 overflow-y-auto flex-1">
+        <div className="px-6 py-5">
 
           {/* ── Step: Success ── */}
           {step === "success" && (
