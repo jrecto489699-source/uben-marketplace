@@ -30,6 +30,7 @@ export const coloringProducts: Product[] = [
   { id: 19, title: "Space & Planets Coloring Book",        salePrice: "$5", originalPrice: "$9",  seller: "The Crayon Atelier",  image: "/images/Space & Planets Coloring.png",                rating: 4.7, reviewCount: 37,  onSale: false, instantDownload: true  },
   { id: 20, title: "Mandalas for Kids – Calm & Color",     salePrice: "$4", originalPrice: "$6",  seller: "Bright Beans Studio", image: "/images/mandalas for kids.png",                       rating: 4.5, reviewCount: 121, onSale: true,  instantDownload: true  },
   { id: 21, title: "Jungle Safari Coloring Adventure",     salePrice: "$5", originalPrice: "$8",  seller: "Meadow Lane Prints",  image: "/images/Jungle Safari Coloring Adventure.png",        rating: 4.8, reviewCount: 56,  onSale: false, instantDownload: true  },
+  { id: 35, title: "Nature Coloring Book",                salePrice: "$5", originalPrice: "$8",  seller: "Meadow Lane Prints",  image: "/images/Nature Coloring Book.png",                    rating: 4.9, reviewCount: 0,   onSale: false, instantDownload: true  },
 ];
 
 // ── Storybooks ───────────────────────────────────────────────────────────────
