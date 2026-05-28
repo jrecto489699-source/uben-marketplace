@@ -219,25 +219,6 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
       {mobileOpen && (
         <div className="md:hidden border-b border-border-muted bg-cream">
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-0.5">
-            {/* Mobile currency switcher */}
-            <div className="flex items-center gap-2 px-3 pb-3 mb-1 border-b border-border-muted">
-              <p className="text-[11px] font-bold tracking-widest text-ink uppercase mr-auto">Currency</p>
-              {CURRENCIES.map((c) => (
-                <button
-                  key={c.code}
-                  onClick={() => setCurrency(c.code as Currency)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 ${
-                    currency === c.code
-                      ? "bg-ink text-cream"
-                      : "border border-border-muted text-ink-muted hover:border-ink hover:text-ink"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`https://flagcdn.com/20x15/${c.flagCode}.png`} alt={c.label} width={20} height={15} className="rounded-sm shrink-0" />
-                  <span>{c.label}</span>
-                </button>
-              ))}
-            </div>
             <p className="px-3 pb-1 text-[11px] font-bold tracking-widest text-ink uppercase">
               Browse
             </p>
@@ -508,6 +489,36 @@ export default function Navbar() {
               Sign in
             </a>
           )}
+          {/* Mobile currency picker */}
+          <div ref={currencyRef} className="relative">
+            <button
+              onClick={() => setCurrencyOpen(!currencyOpen)}
+              className="flex items-center gap-1 h-8 px-2 rounded-full hover:bg-card-hover transition-colors duration-200"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`https://flagcdn.com/20x15/${currentCurrency.flagCode}.png`} alt={currentCurrency.label} width={18} height={13} className="rounded-sm" />
+              <ChevronDown size={10} strokeWidth={2.5} className={`text-ink-muted transition-transform duration-200 ${currencyOpen ? "rotate-180" : ""}`} />
+            </button>
+            {currencyOpen && (
+              <div className="absolute right-0 top-full mt-2 w-36 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-50">
+                {CURRENCIES.map((c) => (
+                  <button
+                    key={c.code}
+                    onClick={() => { setCurrency(c.code as Currency); setCurrencyOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors duration-150 ${
+                      currency === c.code ? "bg-card-hover font-semibold text-ink" : "text-ink-muted hover:bg-card-hover hover:text-ink"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`https://flagcdn.com/20x15/${c.flagCode}.png`} alt={c.label} width={20} height={15} className="rounded-sm shrink-0" />
+                    <span>{c.label}</span>
+                    <span className="ml-auto text-xs text-ink-muted">{c.symbol}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <a href="/favorites" className="relative p-2 text-ink rounded-full hover:bg-card-hover transition-colors duration-200 flex items-center justify-center">
             <Heart size={17} strokeWidth={1.75} />
             {favoriteCount > 0 && (
