@@ -8,6 +8,7 @@ import { useCategory } from "@/context/CategoryContext";
 import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import { useCurrency, CURRENCIES, type Currency } from "@/context/CurrencyContext";
 import { allProducts } from "@/data/products";
 
@@ -254,6 +255,13 @@ export default function Navbar() {
   const { cartCount } = useCart();
   const { favoriteCount } = useFavorites();
   const { user, signOut } = useAuth();
+  const supabase = createClient();
+
+  async function switchAccount() {
+    setUserMenuOpen(false);
+    await supabase.auth.signOut();
+    window.location.href = "/signin";
+  }
   const { currency, setCurrency } = useCurrency();
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const currencyDesktopRef = useRef<HTMLDivElement>(null);
@@ -384,12 +392,7 @@ export default function Navbar() {
                     Sign out
                   </button>
                   <button
-                    onClick={async () => {
-                      setUserMenuOpen(false);
-                      const { createClient: makeClient } = await import("@/lib/supabase/client");
-                      await makeClient().auth.signOut();
-                      window.location.href = "/signin";
-                    }}
+                    onClick={switchAccount}
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink-muted hover:bg-card-hover hover:text-ink transition-colors duration-150"
                   >
                     <RefreshCw size={14} strokeWidth={1.75} />
@@ -498,12 +501,7 @@ export default function Navbar() {
                     Sign out
                   </button>
                   <button
-                    onClick={async () => {
-                      setUserMenuOpen(false);
-                      const { createClient: makeClient } = await import("@/lib/supabase/client");
-                      await makeClient().auth.signOut();
-                      window.location.href = "/signin";
-                    }}
+                    onClick={switchAccount}
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink-muted hover:bg-card-hover hover:text-ink transition-colors duration-150"
                   >
                     <RefreshCw size={14} strokeWidth={1.75} />
