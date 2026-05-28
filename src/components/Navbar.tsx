@@ -260,7 +260,8 @@ export default function Navbar() {
   const currencyMobileRef = useRef<HTMLDivElement>(null);
   const desktopRef = useRef<HTMLDivElement>(null);
   const mobileRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuDesktopRef = useRef<HTMLDivElement>(null);
+  const userMenuMobileRef  = useRef<HTMLDivElement>(null);
   const currentCurrency = CURRENCIES.find((c) => c.code === currency)!;
 
   function handleSearch() {
@@ -280,7 +281,9 @@ export default function Navbar() {
       if (mobileRef.current && !mobileRef.current.contains(e.target as Node)) {
         setMobileOpen2(false);
       }
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+      const inDesktopMenu = userMenuDesktopRef.current?.contains(e.target as Node);
+      const inMobileMenu  = userMenuMobileRef.current?.contains(e.target as Node);
+      if (!inDesktopMenu && !inMobileMenu) {
         setUserMenuOpen(false);
       }
       const inDesktop = currencyDesktopRef.current?.contains(e.target as Node);
@@ -347,7 +350,7 @@ export default function Navbar() {
         {/* Auth — desktop */}
         <nav className="hidden md:flex items-center shrink-0 gap-0.5">
           {user ? (
-            <div ref={userMenuRef} className="relative">
+            <div ref={userMenuDesktopRef} className="relative">
               <button
                 onClick={() => setUserMenuOpen((o) => !o)}
                 className="flex items-center gap-1.5 h-9 px-3 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200"
@@ -465,7 +468,7 @@ export default function Navbar() {
         {/* Mobile icons */}
         <div className="flex md:hidden items-center shrink-0 gap-0.5 ml-auto">
           {user ? (
-            <div ref={userMenuRef} className="relative">
+            <div ref={userMenuMobileRef} className="relative">
               <button
                 onClick={() => setUserMenuOpen((o) => !o)}
                 className="flex items-center justify-center w-8 h-8 rounded-full bg-ink text-cream text-[11px] font-bold hover:bg-[#3a3a3a] transition-colors duration-200"
