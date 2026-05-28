@@ -166,7 +166,7 @@ export default function DownloadsPage() {
                               {/* Actions */}
                               <div className="flex flex-col gap-2 shrink-0 justify-center">
                                 <DownloadButton purchaseId={purchase.id} productTitle={purchase.product_title} />
-                                {prod?.instantDownload && (
+                                {cat === "Coloring" && prod?.instantDownload && (
                                   <a
                                     href={`/color/${purchase.id}`}
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#134A4F] text-[#134A4F] text-xs font-medium hover:bg-[#134A4F] hover:text-cream transition-colors duration-200 whitespace-nowrap justify-center"
