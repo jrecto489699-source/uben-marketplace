@@ -250,10 +250,20 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   // ── Flood fill ──────────────────────────────────────────────────────────────
   function floodFill(startX: number, startY: number) {
     const canvas = canvasRef.current;
+    const overlay = overlayRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
     const imageData = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
     const d = imageData.data;
+
+    // Read overlay pixel data so outline lines act as fill boundaries.
+    // After the high-contrast grayscale filter, line pixels are near-black (R < 100).
+    let od: Uint8ClampedArray | null = null;
+    if (overlay) {
+      const octx = overlay.getContext("2d");
+      if (octx) od = octx.getImageData(0, 0, CANVAS_W, CANVAS_H).data;
+    }
+
     const xi = Math.floor(startX), yi = Math.floor(startY);
     if (xi < 0 || xi >= CANVAS_W || yi < 0 || yi >= CANVAS_H) return;
     const px = (yi * CANVAS_W + xi) * 4;
@@ -266,6 +276,9 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     const visited = new Uint8Array(CANVAS_W * CANVAS_H);
     const match = (i: number) =>
       Math.abs(d[i] - tR) <= tol && Math.abs(d[i+1] - tG) <= tol && Math.abs(d[i+2] - tB) <= tol;
+    // Stop at pixels that are dark outline pixels in the overlay canvas
+    const isLine = (pos: number) =>
+      od != null && od[pos * 4] < 100 && od[pos * 4 + 3] > 128;
     const stack = [xi + yi * CANVAS_W];
     while (stack.length > 0) {
       const pos = stack.pop()!;
@@ -273,7 +286,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
       const x = pos % CANVAS_W, y = (pos - x) / CANVAS_W;
       if (x < 0 || x >= CANVAS_W || y < 0 || y >= CANVAS_H) continue;
       const i = pos * 4;
-      if (!match(i)) continue;
+      if (!match(i) || isLine(pos)) continue;
       visited[pos] = 1;
       d[i] = fR; d[i+1] = fG; d[i+2] = fB; d[i+3] = 255;
       if (x + 1 < CANVAS_W) stack.push(pos + 1);
@@ -496,7 +509,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   }
 
   const displaySize = tool === "eraser" ? brushSize * 2.5 : brushSize;
-  const canvasCursor = tool === "pan" ? (isPanning ? "grabbing" : "grab") : "none";
+  const canvasCursor = tool === "pan" ? (isPanning ? "grabbing" : "grab") : tool === "fill" ? "crosshair" : "none";
 
   return (
     <>
