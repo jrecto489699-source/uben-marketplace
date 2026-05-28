@@ -1,11 +1,12 @@
 "use client";
 
-import { FileText, ShoppingBag, Download } from "lucide-react";
+import { FileText, ShoppingBag, Download, Palette } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import DownloadButton from "@/components/DownloadButton";
 import { usePurchases } from "@/context/PurchasesContext";
 import { useAuth } from "@/context/AuthContext";
+import { allProducts } from "@/data/products";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -112,11 +113,26 @@ export default function DownloadsPage() {
                     </div>
                   </div>
 
-                  {/* Download button */}
-                  <DownloadButton
-                    purchaseId={purchase.id}
-                    productTitle={purchase.product_title}
-                  />
+                  {/* Actions */}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <DownloadButton
+                      purchaseId={purchase.id}
+                      productTitle={purchase.product_title}
+                    />
+                    {(() => {
+                      const prod = allProducts.find((p) => p.id === purchase.product_id);
+                      if (!prod?.instantDownload) return null;
+                      return (
+                        <a
+                          href={`/color/${purchase.id}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-[#134A4F] text-[#134A4F] text-xs font-medium hover:bg-[#134A4F] hover:text-cream transition-colors duration-200 whitespace-nowrap justify-center"
+                        >
+                          <Palette size={13} strokeWidth={1.75} />
+                          Color Online
+                        </a>
+                      );
+                    })()}
+                  </div>
                 </div>
               ))}
             </div>
