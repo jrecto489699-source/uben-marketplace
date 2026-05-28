@@ -232,7 +232,8 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
                       : "border border-border-muted text-ink-muted hover:border-ink hover:text-ink"
                   }`}
                 >
-                  <span>{c.flag}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`https://flagcdn.com/20x15/${c.flagCode}.png`} alt={c.label} width={20} height={15} className="rounded-sm shrink-0" />
                   <span>{c.label}</span>
                 </button>
               ))}
@@ -411,13 +412,14 @@ export default function Navbar() {
               onClick={() => setCurrencyOpen(!currencyOpen)}
               className="flex items-center gap-1.5 h-9 px-3 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200"
             >
-              <span>{currentCurrency.flag}</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`https://flagcdn.com/20x15/${currentCurrency.flagCode}.png`} alt={currentCurrency.label} width={20} height={15} className="rounded-sm shrink-0" />
               <span>{currentCurrency.label}</span>
               <span className="text-ink-muted">{currentCurrency.symbol}</span>
               <ChevronDown size={11} strokeWidth={2.5} className={`transition-transform duration-200 ${currencyOpen ? "rotate-180" : ""}`} />
             </button>
             {currencyOpen && (
-              <div className="absolute right-0 top-full mt-2 w-36 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-50">
+              <div className="absolute right-0 top-full mt-2 w-40 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-50">
                 {CURRENCIES.map((c) => (
                   <button
                     key={c.code}
@@ -426,7 +428,8 @@ export default function Navbar() {
                       currency === c.code ? "bg-card-hover font-semibold text-ink" : "text-ink-muted hover:bg-card-hover hover:text-ink"
                     }`}
                   >
-                    <span>{c.flag}</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`https://flagcdn.com/20x15/${c.flagCode}.png`} alt={c.label} width={20} height={15} className="rounded-sm shrink-0" />
                     <span>{c.label}</span>
                     <span className="ml-auto text-xs text-ink-muted">{c.symbol}</span>
                   </button>

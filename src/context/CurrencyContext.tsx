@@ -5,9 +5,9 @@ import { createContext, useContext, useState, useEffect } from "react";
 export type Currency = "USD" | "EUR" | "PHP";
 
 export const CURRENCIES = [
-  { code: "USD" as Currency, symbol: "$",  flag: "🇺🇸", label: "USD",  rate: 1     },
-  { code: "EUR" as Currency, symbol: "€",  flag: "🇪🇺", label: "EUR",  rate: 0.92  },
-  { code: "PHP" as Currency, symbol: "₱",  flag: "🇵🇭", label: "PHP",  rate: 56    },
+  { code: "USD" as Currency, symbol: "$",  flagCode: "us", label: "USD",  rate: 1     },
+  { code: "EUR" as Currency, symbol: "€",  flagCode: "eu", label: "EUR",  rate: 0.92  },
+  { code: "PHP" as Currency, symbol: "₱",  flagCode: "ph", label: "PHP",  rate: 56    },
 ];
 
 interface CurrencyContextValue {
