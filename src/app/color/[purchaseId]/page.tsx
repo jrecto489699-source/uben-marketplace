@@ -487,7 +487,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
             <p className="font-serif text-2xl text-ink mb-2">Purchase not found</p>
             <p className="text-sm text-ink-muted mb-6">You need to purchase this product to color it.</p>
             <a href="/downloads" className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-medium hover:bg-[#3a3a3a] transition-colors duration-200">
-              My Downloads
+              My Library
             </a>
           </div>
         </div>
@@ -511,7 +511,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
             <>
               <a href="/downloads" className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-ink transition-colors shrink-0">
                 <ArrowLeft size={13} />
-                My Downloads
+                My Library
               </a>
               <span className="text-border-muted text-xs shrink-0">·</span>
               <p className="text-sm font-medium text-ink truncate flex-1">{product.title}</p>

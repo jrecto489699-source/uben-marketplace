@@ -40,7 +40,7 @@ export default function DownloadsPage() {
             <div className="w-16 h-16 rounded-full bg-card-hover flex items-center justify-center mx-auto mb-4">
               <Download size={28} strokeWidth={1.5} className="text-ink-muted" />
             </div>
-            <p className="font-serif text-2xl text-ink mb-2">Sign in to view your downloads</p>
+            <p className="font-serif text-2xl text-ink mb-2">Sign in to view your library</p>
             <p className="text-sm text-ink-muted mb-6">Your purchased products will appear here.</p>
             <a href="/signin" className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-medium hover:bg-[#3a3a3a] transition-colors duration-200">
               Sign in
@@ -76,7 +76,7 @@ export default function DownloadsPage() {
       <main className="min-h-screen bg-cream">
         <div className="max-w-5xl mx-auto px-6 py-10">
           <h1 className="font-serif text-3xl md:text-4xl font-semibold text-ink tracking-tight mb-2">
-            My Downloads
+            My Library
           </h1>
           <p className="text-sm text-ink-muted mb-8">
             {loading ? "Loading…" : `${purchases.length} ${purchases.length === 1 ? "purchase" : "purchases"} across ${categories.length} ${categories.length === 1 ? "category" : "categories"}`}

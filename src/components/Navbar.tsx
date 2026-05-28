@@ -376,7 +376,7 @@ export default function Navbar() {
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"
                   >
                     <Download size={14} strokeWidth={1.75} />
-                    My Downloads
+                    My Library
                   </a>
                   <div className="h-px bg-border-muted" />
                   <button
@@ -478,7 +478,7 @@ export default function Navbar() {
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"
                   >
                     <Download size={14} strokeWidth={1.75} />
-                    My Downloads
+                    My Library
                   </a>
                   <div className="h-px bg-border-muted" />
                   <button
