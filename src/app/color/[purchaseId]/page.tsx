@@ -125,7 +125,11 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     const ctx = canvas.getContext("2d")!;
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // Enhance lines: boost contrast to make outlines crisp black and
+    // background clean white. saturate(0) removes any color tint from the PDF.
+    ctx.filter = "saturate(0) contrast(2) brightness(1.1)";
     ctx.drawImage(tmp, Math.round((CANVAS_W - tmp.width) / 2), Math.round((CANVAS_H - tmp.height) / 2));
+    ctx.filter = "none";
   }
 
   // ── Render thumbnails for all pages (runs in background) ─────────────────
