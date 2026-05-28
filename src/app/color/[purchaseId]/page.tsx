@@ -23,7 +23,7 @@ function dataURLtoBlob(dataURL: string): Blob {
 }
 
 const PALETTE = [
-  "#FFFFFF", "#111111", "#EF4444", "#F97316", "#F59E0B", "#22C55E",
+  "#111111", "#EF4444", "#F97316", "#F59E0B", "#22C55E",
   "#06B6D4", "#3B82F6", "#8B5CF6", "#EC4899", "#F9A8D4", "#FCA5A5",
   "#86EFAC", "#67E8F9", "#93C5FD", "#C4B5FD", "#D6D3D1", "#78716C",
   "#7C2D12", "#1E40AF",
@@ -662,7 +662,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
                     className={`w-7 h-7 rounded-full border-2 transition-all hover:scale-110 ${
                       color === c && tool !== "eraser"
                         ? "border-ink shadow-sm scale-110"
-                        : c === "#FFFFFF" ? "border-[#D6D3D1]" : "border-white"
+                        : "border-white"
                     }`} />
                 ))}
               </div>
@@ -797,7 +797,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
               onClick={() => { setColor(c); if (tool === "eraser" || tool === "pan") setTool("brush"); }}
               style={{ backgroundColor: c }}
               className={`w-7 h-7 rounded-full shrink-0 border-2 transition-all ${
-                color === c && tool !== "eraser" ? "border-ink scale-110" : c === "#FFFFFF" ? "border-[#D6D3D1]" : "border-white"
+                color === c && tool !== "eraser" ? "border-ink scale-110" : "border-white"
               }`} />
           ))}
 
