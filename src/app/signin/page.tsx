@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import UbenLogo from "@/components/UbenLogo";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
@@ -12,6 +12,13 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // If already signed in, go home
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) window.location.href = "/";
+    });
+  }, []);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -27,7 +34,12 @@ export default function SignInPage() {
     setError("");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        // Force Google to always show the account picker so users can
+        // choose a different account instead of auto-signing in.
+        queryParams: { prompt: "select_account" },
+      },
     });
     if (error) setError(error.message);
   }
@@ -36,7 +48,12 @@ export default function SignInPage() {
     setError("");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "facebook",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        // auth_type=reauthenticate forces Facebook to re-prompt
+        // instead of silently using the last session.
+        queryParams: { auth_type: "reauthenticate" },
+      },
     });
     if (error) setError(error.message);
   }
