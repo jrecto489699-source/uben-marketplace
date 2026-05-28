@@ -87,9 +87,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     const img = new Image();
     img.onload = () => {
       ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.filter = "grayscale(1) contrast(12) brightness(1.05)";
       ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
-      ctx.filter = "none";
       setImageLoaded(true);
     };
     img.src = product.image;
