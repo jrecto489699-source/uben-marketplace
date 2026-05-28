@@ -235,7 +235,7 @@ export default function InstantCheckoutModal({
               <p className="text-sm text-ink-muted mb-1">Payment successful. Your download started automatically.</p>
               <p className="text-sm text-ink-muted mb-6">
                 Find it anytime in{" "}
-                <a href="/downloads" className="font-medium text-ink underline underline-offset-2">My Downloads</a>.
+                <a href="/downloads" className="font-medium text-ink underline underline-offset-2">My Library</a>.
               </p>
               <div className="flex gap-3">
                 <button
@@ -249,7 +249,7 @@ export default function InstantCheckoutModal({
                   className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] flex items-center gap-2 transition-colors duration-200"
                 >
                   <Download size={13} strokeWidth={2} />
-                  My Downloads
+                  My Library
                 </a>
               </div>
             </div>

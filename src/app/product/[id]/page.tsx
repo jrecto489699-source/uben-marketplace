@@ -188,7 +188,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     className="w-full h-12 rounded-full bg-sale-green text-cream text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
                   >
                     <Download size={16} strokeWidth={2} />
-                    Go to My Downloads
+                    Go to My Library
                   </a>
                 ) : (
                   <>
