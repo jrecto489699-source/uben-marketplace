@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp, LogOut, ChevronDown, Download, RefreshCw } from "lucide-react";
+import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp, LogOut, ChevronDown, Download } from "lucide-react";
 import UbenLogo from "@/components/UbenLogo";
 import { useCategory } from "@/context/CategoryContext";
 import { useCart } from "@/context/CartContext";
@@ -257,11 +257,6 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
   const supabase = createClient();
 
-  async function switchAccount() {
-    setUserMenuOpen(false);
-    await supabase.auth.signOut();
-    window.location.href = "/signin";
-  }
   const { currency, setCurrency } = useCurrency();
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const currencyDesktopRef = useRef<HTMLDivElement>(null);
@@ -391,13 +386,6 @@ export default function Navbar() {
                     <LogOut size={14} strokeWidth={1.75} />
                     Sign out
                   </button>
-                  <button
-                    onClick={switchAccount}
-                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink-muted hover:bg-card-hover hover:text-ink transition-colors duration-150"
-                  >
-                    <RefreshCw size={14} strokeWidth={1.75} />
-                    Switch account
-                  </button>
                 </div>
               )}
             </div>
@@ -499,13 +487,6 @@ export default function Navbar() {
                   >
                     <LogOut size={14} strokeWidth={1.75} />
                     Sign out
-                  </button>
-                  <button
-                    onClick={switchAccount}
-                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink-muted hover:bg-card-hover hover:text-ink transition-colors duration-150"
-                  >
-                    <RefreshCw size={14} strokeWidth={1.75} />
-                    Switch account
                   </button>
                 </div>
               )}
