@@ -107,6 +107,21 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
+  // Ctrl+Z / Cmd+Z keyboard shortcut for undo
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        const snap = historyRef.current.pop();
+        if (!snap) return;
+        canvasRef.current?.getContext("2d")?.putImageData(snap, 0, 0);
+        setCanUndo(historyRef.current.length > 0);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   function toggleFullscreen() {
     const el = document.documentElement;
     if (!document.fullscreenElement) {
@@ -342,7 +357,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
         style={{ height: isFullscreen ? "100vh" : "calc(100vh - 64px)" }}
       >
         {/* Top bar */}
-        <div className="bg-cream border-b border-border-muted px-4 py-2.5 flex items-center gap-3 shrink-0">
+        <div className="relative z-20 bg-cream border-b border-border-muted px-4 py-2.5 flex items-center gap-3 shrink-0">
           {!isFullscreen && (
             <>
               <a href="/downloads" className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-ink transition-colors">
@@ -524,7 +539,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
           {/* Canvas viewport — scrollable when zoomed */}
           <div
             ref={viewportRef}
-            className="flex-1 overflow-auto flex items-center justify-center"
+            className="flex-1 overflow-auto flex items-center justify-center relative"
             style={{ background: "#EDEBE6" }}
           >
             {/* Zoom container — CSS transform scales the whole canvas wrapper */}
