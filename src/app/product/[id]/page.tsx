@@ -10,6 +10,7 @@ import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useAuth } from "@/context/AuthContext";
 import { usePurchases } from "@/context/PurchasesContext";
+import { useCurrency } from "@/context/CurrencyContext";
 import AuthModal from "@/components/AuthModal";
 import InstantCheckoutModal from "@/components/InstantCheckoutModal";
 
@@ -63,6 +64,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const { toggleFavorite, isFavorited } = useFavorites();
   const { user } = useAuth();
   const { isOwned } = usePurchases();
+  const { formatPrice } = useCurrency();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstantCheckout, setShowInstantCheckout] = useState(false);
   const owned = isOwned(product.id);
@@ -155,8 +157,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
               {/* Price */}
               <div className="flex items-baseline gap-3 mb-4">
-                <span className="text-3xl font-bold text-sale-green">{product.salePrice}</span>
-                <span className="text-base text-ink-muted line-through">{product.originalPrice}</span>
+                <span className="text-3xl font-bold text-sale-green">{formatPrice(product.salePrice)}</span>
+                <span className="text-base text-ink-muted line-through">{formatPrice(product.originalPrice)}</span>
                 {pct !== null && (
                   <span className="px-2.5 py-0.5 rounded-full bg-sale-green text-cream text-xs font-bold">
                     {pct}% off
@@ -208,7 +210,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         className="w-full h-12 rounded-full border-2 border-[#134A4F] text-[#134A4F] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#134A4F] hover:text-cream active:scale-[0.98] transition-all duration-200"
                       >
                         <Download size={16} strokeWidth={2} />
-                        Instant Download — {product.salePrice}
+                        Instant Download — {formatPrice(product.salePrice)}
                       </button>
                     )}
                   </>
@@ -323,8 +325,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                           {rel.title}
                         </h3>
                         <div className="flex items-baseline gap-1 mb-2">
-                          <span className="text-xs font-semibold text-sale-green">{rel.salePrice}</span>
-                          <span className="text-[10px] text-ink-muted line-through">{rel.originalPrice}</span>
+                          <span className="text-xs font-semibold text-sale-green">{formatPrice(rel.salePrice)}</span>
+                          <span className="text-[10px] text-ink-muted line-through">{formatPrice(rel.originalPrice)}</span>
                         </div>
                       </a>
                       {/* Add to cart button on hover */}

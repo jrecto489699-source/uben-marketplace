@@ -6,6 +6,7 @@ import { Star, SlidersHorizontal, X, Heart } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useFavorites } from "@/context/FavoritesContext";
+import { useCurrency } from "@/context/CurrencyContext";
 import {
   allProducts, printableProducts, classroomProducts,
   worksheetProducts, coloringProducts, storybookProducts,
@@ -93,6 +94,7 @@ function ProductGrid() {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("Relevancy");
   const { toggleFavorite, isFavorited } = useFavorites();
+  const { formatPrice } = useCurrency();
 
   function toggleFilter(f: string) {
     setActiveFilters((prev) =>
@@ -251,8 +253,8 @@ function ProductGrid() {
                     </div>
                   )}
                   <div className="flex items-baseline gap-1.5 flex-wrap">
-                    <span className="text-sm font-semibold text-sale-green">{product.salePrice}</span>
-                    <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
+                    <span className="text-sm font-semibold text-sale-green">{formatPrice(product.salePrice)}</span>
+                    <span className="text-xs text-ink-muted line-through">{formatPrice(product.originalPrice)}</span>
                   </div>
                 </div>
               </a>

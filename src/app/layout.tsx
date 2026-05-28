@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Source_Serif_4 } from "next/font/google";
 import { CategoryProvider } from "@/context/CategoryContext";
+import { CurrencyProvider } from "@/context/CurrencyContext";
 import { CartProvider } from "@/context/CartContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 import { AuthProvider } from "@/context/AuthContext";
@@ -43,13 +44,15 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-cream text-ink">
         <AuthProvider>
           <PurchasesProvider>
-            <CategoryProvider>
-              <CartProvider>
-                <FavoritesProvider>
-                  {children}
-                </FavoritesProvider>
-              </CartProvider>
-            </CategoryProvider>
+            <CurrencyProvider>
+              <CategoryProvider>
+                <CartProvider>
+                  <FavoritesProvider>
+                    {children}
+                  </FavoritesProvider>
+                </CartProvider>
+              </CategoryProvider>
+            </CurrencyProvider>
           </PurchasesProvider>
         </AuthProvider>
       </body>

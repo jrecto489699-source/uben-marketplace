@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { useCategory } from "@/context/CategoryContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { useCurrency } from "@/context/CurrencyContext";
 import type { Product } from "@/data/products";
 
 interface ProductCarouselProps {
@@ -22,6 +23,7 @@ export default function ProductCarousel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const { active } = useCategory();
   const { toggleFavorite, isFavorited } = useFavorites();
+  const { formatPrice } = useCurrency();
   const displayTitle = dynamicTitle ? `Trending in ${active}` : title;
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -99,8 +101,8 @@ export default function ProductCarousel({
                     {product.title}
                   </h3>
                   <div className="flex items-baseline gap-1.5 mt-1">
-                    <span className="text-sm font-semibold text-sale-green">{product.salePrice}</span>
-                    <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
+                    <span className="text-sm font-semibold text-sale-green">{formatPrice(product.salePrice)}</span>
+                    <span className="text-xs text-ink-muted line-through">{formatPrice(product.originalPrice)}</span>
                   </div>
                 </div>
               </a>
