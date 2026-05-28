@@ -10,7 +10,7 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import { X, Lock, Check, Download, Loader2, CreditCard } from "lucide-react";
+import { X, Lock, Check, Download, Loader2, CreditCard, LibraryBig } from "lucide-react";
 import { usePurchases } from "@/context/PurchasesContext";
 import { useAuth } from "@/context/AuthContext";
 import type { Product } from "@/data/products";
@@ -248,7 +248,7 @@ export default function InstantCheckoutModal({
                   href="/downloads"
                   className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] flex items-center gap-2 transition-colors duration-200"
                 >
-                  <Download size={13} strokeWidth={2} />
+                  <LibraryBig size={13} strokeWidth={2} />
                   My Library
                 </a>
               </div>

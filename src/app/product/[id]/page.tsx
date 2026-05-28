@@ -2,7 +2,7 @@
 
 import { notFound } from "next/navigation";
 import { use, useState } from "react";
-import { Star, Heart, ShoppingCart, Download, ChevronRight, Check, FileText, Infinity, Shield } from "lucide-react";
+import { Star, Heart, ShoppingCart, Download, ChevronRight, Check, FileText, Infinity, Shield, LibraryBig } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getProductById, getRelatedProducts, getCategoryLabel } from "@/data/products";
@@ -187,7 +187,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     href="/downloads"
                     className="w-full h-12 rounded-full bg-sale-green text-cream text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
                   >
-                    <Download size={16} strokeWidth={2} />
+                    <LibraryBig size={16} strokeWidth={2} />
                     Go to My Library
                   </a>
                 ) : (
