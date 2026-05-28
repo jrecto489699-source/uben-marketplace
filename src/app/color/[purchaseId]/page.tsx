@@ -7,7 +7,20 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
+import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import { allProducts } from "@/data/products";
+
+const BUCKET = "colorings";
+
+function dataURLtoBlob(dataURL: string): Blob {
+  const [header, data] = dataURL.split(",");
+  const mime = header.match(/:(.*?);/)![1];
+  const binary = atob(data);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
 
 const PALETTE = [
   "#FFFFFF", "#111111", "#EF4444", "#F97316", "#F59E0B", "#22C55E",
@@ -46,14 +59,19 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   const [brushSize, setBrushSize] = useState(14);
   const [canUndo, setCanUndo]     = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [saved, setSaved]         = useState(false);
-  const [zoom, setZoom]           = useState(1);
+  const [saved, setSaved]           = useState(false);
+  const [cloudSaving, setCloudSaving] = useState(false);
+  const [zoom, setZoom]             = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPanning, setIsPanning] = useState(false); // visual cursor feedback
+  const [isPanning, setIsPanning]   = useState(false);
 
-  const purchase = purchases.find((p) => p.id === purchaseId);
-  const product  = purchase ? allProducts.find((p) => p.id === purchase.product_id) : null;
-  const storageKey = `uben_coloring_${purchaseId}`;
+  const { user } = useAuth();
+  const supabase = createClient();
+  const purchase  = purchases.find((p) => p.id === purchaseId);
+  const product   = purchase ? allProducts.find((p) => p.id === purchase.product_id) : null;
+  const storageKey  = `uben_coloring_${purchaseId}`;
+  const cloudPath   = user ? `${user.id}/${purchaseId}.png` : null;
+  const cloudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep ref in sync with zoom so event-handler closures always see current zoom
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
@@ -75,26 +93,53 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     img.src = product.image;
   }, [product]);
 
-  // Init drawing canvas — restore from localStorage.
-  // Depends on purchase?.id so it re-runs the moment the purchase loads and
-  // the canvas actually appears in the DOM (avoids a timing bug where the
-  // effect fires while loading=true and canvasRef.current is still null).
+  // Init drawing canvas — try Supabase Storage first, then localStorage, then blank.
+  // Depends on purchase?.id and user?.id so it re-runs once purchases load
+  // and the canvas is actually in the DOM.
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !purchase?.id) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const savedData = localStorage.getItem(storageKey);
-    if (savedData) {
+
+    function drawDataURL(dataURL: string) {
       const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0);
-      img.src = savedData;
-    } else {
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      img.onload = () => ctx!.drawImage(img, 0, 0);
+      img.src = dataURL;
     }
+
+    function initBlank() {
+      ctx!.fillStyle = "#FFFFFF";
+      ctx!.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+
+    async function init() {
+      // 1 — try cloud
+      if (cloudPath) {
+        const { data: blob } = await supabase.storage.from(BUCKET).download(cloudPath);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const img = new Image();
+          img.onload = () => {
+            ctx!.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            // Sync back to localStorage so offline works too
+            try { localStorage.setItem(storageKey, canvas!.toDataURL("image/png")); } catch {}
+          };
+          img.src = url;
+          return;
+        }
+      }
+      // 2 — fall back to localStorage
+      const local = localStorage.getItem(storageKey);
+      if (local) { drawDataURL(local); return; }
+      // 3 — blank canvas
+      initBlank();
+    }
+
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey, purchase?.id]);
+  }, [storageKey, purchase?.id, user?.id]);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -360,11 +405,28 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   function autoSave() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    try {
-      localStorage.setItem(storageKey, canvas.toDataURL("image/png"));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
-    } catch {}
+    const dataURL = canvas.toDataURL("image/png");
+
+    // Immediate local save
+    try { localStorage.setItem(storageKey, dataURL); } catch {}
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+
+    // Debounced cloud save — upload 3 s after the last stroke
+    if (!cloudPath) return;
+    if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current);
+    cloudTimerRef.current = setTimeout(async () => {
+      setCloudSaving(true);
+      try {
+        const blob = dataURLtoBlob(dataURL);
+        await supabase.storage.from(BUCKET).upload(cloudPath, blob, {
+          upsert: true,
+          contentType: "image/png",
+        });
+      } finally {
+        setCloudSaving(false);
+      }
+    }, 3000);
   }
 
   function undo() {
@@ -457,8 +519,8 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
           )}
           {isFullscreen && <p className="text-sm font-medium text-ink truncate flex-1">{product.title}</p>}
 
-          <span className={`text-[11px] shrink-0 transition-opacity duration-300 ${saved ? "opacity-100 text-[#258635]" : "opacity-0"}`}>
-            Saved
+          <span className={`text-[11px] shrink-0 transition-opacity duration-300 ${cloudSaving ? "opacity-100 text-ink-muted" : saved ? "opacity-100 text-[#258635]" : "opacity-0"}`}>
+            {cloudSaving ? "Syncing…" : "Saved"}
           </span>
 
           {/* Zoom controls */}
