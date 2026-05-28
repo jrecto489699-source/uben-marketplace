@@ -75,7 +75,10 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     img.src = product.image;
   }, [product]);
 
-  // Init drawing canvas — restore from localStorage
+  // Init drawing canvas — restore from localStorage.
+  // Depends on purchase?.id so it re-runs the moment the purchase loads and
+  // the canvas actually appears in the DOM (avoids a timing bug where the
+  // effect fires while loading=true and canvasRef.current is still null).
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -90,7 +93,8 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     }
-  }, [storageKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey, purchase?.id]);
 
   // Fullscreen change listener
   useEffect(() => {
