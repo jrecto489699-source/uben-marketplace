@@ -256,7 +256,8 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
   const { currency, setCurrency } = useCurrency();
   const [currencyOpen, setCurrencyOpen] = useState(false);
-  const currencyRef = useRef<HTMLDivElement>(null);
+  const currencyDesktopRef = useRef<HTMLDivElement>(null);
+  const currencyMobileRef = useRef<HTMLDivElement>(null);
   const desktopRef = useRef<HTMLDivElement>(null);
   const mobileRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -282,9 +283,9 @@ export default function Navbar() {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
       }
-      if (currencyRef.current && !currencyRef.current.contains(e.target as Node)) {
-        setCurrencyOpen(false);
-      }
+      const inDesktop = currencyDesktopRef.current?.contains(e.target as Node);
+      const inMobile  = currencyMobileRef.current?.contains(e.target as Node);
+      if (!inDesktop && !inMobile) setCurrencyOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -388,7 +389,7 @@ export default function Navbar() {
             </a>
           )}
           {/* Currency picker */}
-          <div ref={currencyRef} className="relative">
+          <div ref={currencyDesktopRef} className="relative">
             <button
               onClick={() => setCurrencyOpen(!currencyOpen)}
               className="flex items-center gap-1.5 h-9 px-3 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200"
@@ -490,7 +491,7 @@ export default function Navbar() {
             </a>
           )}
           {/* Mobile currency picker */}
-          <div ref={currencyRef} className="relative">
+          <div ref={currencyMobileRef} className="relative">
             <button
               onClick={() => setCurrencyOpen(!currencyOpen)}
               className="flex items-center gap-1 h-8 px-2 rounded-full hover:bg-card-hover transition-colors duration-200"
