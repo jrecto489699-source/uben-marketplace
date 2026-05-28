@@ -184,6 +184,10 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   }
 
+  // Warm up PDF.js the moment the component mounts so the dynamic import
+  // is ready by the time purchase data arrives.
+  useEffect(() => { getPdfJs(); }, []);
+
   // ── Load PDF ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!purchase?.id) return;
@@ -191,7 +195,11 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
       setPdfLoading(true);
       setPdfError(null);
       try {
-        const res = await fetch(`/api/coloring-pdf/${purchase!.id}`);
+        // Kick off both the signed-URL fetch and PDF.js warm-up in parallel
+        const [res, lib] = await Promise.all([
+          fetch(`/api/coloring-pdf/${purchase!.id}`),
+          getPdfJs(),
+        ]);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           setPdfError(body.error ?? "Coloring PDF not available yet");
@@ -199,8 +207,14 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
           return;
         }
         const { url } = await res.json();
-        const lib = await getPdfJs();
-        const doc = await lib.getDocument({ url }).promise;
+        // Range requests: PDF.js fetches only what it needs per page
+        // instead of downloading the entire file up front.
+        const doc = await lib.getDocument({
+          url,
+          rangeChunkSize: 65536,   // 64 KB chunks
+          disableAutoFetch: true,  // don't pre-fetch the whole file
+          disableStream: false,
+        }).promise;
         pdfDocRef.current = doc;
         setTotalPages(doc.numPages);
         // Render first page overlay
@@ -715,8 +729,16 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
 
             {/* PDF loading / error state */}
             {pdfLoading && (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
+              <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+                {/* Blurred product thumbnail as a preview while PDF loads */}
+                {product?.image && (
+                  <img
+                    src={product.image}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-contain opacity-20 blur-md pointer-events-none select-none"
+                  />
+                )}
+                <div className="relative text-center z-10">
                   <div className="w-10 h-10 border-2 border-ink border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                   <p className="text-sm text-ink-muted">Loading coloring book…</p>
                 </div>
