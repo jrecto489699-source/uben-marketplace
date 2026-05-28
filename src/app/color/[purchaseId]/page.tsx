@@ -728,18 +728,13 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
           </aside>
 
           {/* ── Canvas area ─────────────────────────────────────────────── */}
-          <div className="flex-1 flex flex-col min-h-0 min-w-0">
+          <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
 
-            {/* PDF loading / error state */}
+            {/* Loading overlay — sits on top of canvases so they stay mounted */}
             {pdfLoading && (
-              <div className="flex-1 flex items-center justify-center relative overflow-hidden">
-                {/* Blurred product thumbnail as a preview while PDF loads */}
+              <div className="absolute inset-0 z-20 flex items-center justify-center overflow-hidden" style={{ background: "#EDEBE6" }}>
                 {product?.image && (
-                  <img
-                    src={product.image}
-                    alt=""
-                    className="absolute inset-0 w-full h-full object-contain opacity-20 blur-md pointer-events-none select-none"
-                  />
+                  <img src={product.image} alt="" className="absolute inset-0 w-full h-full object-contain opacity-20 blur-md pointer-events-none select-none" />
                 )}
                 <div className="relative text-center z-10">
                   <div className="w-10 h-10 border-2 border-ink border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -748,8 +743,9 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
               </div>
             )}
 
+            {/* Error state */}
             {!pdfLoading && pdfError && (
-              <div className="flex-1 flex items-center justify-center px-6">
+              <div className="absolute inset-0 z-20 flex items-center justify-center px-6" style={{ background: "#EDEBE6" }}>
                 <div className="text-center max-w-sm">
                   <BookOpen size={40} strokeWidth={1.2} className="text-ink-muted mx-auto mb-4" />
                   <p className="font-serif text-xl text-ink mb-2">Coloring pages coming soon</p>
@@ -758,7 +754,8 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
               </div>
             )}
 
-            {!pdfLoading && !pdfError && (
+            {/* Canvases always stay in the DOM so refs are valid during PDF rendering */}
+            {true && (
               <>
                 {/* Canvas + navigation */}
                 <div className="flex-1 relative overflow-hidden min-h-0">
