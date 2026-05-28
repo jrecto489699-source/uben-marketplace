@@ -519,15 +519,20 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
                 </p>
                 <div className="flex items-center gap-2">
                   <button onClick={() => adjustBrushSize(-2)}
-                    className="w-7 h-7 rounded-full bg-[#EDEBE6] hover:bg-card-hover flex items-center justify-center transition-colors">
+                    className="w-7 h-7 rounded-full bg-[#EDEBE6] hover:bg-card-hover flex items-center justify-center transition-colors shrink-0">
                     <Minus size={12} />
                   </button>
-                  <div className="flex-1 h-1.5 bg-[#EDEBE6] rounded-full relative">
-                    <div className="absolute left-0 top-0 h-full bg-ink rounded-full"
-                      style={{ width: `${((brushSize - 2) / 46) * 100}%` }} />
-                  </div>
+                  <input
+                    type="range"
+                    min={2}
+                    max={48}
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                    className="flex-1 cursor-pointer"
+                    style={{ accentColor: "#222" }}
+                  />
                   <button onClick={() => adjustBrushSize(2)}
-                    className="w-7 h-7 rounded-full bg-[#EDEBE6] hover:bg-card-hover flex items-center justify-center transition-colors">
+                    className="w-7 h-7 rounded-full bg-[#EDEBE6] hover:bg-card-hover flex items-center justify-center transition-colors shrink-0">
                     <Plus size={12} />
                   </button>
                 </div>
