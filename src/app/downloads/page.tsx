@@ -19,15 +19,6 @@ const CATEGORY_ORDER = [
   "Printables",
 ];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Worksheets:  "bg-blue-50 text-blue-700 border-blue-200",
-  Coloring:    "bg-pink-50 text-pink-700 border-pink-200",
-  Storybooks:  "bg-purple-50 text-purple-700 border-purple-200",
-  Activities:  "bg-green-50 text-green-700 border-green-200",
-  Flashcards:  "bg-yellow-50 text-yellow-700 border-yellow-200",
-  "Party Kits":"bg-orange-50 text-orange-700 border-orange-200",
-  Printables:  "bg-[#134A4F]/10 text-[#134A4F] border-[#134A4F]/20",
-};
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -111,7 +102,6 @@ export default function DownloadsPage() {
               {categories.map((cat) => {
                 const items = grouped[cat];
                 const isCollapsed = collapsed[cat];
-                const chipClass = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS["Printables"];
 
                 return (
                   <div key={cat} className="bg-white rounded-2xl border border-border-muted overflow-hidden">
@@ -120,7 +110,7 @@ export default function DownloadsPage() {
                       onClick={() => toggleCollapse(cat)}
                       className="w-full flex items-center gap-3 px-5 py-4 hover:bg-card-hover transition-colors duration-150 text-left"
                     >
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${chipClass}`}>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-ink text-cream">
                         {cat}
                       </span>
                       <span className="text-xs text-ink-muted">
