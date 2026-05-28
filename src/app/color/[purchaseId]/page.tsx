@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState, useCallback } from "react";
 import {
-  Paintbrush, Droplets, Eraser, Hand, Undo2, Trash2, Download,
+  Paintbrush, Droplets, Eraser, Hand, Undo2, Redo2, Trash2, Download,
   ArrowLeft, Minus, Plus, ZoomIn, ZoomOut, Maximize, Minimize,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -47,6 +47,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   const viewportRef   = useRef<HTMLDivElement>(null);
   const lastPos       = useRef<{ x: number; y: number } | null>(null);
   const historyRef    = useRef<ImageData[]>([]);
+  const redoRef       = useRef<ImageData[]>([]);
   const isDrawingRef  = useRef(false);
   const cursorRef     = useRef<HTMLDivElement>(null);
   const zoomRef       = useRef(1);             // kept in sync with zoom state for event handlers
@@ -58,6 +59,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   const [color, setColor]         = useState("#EF4444");
   const [brushSize, setBrushSize] = useState(14);
   const [canUndo, setCanUndo]     = useState(false);
+  const [canRedo, setCanRedo]     = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [saved, setSaved]           = useState(false);
   const [cloudSaving, setCloudSaving] = useState(false);
@@ -167,10 +169,13 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
       // Ctrl/Cmd+Z → undo
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
-        const snap = historyRef.current.pop();
-        if (!snap) return;
-        canvasRef.current?.getContext("2d")?.putImageData(snap, 0, 0);
-        setCanUndo(historyRef.current.length > 0);
+        undo();
+        return;
+      }
+      // Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z → redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+        e.preventDefault();
+        redo();
         return;
       }
       // Space → temporary pan
@@ -244,7 +249,10 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     const snap = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
     if (historyRef.current.length >= MAX_HISTORY) historyRef.current.shift();
     historyRef.current.push(snap);
+    // New action clears redo stack
+    redoRef.current = [];
     setCanUndo(true);
+    setCanRedo(false);
   }
 
   // ── Flood fill ──────────────────────────────────────────────────────────────
@@ -443,10 +451,27 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   }
 
   function undo() {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
     const snap = historyRef.current.pop();
-    if (!snap) return;
-    canvasRef.current?.getContext("2d")?.putImageData(snap, 0, 0);
+    if (!snap || !ctx || !canvas) return;
+    // Save current state to redo stack before restoring
+    redoRef.current.push(ctx.getImageData(0, 0, CANVAS_W, CANVAS_H));
+    ctx.putImageData(snap, 0, 0);
     setCanUndo(historyRef.current.length > 0);
+    setCanRedo(true);
+  }
+
+  function redo() {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    const snap = redoRef.current.pop();
+    if (!snap || !ctx || !canvas) return;
+    // Save current state to undo stack before restoring
+    historyRef.current.push(ctx.getImageData(0, 0, CANVAS_W, CANVAS_H));
+    ctx.putImageData(snap, 0, 0);
+    setCanRedo(redoRef.current.length > 0);
+    setCanUndo(true);
   }
 
   function clear() {
@@ -657,6 +682,11 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
                 <Undo2 size={14} />
                 Undo  <span className="ml-auto text-[10px] text-ink-muted">Ctrl+Z</span>
               </button>
+              <button onClick={redo} disabled={!canRedo}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-ink hover:bg-[#EDEBE6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                <Redo2 size={14} />
+                Redo  <span className="ml-auto text-[10px] text-ink-muted">Ctrl+Y</span>
+              </button>
               <button onClick={clear}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-ink hover:bg-[#EDEBE6] transition-colors">
                 <Trash2 size={14} />
@@ -776,6 +806,10 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
           <button onClick={undo} disabled={!canUndo}
             className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#EDEBE6] shrink-0 disabled:opacity-40">
             <Undo2 size={15} />
+          </button>
+          <button onClick={redo} disabled={!canRedo}
+            className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#EDEBE6] shrink-0 disabled:opacity-40">
+            <Redo2 size={15} />
           </button>
           <button onClick={clear} className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#EDEBE6] shrink-0">
             <Trash2 size={15} />
