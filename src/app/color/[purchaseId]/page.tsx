@@ -15,6 +15,11 @@ import { allProducts } from "@/data/products";
 const DRAWINGS_BUCKET = "colorings";
 const CANVAS_W = 800;
 const CANVAS_H = 1040; // Portrait — fits standard coloring book pages
+// Overlay canvas is rendered at 2× the drawing canvas resolution so PDF
+// lines are crisp on HiDPI screens without affecting drawing math.
+const OVERLAY_SCALE = 2;
+const OVERLAY_W = CANVAS_W * OVERLAY_SCALE;
+const OVERLAY_H = CANVAS_H * OVERLAY_SCALE;
 const MAX_HISTORY = 15;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
@@ -110,13 +115,17 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
   // ── Render a PDF page to the overlay canvas ───────────────────────────────
+  // Renders at OVERLAY_SCALE (2×) so lines are crisp on HiDPI screens.
+  // The overlay canvas is OVERLAY_W × OVERLAY_H but displayed at the same
+  // CSS size as the drawing canvas via w-full h-full.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function renderPageToOverlay(doc: any, pageIndex: number) {
     const canvas = overlayRef.current;
     if (!canvas) return;
     const page = await doc.getPage(pageIndex + 1);
     const natural = page.getViewport({ scale: 1 });
-    const scale = Math.min(CANVAS_W / natural.width, CANVAS_H / natural.height);
+    // Render at 2× to fill OVERLAY_W × OVERLAY_H
+    const scale = Math.min(OVERLAY_W / natural.width, OVERLAY_H / natural.height);
     const vp = page.getViewport({ scale });
     const tmp = document.createElement("canvas");
     tmp.width  = Math.round(vp.width);
@@ -124,11 +133,9 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     await page.render({ canvasContext: tmp.getContext("2d")!, viewport: vp }).promise;
     const ctx = canvas.getContext("2d")!;
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    // Enhance lines: boost contrast to make outlines crisp black and
-    // background clean white. saturate(0) removes any color tint from the PDF.
+    ctx.fillRect(0, 0, OVERLAY_W, OVERLAY_H);
     ctx.filter = "saturate(0) contrast(2) brightness(1.1)";
-    ctx.drawImage(tmp, Math.round((CANVAS_W - tmp.width) / 2), Math.round((CANVAS_H - tmp.height) / 2));
+    ctx.drawImage(tmp, Math.round((OVERLAY_W - tmp.width) / 2), Math.round((OVERLAY_H - tmp.height) / 2));
     ctx.filter = "none";
   }
 
@@ -410,7 +417,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     const imageData = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
     const d = imageData.data;
     let od: Uint8ClampedArray | null = null;
-    if (overlay) { const oc = overlay.getContext("2d"); if (oc) od = oc.getImageData(0, 0, CANVAS_W, CANVAS_H).data; }
+    if (overlay) { const oc = overlay.getContext("2d"); if (oc) od = oc.getImageData(0, 0, OVERLAY_W, OVERLAY_H).data; }
     const xi = Math.floor(startX), yi = Math.floor(startY);
     if (xi < 0 || xi >= CANVAS_W || yi < 0 || yi >= CANVAS_H) return;
     const px = (yi * CANVAS_W + xi) * 4;
@@ -422,7 +429,13 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     const tol = 28;
     const visited = new Uint8Array(CANVAS_W * CANVAS_H);
     const match  = (i: number) => Math.abs(d[i] - tR) <= tol && Math.abs(d[i+1] - tG) <= tol && Math.abs(d[i+2] - tB) <= tol;
-    const isLine = (pos: number) => od != null && od[pos * 4] < 100 && od[pos * 4 + 3] > 128;
+    // Map drawing-canvas pixel position to overlay-canvas pixel (overlay is OVERLAY_SCALE×)
+    const isLine = (pos: number) => {
+      if (!od) return false;
+      const x = pos % CANVAS_W, y = (pos - x) / CANVAS_W;
+      const oi = ((y * OVERLAY_SCALE) * OVERLAY_W + (x * OVERLAY_SCALE)) * 4;
+      return od[oi] < 100 && od[oi + 3] > 128;
+    };
     const stack = [xi + yi * CANVAS_W];
     while (stack.length > 0) {
       const pos = stack.pop()!;
@@ -790,8 +803,8 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
                           onTouchStart={handlePointerDown} onTouchMove={handlePointerMove}
                           onTouchEnd={handlePointerUp} />
 
-                        {/* Outline overlay */}
-                        <canvas ref={overlayRef} width={CANVAS_W} height={CANVAS_H}
+                        {/* Outline overlay — 2× internal resolution for crisp HiDPI lines */}
+                        <canvas ref={overlayRef} width={OVERLAY_W} height={OVERLAY_H}
                           className="absolute inset-0 w-full h-full rounded-2xl pointer-events-none"
                           style={{ mixBlendMode: "multiply", opacity: imageLoaded ? 1 : 0, transition: "opacity 0.2s" }} />
 
