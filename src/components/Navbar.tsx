@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp, LogOut, ChevronDown, Download } from "lucide-react";
+import { Search, Heart, ShoppingCart, Menu, X, User, TrendingUp, LogOut, ChevronDown, Download, RefreshCw } from "lucide-react";
 import UbenLogo from "@/components/UbenLogo";
 import { useCategory } from "@/context/CategoryContext";
 import { useCart } from "@/context/CartContext";
@@ -349,23 +349,24 @@ export default function Navbar() {
           {user ? (
             <div ref={userMenuRef} className="relative">
               <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                onClick={() => setUserMenuOpen((o) => !o)}
                 className="flex items-center gap-1.5 h-9 px-3 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200"
               >
                 <div className="w-6 h-6 rounded-full bg-ink text-cream flex items-center justify-center text-[11px] font-bold shrink-0">
                   {(user.user_metadata?.full_name || user.email || "U")[0].toUpperCase()}
                 </div>
                 <span className="max-w-[100px] truncate">{user.user_metadata?.full_name || user.email?.split("@")[0]}</span>
-                <ChevronDown size={12} strokeWidth={2.5} />
+                <ChevronDown size={12} strokeWidth={2.5} className={`transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`} />
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-[60]">
                   <div className="px-4 py-3 border-b border-border-muted">
                     <p className="text-xs font-semibold text-ink truncate">{user.user_metadata?.full_name || "My Account"}</p>
                     <p className="text-[11px] text-ink-muted truncate">{user.email}</p>
                   </div>
                   <a
                     href="/downloads"
+                    onClick={() => setUserMenuOpen(false)}
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"
                   >
                     <Download size={14} strokeWidth={1.75} />
@@ -373,11 +374,23 @@ export default function Navbar() {
                   </a>
                   <div className="h-px bg-border-muted" />
                   <button
-                    onClick={signOut}
+                    onClick={() => { setUserMenuOpen(false); signOut(); }}
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink hover:bg-card-hover transition-colors duration-150"
                   >
                     <LogOut size={14} strokeWidth={1.75} />
                     Sign out
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setUserMenuOpen(false);
+                      const { createClient: makeClient } = await import("@/lib/supabase/client");
+                      await makeClient().auth.signOut();
+                      window.location.href = "/signin";
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink-muted hover:bg-card-hover hover:text-ink transition-colors duration-150"
+                  >
+                    <RefreshCw size={14} strokeWidth={1.75} />
+                    Switch account
                   </button>
                 </div>
               )}
@@ -454,13 +467,13 @@ export default function Navbar() {
           {user ? (
             <div ref={userMenuRef} className="relative">
               <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                onClick={() => setUserMenuOpen((o) => !o)}
                 className="flex items-center justify-center w-8 h-8 rounded-full bg-ink text-cream text-[11px] font-bold hover:bg-[#3a3a3a] transition-colors duration-200"
               >
                 {(user.user_metadata?.full_name || user.email || "U")[0].toUpperCase()}
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl border border-border-muted shadow-xl overflow-hidden z-[60]">
                   <div className="px-4 py-3 border-b border-border-muted">
                     <p className="text-xs font-semibold text-ink truncate">{user.user_metadata?.full_name || "My Account"}</p>
                     <p className="text-[11px] text-ink-muted truncate">{user.email}</p>
@@ -480,6 +493,18 @@ export default function Navbar() {
                   >
                     <LogOut size={14} strokeWidth={1.75} />
                     Sign out
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setUserMenuOpen(false);
+                      const { createClient: makeClient } = await import("@/lib/supabase/client");
+                      await makeClient().auth.signOut();
+                      window.location.href = "/signin";
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-ink-muted hover:bg-card-hover hover:text-ink transition-colors duration-150"
+                  >
+                    <RefreshCw size={14} strokeWidth={1.75} />
+                    Switch account
                   </button>
                 </div>
               )}
