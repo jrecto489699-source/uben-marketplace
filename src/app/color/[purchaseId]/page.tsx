@@ -79,7 +79,6 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
   const prevToolRef   = useRef<Tool>("brush");
   const panStartRef   = useRef<{ clientX: number; clientY: number; scrollLeft: number; scrollTop: number } | null>(null);
   const cloudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartXRef = useRef<number | null>(null);
 
   // ── Per-page state ────────────────────────────────────────────────────────
   const pageDrawingsRef  = useRef<Record<number, ImageData>>({});
@@ -528,20 +527,6 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     if (isDrawingRef.current) { isDrawingRef.current = false; lastPos.current = null; autoSave(); }
   }
 
-  // ── Touch swipe for page navigation ──────────────────────────────────────
-  // Only swipe when NOT drawing (tool is pan, or no drawing in progress)
-  function handleTouchStartNav(e: React.TouchEvent) {
-    if (tool !== "pan") return; // only allow swipe when in pan mode
-    touchStartXRef.current = e.touches[0].clientX;
-  }
-  function handleTouchEndNav(e: React.TouchEvent) {
-    if (touchStartXRef.current === null || tool !== "pan") return;
-    const diff = touchStartXRef.current - e.changedTouches[0].clientX;
-    if (diff > 60) nextPage();
-    else if (diff < -60) prevPage();
-    touchStartXRef.current = null;
-  }
-
   // ── Auto-save ─────────────────────────────────────────────────────────────
   function autoSave() {
     const canvas = canvasRef.current;
@@ -781,9 +766,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
                     }}>
                       {/* Canvas wrapper */}
                       <div className="relative select-none"
-                        style={{ width: 680, height: Math.round(680 * (CANVAS_H / CANVAS_W)) }}
-                        onTouchStart={handleTouchStartNav}
-                        onTouchEnd={handleTouchEndNav}>
+                        style={{ width: 680, height: Math.round(680 * (CANVAS_H / CANVAS_W)) }}>
 
                         {/* Page loading overlay */}
                         {pageLoading && (
