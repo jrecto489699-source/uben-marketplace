@@ -735,6 +735,16 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     </div>
                   )}
 
+                  {/* Fully revealed banner — no background, sits over the canvas */}
+                  {isRevealed && (
+                    <div className="absolute inset-x-0 top-4 flex justify-center pointer-events-none animate-bounce">
+                      <p className="font-serif text-lg sm:text-xl font-bold text-white"
+                        style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7)" }}>
+                        🎉 Fully revealed! Hit Reset to scratch again.
+                      </p>
+                    </div>
+                  )}
+
                 </div>
               </div>
 
