@@ -12,16 +12,6 @@ import { allProducts } from "@/data/products";
 const CANVAS_W = 800;
 const CANVAS_H = 1040;
 
-// ── PDF.js ────────────────────────────────────────────────────────────────────
-let _pdfjs: typeof import("pdfjs-dist") | null = null;
-async function getPdfJs() {
-  if (!_pdfjs) {
-    _pdfjs = await import("pdfjs-dist");
-    _pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-  }
-  return _pdfjs;
-}
-
 // ── Confetti particle ─────────────────────────────────────────────────────────
 interface Particle {
   x: number; y: number; vx: number; vy: number;
@@ -29,9 +19,7 @@ interface Particle {
   rotation: number; rotSpeed: number;
 }
 
-// ── Rainbow color themes ──────────────────────────────────────────────────────
-// Applied over the white lines of the scratch art via multiply blend:
-// black bg × color = black (stays dark), white lines × color = color (reveals!)
+// ── Color themes — applied over white lines via multiply blend ────────────────
 type ThemeId = "rainbow" | "galaxy" | "sunset" | "ocean";
 const THEMES: { id: ThemeId; name: string; emoji: string; stops: [number, string][] }[] = [
   {
@@ -59,6 +47,29 @@ function buildGradient(ctx: CanvasRenderingContext2D, themeId: ThemeId) {
   return g;
 }
 
+// ── Load an image URL into an HTMLImageElement ────────────────────────────────
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload  = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// ── Draw image centered + scaled on canvas ────────────────────────────────────
+function drawImageCentered(ctx: CanvasRenderingContext2D, img: HTMLImageElement) {
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  const scale = Math.min(CANVAS_W / img.naturalWidth, CANVAS_H / img.naturalHeight);
+  const dw = img.naturalWidth  * scale;
+  const dh = img.naturalHeight * scale;
+  const dx = Math.round((CANVAS_W - dw) / 2);
+  const dy = Math.round((CANVAS_H - dh) / 2);
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
 export default function ScratchPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
   const { purchases, loading } = usePurchases();
@@ -66,152 +77,139 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const purchase = purchases.find(p => p.id === purchaseId);
   const product  = purchase ? allProducts.find(p => p.id === purchase.product_id) : null;
 
-  // ── Refs ──────────────────────────────────────────────────────────────────
-  // revealRef  = bottom layer: PDF with rainbow colors (what gets uncovered)
-  // scratchRef = top layer:    PDF normally rendered (white lines on black — gets scratched away)
-  // confettiRef = celebration layer
+  // ── Canvas refs ───────────────────────────────────────────────────────────
+  // revealRef  = bottom: image + rainbow colors (what gets uncovered)
+  // scratchRef = top:    image normally (white lines on black — gets scratched)
   const revealRef    = useRef<HTMLCanvasElement>(null);
   const scratchRef   = useRef<HTMLCanvasElement>(null);
   const confettiRef  = useRef<HTMLCanvasElement>(null);
   const thumbStripRef = useRef<HTMLDivElement>(null);
 
-  const lastPos       = useRef<{ x: number; y: number } | null>(null);
-  const isDrawing     = useRef(false);
-  const animRef       = useRef<number | null>(null);
-  const particles     = useRef<Particle[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfDocRef     = useRef<any>(null);
+  const lastPos        = useRef<{ x: number; y: number } | null>(null);
+  const isDrawing      = useRef(false);
+  const animRef        = useRef<number | null>(null);
+  const particles      = useRef<Particle[]>([]);
+  const imageUrls      = useRef<string[]>([]);
+  const loadedImages   = useRef<Record<number, HTMLImageElement>>({});
   const currentPageRef = useRef(0);
 
   const [theme,          setTheme]          = useState<ThemeId>("rainbow");
-  const [brushSize,      setBrushSize]      = useState(10); // small default — like a coin tip
+  const [brushSize,      setBrushSize]      = useState(10);
   const [scratchPct,     setScratchPct]     = useState(0);
   const [isRevealed,     setIsRevealed]     = useState(false);
   const [isAutoClearing, setIsAutoClearing] = useState(false);
   const [isFullscreen,   setIsFullscreen]   = useState(false);
-  const [pdfLoading,     setPdfLoading]     = useState(true);
-  const [pdfError,       setPdfError]       = useState<string | null>(null);
+  const [imgLoading,     setImgLoading]     = useState(true);
+  const [imgError,       setImgError]       = useState<string | null>(null);
   const [totalPages,     setTotalPages]     = useState(0);
   const [currentPage,    setCurrentPage]    = useState(0);
   const [thumbnails,     setThumbnails]     = useState<string[]>([]);
   const [pageLoading,    setPageLoading]    = useState(false);
   const [saved,          setSaved]          = useState(false);
 
-  useEffect(() => { getPdfJs(); }, []);
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
-  // ── Render PDF page to a temporary canvas ─────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function renderPdfToTemp(doc: any, pageIndex: number): Promise<HTMLCanvasElement> {
-    const page = await doc.getPage(pageIndex + 1);
-    const natural = page.getViewport({ scale: 1 });
-    const scale = Math.min(CANVAS_W / natural.width, CANVAS_H / natural.height);
-    const vp = page.getViewport({ scale });
-    const tmp = document.createElement("canvas");
-    tmp.width  = Math.round(vp.width);
-    tmp.height = Math.round(vp.height);
-    await page.render({ canvasContext: tmp.getContext("2d")!, viewport: vp }).promise;
-    return tmp;
+  // ── Get or load image for a page ──────────────────────────────────────────
+  async function getImage(pageIndex: number): Promise<HTMLImageElement | null> {
+    if (loadedImages.current[pageIndex]) return loadedImages.current[pageIndex];
+    const url = imageUrls.current[pageIndex];
+    if (!url) return null;
+    try {
+      const img = await loadImage(url);
+      loadedImages.current[pageIndex] = img;
+      return img;
+    } catch { return null; }
   }
 
-  // ── Reveal layer: PDF + rainbow gradient (multiply blend) ─────────────────
-  // Black areas × gradient = black (stays dark background)
-  // White lines × gradient = rainbow (the "treasure" under the scratch)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function renderRevealLayer(doc: any, pageIndex: number, themeId: ThemeId) {
+  // ── Reveal layer: image + rainbow gradient (multiply) ─────────────────────
+  async function renderRevealLayer(pageIndex: number, themeId: ThemeId) {
     const canvas = revealRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    const tmp = await renderPdfToTemp(doc, pageIndex);
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    const x = Math.round((CANVAS_W - tmp.width) / 2);
-    const y = Math.round((CANVAS_H - tmp.height) / 2);
-    ctx.drawImage(tmp, x, y);
-    // Apply rainbow via multiply: white lines → rainbow, black bg → stays black
+    const img = await getImage(pageIndex);
+    if (!img) return;
+    drawImageCentered(ctx, img);
+    // multiply: white lines → rainbow color, black bg → stays black
     ctx.globalCompositeOperation = "multiply";
     ctx.fillStyle = buildGradient(ctx, themeId);
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     ctx.globalCompositeOperation = "source-over";
   }
 
-  // ── Scratch/coating layer: PDF rendered normally (white lines on black) ───
-  // This is what the user sees initially and scratches away.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function renderScratchLayer(doc: any, pageIndex: number) {
+  // ── Scratch layer: image normally (white lines on black) ──────────────────
+  async function renderScratchLayer(pageIndex: number) {
     const canvas = scratchRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    const tmp = await renderPdfToTemp(doc, pageIndex);
+    const img = await getImage(pageIndex);
+    if (!img) return;
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    const x = Math.round((CANVAS_W - tmp.width) / 2);
-    const y = Math.round((CANVAS_H - tmp.height) / 2);
-    ctx.drawImage(tmp, x, y);
+    drawImageCentered(ctx, img);
     canvas.style.opacity = "1";
   }
 
-  // ── Render thumbnails ─────────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function renderThumbnails(doc: any) {
+  // ── Load all image URLs from API ──────────────────────────────────────────
+  useEffect(() => {
+    if (!purchase?.id) return;
+    async function load() {
+      setImgLoading(true); setImgError(null);
+      try {
+        const res = await fetch(`/api/scratch-images/${purchase!.id}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setImgError(body.error ?? "Scratch images not available yet");
+          setImgLoading(false); return;
+        }
+        const { urls, total } = await res.json();
+        imageUrls.current = urls;
+        setTotalPages(total);
+        // Render first page
+        await Promise.all([
+          renderRevealLayer(0, theme),
+          renderScratchLayer(0),
+        ]);
+        setImgLoading(false);
+        setScratchPct(0); setIsRevealed(false);
+        // Build thumbnails from already-loaded image for page 0
+        buildThumbnails(urls);
+      } catch {
+        setImgError("Failed to load scratch images");
+        setImgLoading(false);
+      }
+    }
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purchase?.id]);
+
+  // ── Build thumbnail data URLs ─────────────────────────────────────────────
+  async function buildThumbnails(urls: string[]) {
     const result: string[] = [];
-    for (let i = 0; i < doc.numPages; i++) {
-      const page = await doc.getPage(i + 1);
-      const natural = page.getViewport({ scale: 1 });
-      const vp = page.getViewport({ scale: 120 / natural.width });
-      const c = document.createElement("canvas");
-      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-      await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
-      result.push(c.toDataURL("image/jpeg", 0.7));
+    for (let i = 0; i < urls.length; i++) {
+      try {
+        const img = await getImage(i);
+        if (!img) { result.push(""); setThumbnails([...result]); continue; }
+        const c = document.createElement("canvas");
+        const scale = 120 / img.naturalWidth;
+        c.width  = Math.round(img.naturalWidth  * scale);
+        c.height = Math.round(img.naturalHeight * scale);
+        const ctx = c.getContext("2d")!;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        result.push(c.toDataURL("image/jpeg", 0.7));
+      } catch { result.push(""); }
       setThumbnails([...result]);
     }
   }
 
-  // ── Load PDF ──────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!purchase?.id) return;
-    async function loadPdf() {
-      setPdfLoading(true); setPdfError(null);
-      try {
-        const [res, lib] = await Promise.all([
-          fetch(`/api/scratch-pdf/${purchase!.id}`),
-          getPdfJs(),
-        ]);
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          setPdfError(body.error ?? "Scratch PDF not available yet");
-          setPdfLoading(false); return;
-        }
-        const { url } = await res.json();
-        const doc = await lib.getDocument({ url, rangeChunkSize: 65536, disableAutoFetch: true }).promise;
-        pdfDocRef.current = doc;
-        setTotalPages(doc.numPages);
-        await Promise.all([
-          renderRevealLayer(doc, 0, theme),
-          renderScratchLayer(doc, 0),
-        ]);
-        setPdfLoading(false);
-        setScratchPct(0); setIsRevealed(false);
-        renderThumbnails(doc);
-      } catch {
-        setPdfError("Failed to load scratch book");
-        setPdfLoading(false);
-      }
-    }
-    loadPdf();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [purchase?.id]);
-
   // ── Switch page ───────────────────────────────────────────────────────────
   async function switchPage(newPage: number) {
-    const doc = pdfDocRef.current;
-    if (!doc || newPage < 0 || newPage >= totalPages || newPage === currentPageRef.current) return;
+    if (newPage < 0 || newPage >= totalPages || newPage === currentPageRef.current) return;
     setPageLoading(true);
     setCurrentPage(newPage); setIsRevealed(false); setScratchPct(0);
     await Promise.all([
-      renderRevealLayer(doc, newPage, theme),
-      renderScratchLayer(doc, newPage),
+      renderRevealLayer(newPage, theme),
+      renderScratchLayer(newPage),
     ]);
     setPageLoading(false);
     setTimeout(() => {
@@ -260,18 +258,15 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     return { x: (m.clientX - rect.left) * sx, y: (m.clientY - rect.top) * sy };
   }
 
-  // ── Scratch stroke — hard-edged line (like a real coin/stylus) ────────────
+  // ── Scratch stroke (hard-edged line like a coin/stylus) ───────────────────
   function scratchStroke(from: { x: number; y: number }, to: { x: number; y: number }, size: number) {
     const ctx = scratchRef.current?.getContext("2d");
     if (!ctx) return;
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
+    ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y);
     ctx.strokeStyle = "rgba(0,0,0,1)";
-    ctx.lineWidth   = size * 2;
-    ctx.lineCap     = "round";
-    ctx.lineJoin    = "round";
+    ctx.lineWidth = size * 2; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.stroke();
   }
 
@@ -279,13 +274,11 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     const ctx = scratchRef.current?.getContext("2d");
     if (!ctx) return;
     ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,1)";
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,1)"; ctx.fill();
   }
 
-  // ── Check scratch % (sample every 4th pixel for performance) ──────────────
+  // ── Check scratch % ───────────────────────────────────────────────────────
   function checkPercent() {
     const ctx = scratchRef.current?.getContext("2d");
     if (!ctx) return;
@@ -298,7 +291,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (pct >= 70 && !isRevealed && !isAutoClearing) autoClear();
   }
 
-  // ── Auto-clear: fade away remaining coating ───────────────────────────────
+  // ── Auto-clear ────────────────────────────────────────────────────────────
   async function autoClear() {
     setIsAutoClearing(true);
     navigator.vibrate?.([80, 40, 160, 40, 300]);
@@ -349,7 +342,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
   // ── Pointer handlers ──────────────────────────────────────────────────────
   const onPointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (isRevealed || isAutoClearing || pdfLoading || pdfError) return;
+    if (isRevealed || isAutoClearing || imgLoading || !!imgError) return;
     e.preventDefault();
     isDrawing.current = true;
     const pos = getPos(e.nativeEvent as MouseEvent | TouchEvent);
@@ -358,7 +351,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     lastPos.current = pos;
     navigator.vibrate?.(5);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRevealed, isAutoClearing, pdfLoading, pdfError, brushSize]);
+  }, [isRevealed, isAutoClearing, imgLoading, imgError, brushSize]);
 
   const onPointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing.current || isRevealed || isAutoClearing) return;
@@ -377,11 +370,10 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRevealed, isAutoClearing]);
 
-  // ── Change theme (re-render reveal layer, keep scratch progress) ──────────
+  // ── Change theme ──────────────────────────────────────────────────────────
   async function changeTheme(t: ThemeId) {
     setTheme(t);
-    const doc = pdfDocRef.current;
-    if (doc) await renderRevealLayer(doc, currentPageRef.current, t);
+    await renderRevealLayer(currentPageRef.current, t);
   }
 
   // ── Reset current page ────────────────────────────────────────────────────
@@ -389,8 +381,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (animRef.current) cancelAnimationFrame(animRef.current);
     particles.current = [];
     confettiRef.current?.getContext("2d")?.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    const doc = pdfDocRef.current;
-    if (doc) await renderScratchLayer(doc, currentPageRef.current);
+    await renderScratchLayer(currentPageRef.current);
     setScratchPct(0); setIsRevealed(false); setIsAutoClearing(false);
   }
 
@@ -457,7 +448,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             </div>
           )}
 
-          {!pdfLoading && !pdfError && (
+          {!imgLoading && !imgError && (
             <div className="hidden md:flex items-center gap-2 shrink-0">
               <div className="w-20 h-1.5 rounded-full bg-card-hover overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-300"
@@ -469,7 +460,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
           <span className={`text-[11px] shrink-0 transition-opacity duration-300 ${saved ? "opacity-100 text-[#258635]" : "opacity-0"}`}>Saved</span>
 
-          {!pdfError && (
+          {!imgError && (
             <button onClick={reset}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#EDEBE6] hover:bg-card-hover text-ink text-xs font-medium transition-colors shrink-0">
               <RotateCcw size={12} />Reset
@@ -493,7 +484,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
           {/* Sidebar — desktop */}
           <aside className="hidden md:flex flex-col gap-5 w-56 bg-cream border-r border-border-muted p-4 overflow-y-auto shrink-0">
 
-            {/* Color theme */}
             <div>
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Reveal Color</p>
               <div className="flex flex-col gap-1">
@@ -508,7 +498,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               </div>
             </div>
 
-            {/* Brush size */}
             <div>
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
                 Scratch Size — {brushSize}px
@@ -516,7 +505,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               <input type="range" min={4} max={40} value={brushSize}
                 onChange={e => setBrushSize(Number(e.target.value))}
                 className="w-full cursor-pointer mb-3" style={{ accentColor: "#222" }} />
-              {/* Size presets */}
               <div className="flex gap-2">
                 {[{ label: "Fine", size: 6 }, { label: "Med", size: 14 }, { label: "Wide", size: 28 }].map(b => (
                   <button key={b.size} onClick={() => setBrushSize(b.size)}
@@ -528,8 +516,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               </div>
             </div>
 
-            {/* Progress */}
-            {!pdfLoading && !pdfError && (
+            {!imgLoading && !imgError && (
               <div>
                 <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Revealed</p>
                 <div className="w-full h-2 rounded-full bg-card-hover overflow-hidden mb-1">
@@ -553,7 +540,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
           <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
 
             {/* Loading overlay */}
-            {pdfLoading && (
+            {imgLoading && (
               <div className="absolute inset-0 z-20 flex items-center justify-center" style={{ background: "#EDEBE6" }}>
                 {product?.image && (
                   <img src={product.image} alt="" className="absolute inset-0 w-full h-full object-contain opacity-20 blur-md pointer-events-none select-none" />
@@ -566,7 +553,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             )}
 
             {/* Error */}
-            {!pdfLoading && pdfError && (
+            {!imgLoading && imgError && (
               <div className="absolute inset-0 z-20 flex items-center justify-center px-6" style={{ background: "#EDEBE6" }}>
                 <div className="text-center max-w-sm">
                   <Sparkles size={40} strokeWidth={1.2} className="text-ink-muted mx-auto mb-4" />
@@ -588,11 +575,11 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     </div>
                   )}
 
-                  {/* Layer 1 — Reveal: PDF with rainbow colors */}
+                  {/* Layer 1 — Reveal: image + rainbow colors */}
                   <canvas ref={revealRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full" />
 
-                  {/* Layer 2 — Scratch: PDF normally (white lines on black) — erased on scratch */}
+                  {/* Layer 2 — Scratch: image normally (white lines on black) */}
                   <canvas ref={scratchRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full"
                     style={{ cursor: isRevealed ? "default" : "crosshair", touchAction: "none" }}
@@ -606,7 +593,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     className="absolute inset-0 w-full h-full pointer-events-none" />
 
                   {/* Hint */}
-                  {!pdfLoading && !pdfError && scratchPct === 0 && !isRevealed && (
+                  {!imgLoading && !imgError && scratchPct === 0 && !isRevealed && (
                     <div className="absolute inset-0 flex items-end justify-center pb-6 pointer-events-none">
                       <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
                         <Sparkles size={13} className="text-white/70" />
@@ -628,7 +615,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                 </div>
               </div>
 
-              {/* Page arrows */}
               {currentPage > 0 && (
                 <button onClick={prevPage}
                   className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-ink/80 hover:bg-ink text-cream flex items-center justify-center shadow-lg transition-colors">
@@ -644,7 +630,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             </div>
 
             {/* Thumbnail strip */}
-            {!pdfLoading && !pdfError && totalPages > 0 && (
+            {!imgLoading && !imgError && totalPages > 0 && (
               <div className="bg-[#E8E4DC] border-t border-border-muted shrink-0">
                 <div ref={thumbStripRef} className="flex gap-2 px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
                   {Array.from({ length: totalPages }).map((_, i) => (
