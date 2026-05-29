@@ -49,16 +49,19 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 // ── Draw image centered + scaled onto a canvas ────────────────────────────────
+// Returns the bounds (in canvas pixels) where the image was drawn so callers
+// can use it for scratch-percentage calculations.
 function drawImageCentered(ctx: CanvasRenderingContext2D, img: HTMLImageElement) {
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   const scale = Math.min(CANVAS_W / img.naturalWidth, CANVAS_H / img.naturalHeight);
-  const dw = img.naturalWidth  * scale;
-  const dh = img.naturalHeight * scale;
+  const dw = Math.round(img.naturalWidth  * scale);
+  const dh = Math.round(img.naturalHeight * scale);
   const dx = Math.round((CANVAS_W - dw) / 2);
   const dy = Math.round((CANVAS_H - dh) / 2);
   ctx.drawImage(img, dx, dy, dw, dh);
+  return { x: dx, y: dy, w: dw, h: dh };
 }
 
 export default function ScratchPage({ params }: { params: Promise<{ purchaseId: string }> }) {
@@ -88,6 +91,12 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const loadedScratchImages  = useRef<Record<number, HTMLImageElement>>({});
   const loadedRevealImages   = useRef<Record<number, HTMLImageElement>>({});
   const currentPageRef       = useRef(0);
+  // Bounds (x,y,w,h) of the image inside the canvas for the current page —
+  // used so the scratch % only counts pixels that are actually image area,
+  // not the black letterbox borders.
+  const imageBoundsRef       = useRef<{ x: number; y: number; w: number; h: number }>({
+    x: 0, y: 0, w: CANVAS_W, h: CANVAS_H,
+  });
 
   const [brushSize,      setBrushSize]      = useState(4);
   const [scratchPct,     setScratchPct]     = useState(0);
@@ -152,12 +161,26 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     return user ? `${user.id}/${purchaseId}/${pageIndex}.png` : null;
   }
 
+  // ── Compute & cache the image bounds for a page ──────────────────────────
+  async function computeBoundsForPage(pageIndex: number) {
+    const img = await getScratchImage(pageIndex);
+    if (!img) return;
+    const scale = Math.min(CANVAS_W / img.naturalWidth, CANVAS_H / img.naturalHeight);
+    const dw = Math.round(img.naturalWidth  * scale);
+    const dh = Math.round(img.naturalHeight * scale);
+    const dx = Math.round((CANVAS_W - dw) / 2);
+    const dy = Math.round((CANVAS_H - dh) / 2);
+    imageBoundsRef.current = { x: dx, y: dy, w: dw, h: dh };
+  }
+
   // ── Render scratch coating layer ──────────────────────────────────────────
   // 1. Try Supabase Storage (cross-device) → 2. localStorage → 3. fresh B&W
   async function renderScratchLayer(pageIndex: number) {
     const canvas = scratchRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
+    // Always update bounds for this page first (used by percentage calc)
+    await computeBoundsForPage(pageIndex);
 
     // 1. Cloud
     const path = cloudPath(pageIndex);
@@ -195,7 +218,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     // 3. Fresh B&W image
     const img = await getScratchImage(pageIndex);
     if (!img) return;
-    drawImageCentered(ctx, img);
+    imageBoundsRef.current = drawImageCentered(ctx, img);
     canvas.style.opacity = "1";
   }
 
@@ -355,13 +378,15 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     ctx.fillStyle = "rgba(0,0,0,1)"; ctx.fill();
   }
 
-  // ── Compute scratch % (sampled) ───────────────────────────────────────────
+  // ── Compute scratch % (only over the image bounds, not full canvas) ─────
   function computeScratchPct(): number {
     const ctx = scratchRef.current?.getContext("2d");
     if (!ctx) return 0;
-    const data = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H).data;
+    const { x, y, w, h } = imageBoundsRef.current;
+    if (w <= 0 || h <= 0) return 0;
+    const data = ctx.getImageData(x, y, w, h).data;
     let transparent = 0;
-    const step = 4, total = (CANVAS_W * CANVAS_H) / step;
+    const step = 4, total = (w * h) / step;
     for (let i = 3; i < data.length; i += 4 * step) { if (data[i] < 128) transparent++; }
     return Math.min(Math.round((transparent / total) * 100), 100);
   }
@@ -732,16 +757,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                         <Sparkles size={13} className="text-white/70" />
                         <p className="text-white/70 text-xs font-medium">Scratch to reveal!</p>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Fully revealed banner — no background, sits over the canvas */}
-                  {isRevealed && (
-                    <div className="absolute inset-x-0 top-4 flex justify-center pointer-events-none animate-bounce">
-                      <p className="font-serif text-lg sm:text-xl font-bold text-white"
-                        style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7)" }}>
-                        🎉 Fully revealed! Hit Reset to scratch again.
-                      </p>
                     </div>
                   )}
 
