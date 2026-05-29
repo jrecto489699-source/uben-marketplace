@@ -3,20 +3,16 @@
 import { use, useEffect, useRef, useState, useCallback } from "react";
 import {
   ArrowLeft, RotateCcw, Download, Maximize, Minimize,
-  Minus, Plus, ChevronLeft, ChevronRight, BookOpen, Sparkles,
+  ChevronLeft, ChevronRight, BookOpen, Sparkles,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
-import { useAuth } from "@/context/AuthContext";
-import { createClient } from "@/lib/supabase/client";
 import { allProducts } from "@/data/products";
 
-// ── Canvas ────────────────────────────────────────────────────────────────────
 const CANVAS_W = 800;
 const CANVAS_H = 1040;
-const SCRATCH_THRESHOLD = 65; // % scratched → auto-reveal
 
-// ── PDF.js (lazy, client-only) ────────────────────────────────────────────────
+// ── PDF.js ────────────────────────────────────────────────────────────────────
 let _pdfjs: typeof import("pdfjs-dist") | null = null;
 async function getPdfJs() {
   if (!_pdfjs) {
@@ -33,54 +29,62 @@ interface Particle {
   rotation: number; rotSpeed: number;
 }
 
-// ── Color themes applied over the revealed PDF page ──────────────────────────
+// ── Rainbow color themes ──────────────────────────────────────────────────────
+// Applied over the white lines of the scratch art via multiply blend:
+// black bg × color = black (stays dark), white lines × color = color (reveals!)
 type ThemeId = "rainbow" | "galaxy" | "sunset" | "ocean";
-const THEMES: { id: ThemeId; name: string; emoji: string; stops: string[] }[] = [
-  { id: "rainbow", name: "Rainbow",  emoji: "🌈", stops: ["#FF0040","#FF6600","#FFD700","#00DD44","#00AAFF","#AA44FF"] },
-  { id: "galaxy",  name: "Galaxy",   emoji: "✨", stops: ["#FF88FF","#AA00FF","#4400CC","#0044FF","#00CCFF"] },
-  { id: "sunset",  name: "Sunset",   emoji: "🌅", stops: ["#FF2D55","#FF6B35","#FFD700","#FF44AA","#AA00FF"] },
-  { id: "ocean",   name: "Ocean",    emoji: "🌊", stops: ["#00FFCC","#00AAFF","#0055FF","#00DDAA","#44FFAA"] },
+const THEMES: { id: ThemeId; name: string; emoji: string; stops: [number, string][] }[] = [
+  {
+    id: "rainbow", name: "Rainbow", emoji: "🌈",
+    stops: [[0,"#FF0040"],[0.2,"#FF6600"],[0.4,"#FFD700"],[0.6,"#00DD44"],[0.8,"#00AAFF"],[1,"#AA44FF"]],
+  },
+  {
+    id: "galaxy", name: "Galaxy", emoji: "✨",
+    stops: [[0,"#FF88FF"],[0.25,"#AA00FF"],[0.5,"#4400CC"],[0.75,"#00AAFF"],[1,"#FF44AA"]],
+  },
+  {
+    id: "sunset", name: "Sunset", emoji: "🌅",
+    stops: [[0,"#FF2D55"],[0.25,"#FF6B35"],[0.5,"#FFD700"],[0.75,"#FF44AA"],[1,"#AA00FF"]],
+  },
+  {
+    id: "ocean", name: "Ocean", emoji: "🌊",
+    stops: [[0,"#00FFCC"],[0.3,"#00AAFF"],[0.6,"#0055FF"],[0.85,"#00DDAA"],[1,"#44FFAA"]],
+  },
 ];
 
-function applyThemeGradient(ctx: CanvasRenderingContext2D, themeId: ThemeId) {
+function buildGradient(ctx: CanvasRenderingContext2D, themeId: ThemeId) {
   const t = THEMES.find(x => x.id === themeId)!;
-  const grad = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
-  t.stops.forEach((c, i) => grad.addColorStop(i / (t.stops.length - 1), c));
-  // multiply blend: white PDF areas become colorful, black lines stay dark
-  ctx.globalCompositeOperation = "multiply";
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  ctx.globalCompositeOperation = "source-over";
+  const g = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
+  t.stops.forEach(([pos, color]) => g.addColorStop(pos, color));
+  return g;
 }
 
 export default function ScratchPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
   const { purchases, loading } = usePurchases();
-  const { user } = useAuth();
-  const supabase = createClient();
 
   const purchase = purchases.find(p => p.id === purchaseId);
   const product  = purchase ? allProducts.find(p => p.id === purchase.product_id) : null;
 
-  // ── Canvas refs ───────────────────────────────────────────────────────────
-  const revealRef    = useRef<HTMLCanvasElement>(null); // PDF + color gradient
-  const scratchRef   = useRef<HTMLCanvasElement>(null); // black coating
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  // revealRef  = bottom layer: PDF with rainbow colors (what gets uncovered)
+  // scratchRef = top layer:    PDF normally rendered (white lines on black — gets scratched away)
+  // confettiRef = celebration layer
+  const revealRef    = useRef<HTMLCanvasElement>(null);
+  const scratchRef   = useRef<HTMLCanvasElement>(null);
   const confettiRef  = useRef<HTMLCanvasElement>(null);
   const thumbStripRef = useRef<HTMLDivElement>(null);
 
-  // ── Drawing refs ──────────────────────────────────────────────────────────
-  const lastPos    = useRef<{ x: number; y: number } | null>(null);
-  const isDrawing  = useRef(false);
-  const animRef    = useRef<number | null>(null);
-  const particles  = useRef<Particle[]>([]);
+  const lastPos       = useRef<{ x: number; y: number } | null>(null);
+  const isDrawing     = useRef(false);
+  const animRef       = useRef<number | null>(null);
+  const particles     = useRef<Particle[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfDocRef  = useRef<any>(null);
-  const pageDataRef = useRef<Record<number, string>>({}); // page → scratch dataURL
+  const pdfDocRef     = useRef<any>(null);
   const currentPageRef = useRef(0);
 
-  // ── State ─────────────────────────────────────────────────────────────────
   const [theme,          setTheme]          = useState<ThemeId>("rainbow");
-  const [brushSize,      setBrushSize]      = useState(40);
+  const [brushSize,      setBrushSize]      = useState(10); // small default — like a coin tip
   const [scratchPct,     setScratchPct]     = useState(0);
   const [isRevealed,     setIsRevealed]     = useState(false);
   const [isAutoClearing, setIsAutoClearing] = useState(false);
@@ -96,37 +100,55 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   useEffect(() => { getPdfJs(); }, []);
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
-  // ── Render PDF page to reveal canvas (PDF + color theme) ─────────────────
+  // ── Render PDF page to a temporary canvas ─────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function renderRevealPage(doc: any, pageIndex: number, themeId: ThemeId) {
-    const canvas = revealRef.current;
-    if (!canvas) return;
+  async function renderPdfToTemp(doc: any, pageIndex: number): Promise<HTMLCanvasElement> {
     const page = await doc.getPage(pageIndex + 1);
     const natural = page.getViewport({ scale: 1 });
     const scale = Math.min(CANVAS_W / natural.width, CANVAS_H / natural.height);
     const vp = page.getViewport({ scale });
     const tmp = document.createElement("canvas");
-    tmp.width = Math.round(vp.width); tmp.height = Math.round(vp.height);
+    tmp.width  = Math.round(vp.width);
+    tmp.height = Math.round(vp.height);
     await page.render({ canvasContext: tmp.getContext("2d")!, viewport: vp }).promise;
+    return tmp;
+  }
+
+  // ── Reveal layer: PDF + rainbow gradient (multiply blend) ─────────────────
+  // Black areas × gradient = black (stays dark background)
+  // White lines × gradient = rainbow (the "treasure" under the scratch)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function renderRevealLayer(doc: any, pageIndex: number, themeId: ThemeId) {
+    const canvas = revealRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#FFFFFF";
+    const tmp = await renderPdfToTemp(doc, pageIndex);
+    ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     const x = Math.round((CANVAS_W - tmp.width) / 2);
     const y = Math.round((CANVAS_H - tmp.height) / 2);
     ctx.drawImage(tmp, x, y);
-    // Apply color theme gradient via multiply blend
-    applyThemeGradient(ctx, themeId);
+    // Apply rainbow via multiply: white lines → rainbow, black bg → stays black
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = buildGradient(ctx, themeId);
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.globalCompositeOperation = "source-over";
   }
 
-  // ── Draw black coating ────────────────────────────────────────────────────
-  function drawCoating() {
+  // ── Scratch/coating layer: PDF rendered normally (white lines on black) ───
+  // This is what the user sees initially and scratches away.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function renderScratchLayer(doc: any, pageIndex: number) {
     const canvas = scratchRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!ctx || !canvas) return;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    const tmp = await renderPdfToTemp(doc, pageIndex);
     ctx.globalCompositeOperation = "source-over";
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.fillStyle = "#111111";
+    ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    const x = Math.round((CANVAS_W - tmp.width) / 2);
+    const y = Math.round((CANVAS_H - tmp.height) / 2);
+    ctx.drawImage(tmp, x, y);
     canvas.style.opacity = "1";
   }
 
@@ -137,8 +159,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     for (let i = 0; i < doc.numPages; i++) {
       const page = await doc.getPage(i + 1);
       const natural = page.getViewport({ scale: 1 });
-      const scale = 120 / natural.width;
-      const vp = page.getViewport({ scale });
+      const vp = page.getViewport({ scale: 120 / natural.width });
       const c = document.createElement("canvas");
       c.width = Math.round(vp.width); c.height = Math.round(vp.height);
       await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
@@ -166,8 +187,10 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
         const doc = await lib.getDocument({ url, rangeChunkSize: 65536, disableAutoFetch: true }).promise;
         pdfDocRef.current = doc;
         setTotalPages(doc.numPages);
-        await renderRevealPage(doc, 0, theme);
-        drawCoating();
+        await Promise.all([
+          renderRevealLayer(doc, 0, theme),
+          renderScratchLayer(doc, 0),
+        ]);
         setPdfLoading(false);
         setScratchPct(0); setIsRevealed(false);
         renderThumbnails(doc);
@@ -178,40 +201,25 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     }
     loadPdf();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [purchase?.id, user?.id]);
+  }, [purchase?.id]);
 
   // ── Switch page ───────────────────────────────────────────────────────────
   async function switchPage(newPage: number) {
     const doc = pdfDocRef.current;
     if (!doc || newPage < 0 || newPage >= totalPages || newPage === currentPageRef.current) return;
     setPageLoading(true);
-    // Save current scratch state
-    if (scratchRef.current) pageDataRef.current[currentPageRef.current] = scratchRef.current.toDataURL();
-    setCurrentPage(newPage);
-    setIsRevealed(false); setScratchPct(0);
-    await renderRevealPage(doc, newPage, theme);
-    // Restore or draw fresh coating
-    const saved = pageDataRef.current[newPage];
-    if (saved) {
-      const ctx = scratchRef.current?.getContext("2d");
-      if (ctx) {
-        ctx.globalCompositeOperation = "source-over";
-        ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-        const img = new Image(); img.src = saved;
-        await new Promise<void>(r => { img.onload = () => { ctx.drawImage(img, 0, 0); r(); }; });
-      }
-    } else {
-      drawCoating();
-    }
+    setCurrentPage(newPage); setIsRevealed(false); setScratchPct(0);
+    await Promise.all([
+      renderRevealLayer(doc, newPage, theme),
+      renderScratchLayer(doc, newPage),
+    ]);
     setPageLoading(false);
     setTimeout(() => {
       const strip = thumbStripRef.current;
       if (!strip) return;
-      const thumb = strip.children[newPage] as HTMLElement;
-      if (thumb) thumb.scrollIntoView({ inline: "center", behavior: "smooth" });
+      (strip.children[newPage] as HTMLElement)?.scrollIntoView({ inline: "center", behavior: "smooth" });
     }, 50);
   }
-
   function nextPage() { switchPage(currentPage + 1); }
   function prevPage() { switchPage(currentPage - 1); }
 
@@ -226,7 +234,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     else document.exitFullscreen().catch(() => {});
   }
 
-  // Keyboard arrows
+  // Arrow key navigation
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.code === "ArrowRight") { e.preventDefault(); nextPage(); }
@@ -252,30 +260,32 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     return { x: (m.clientX - rect.left) * sx, y: (m.clientY - rect.top) * sy };
   }
 
-  // ── Scratch brush (soft radial gradient) ─────────────────────────────────
-  function scratchAt(x: number, y: number, size: number) {
+  // ── Scratch stroke — hard-edged line (like a real coin/stylus) ────────────
+  function scratchStroke(from: { x: number; y: number }, to: { x: number; y: number }, size: number) {
     const ctx = scratchRef.current?.getContext("2d");
     if (!ctx) return;
     ctx.globalCompositeOperation = "destination-out";
-    const r = ctx.createRadialGradient(x, y, 0, x, y, size);
-    r.addColorStop(0,    "rgba(0,0,0,1)");
-    r.addColorStop(0.65, "rgba(0,0,0,0.95)");
-    r.addColorStop(1,    "rgba(0,0,0,0)");
-    ctx.fillStyle = r;
-    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.strokeStyle = "rgba(0,0,0,1)";
+    ctx.lineWidth   = size * 2;
+    ctx.lineCap     = "round";
+    ctx.lineJoin    = "round";
+    ctx.stroke();
   }
 
-  function scratchLine(from: { x: number; y: number }, to: { x: number; y: number }, size: number) {
-    const dx = to.x - from.x, dy = to.y - from.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const steps = Math.max(1, Math.floor(dist / (size * 0.35)));
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      scratchAt(from.x + dx * t, from.y + dy * t, size);
-    }
+  function scratchDot(pos: { x: number; y: number }, size: number) {
+    const ctx = scratchRef.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,1)";
+    ctx.fill();
   }
 
-  // ── Check scratch % ───────────────────────────────────────────────────────
+  // ── Check scratch % (sample every 4th pixel for performance) ──────────────
   function checkPercent() {
     const ctx = scratchRef.current?.getContext("2d");
     if (!ctx) return;
@@ -285,10 +295,10 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     for (let i = 3; i < data.length; i += 4 * step) { if (data[i] < 128) transparent++; }
     const pct = Math.min(Math.round((transparent / total) * 100), 100);
     setScratchPct(pct);
-    if (pct >= SCRATCH_THRESHOLD && !isRevealed && !isAutoClearing) autoClear();
+    if (pct >= 70 && !isRevealed && !isAutoClearing) autoClear();
   }
 
-  // ── Auto-clear ────────────────────────────────────────────────────────────
+  // ── Auto-clear: fade away remaining coating ───────────────────────────────
   async function autoClear() {
     setIsAutoClearing(true);
     navigator.vibrate?.([80, 40, 160, 40, 300]);
@@ -339,23 +349,23 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
   // ── Pointer handlers ──────────────────────────────────────────────────────
   const onPointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (isRevealed || isAutoClearing || pdfLoading) return;
+    if (isRevealed || isAutoClearing || pdfLoading || pdfError) return;
     e.preventDefault();
     isDrawing.current = true;
     const pos = getPos(e.nativeEvent as MouseEvent | TouchEvent);
     if (!pos) return;
-    scratchAt(pos.x, pos.y, brushSize);
+    scratchDot(pos, brushSize);
     lastPos.current = pos;
-    navigator.vibrate?.(8);
+    navigator.vibrate?.(5);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRevealed, isAutoClearing, pdfLoading, brushSize]);
+  }, [isRevealed, isAutoClearing, pdfLoading, pdfError, brushSize]);
 
   const onPointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing.current || isRevealed || isAutoClearing) return;
     e.preventDefault();
     const pos = getPos(e.nativeEvent as MouseEvent | TouchEvent);
     if (!pos) return;
-    if (lastPos.current) scratchLine(lastPos.current, pos, brushSize);
+    if (lastPos.current) scratchStroke(lastPos.current, pos, brushSize);
     lastPos.current = pos;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRevealed, isAutoClearing, brushSize]);
@@ -367,33 +377,21 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRevealed, isAutoClearing]);
 
-  // ── Change theme ──────────────────────────────────────────────────────────
+  // ── Change theme (re-render reveal layer, keep scratch progress) ──────────
   async function changeTheme(t: ThemeId) {
     setTheme(t);
     const doc = pdfDocRef.current;
-    if (!doc) return;
-    // Save current scratch state, re-render reveal with new theme, restore
-    const savedData = scratchRef.current?.toDataURL();
-    await renderRevealPage(doc, currentPageRef.current, t);
-    if (savedData) {
-      const ctx = scratchRef.current?.getContext("2d");
-      if (ctx) {
-        ctx.globalCompositeOperation = "source-over";
-        ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-        const img = new Image(); img.src = savedData;
-        await new Promise<void>(r => { img.onload = () => { ctx.drawImage(img, 0, 0); r(); }; });
-      }
-    }
+    if (doc) await renderRevealLayer(doc, currentPageRef.current, t);
   }
 
   // ── Reset current page ────────────────────────────────────────────────────
-  function reset() {
+  async function reset() {
     if (animRef.current) cancelAnimationFrame(animRef.current);
     particles.current = [];
     confettiRef.current?.getContext("2d")?.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    drawCoating();
+    const doc = pdfDocRef.current;
+    if (doc) await renderScratchLayer(doc, currentPageRef.current);
     setScratchPct(0); setIsRevealed(false); setIsAutoClearing(false);
-    delete pageDataRef.current[currentPageRef.current];
   }
 
   // ── Save PNG ──────────────────────────────────────────────────────────────
@@ -408,8 +406,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     a.href = out.toDataURL("image/png"); a.click();
     setSaved(true); setTimeout(() => setSaved(false), 2000);
   }
-
-  const adjustBrush = (d: number) => setBrushSize(s => Math.max(10, Math.min(80, s + d)));
 
   // ── Guards ────────────────────────────────────────────────────────────────
   if (loading) {
@@ -452,7 +448,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
           )}
           {isFullscreen && <p className="text-sm font-medium text-ink truncate flex-1">{product.title}</p>}
 
-          {/* Page indicator */}
           {totalPages > 0 && (
             <div className="hidden md:flex items-center gap-1.5 shrink-0">
               <BookOpen size={13} className="text-ink-muted" />
@@ -462,7 +457,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             </div>
           )}
 
-          {/* Scratch progress */}
           {!pdfLoading && !pdfError && (
             <div className="hidden md:flex items-center gap-2 shrink-0">
               <div className="w-20 h-1.5 rounded-full bg-card-hover overflow-hidden">
@@ -516,23 +510,19 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
             {/* Brush size */}
             <div>
-              <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Scratch Size — {brushSize}px</p>
-              <div className="flex items-center gap-2">
-                <button onClick={() => adjustBrush(-5)} className="w-7 h-7 rounded-full bg-[#EDEBE6] hover:bg-card-hover flex items-center justify-center transition-colors shrink-0">
-                  <Minus size={12} />
-                </button>
-                <input type="range" min={10} max={80} value={brushSize}
-                  onChange={e => setBrushSize(Number(e.target.value))}
-                  className="flex-1 cursor-pointer" style={{ accentColor: "#222" }} />
-                <button onClick={() => adjustBrush(5)} className="w-7 h-7 rounded-full bg-[#EDEBE6] hover:bg-card-hover flex items-center justify-center transition-colors shrink-0">
-                  <Plus size={12} />
-                </button>
-              </div>
-              <div className="flex justify-between mt-2">
-                {[15, 30, 50, 70].map(s => (
-                  <button key={s} onClick={() => setBrushSize(s)} className="flex items-center justify-center w-8 h-8">
-                    <div className={`rounded-full transition-colors ${brushSize === s ? "bg-ink" : "bg-[#C5C0B8] hover:bg-ink/60"}`}
-                      style={{ width: s / 5 + 6, height: s / 5 + 6 }} />
+              <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+                Scratch Size — {brushSize}px
+              </p>
+              <input type="range" min={4} max={40} value={brushSize}
+                onChange={e => setBrushSize(Number(e.target.value))}
+                className="w-full cursor-pointer mb-3" style={{ accentColor: "#222" }} />
+              {/* Size presets */}
+              <div className="flex gap-2">
+                {[{ label: "Fine", size: 6 }, { label: "Med", size: 14 }, { label: "Wide", size: 28 }].map(b => (
+                  <button key={b.size} onClick={() => setBrushSize(b.size)}
+                    className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+                      brushSize === b.size ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
+                    }`}>{b.label}
                   </button>
                 ))}
               </div>
@@ -550,12 +540,11 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               </div>
             )}
 
-            {/* Tip */}
             <div className="mt-auto pt-4 border-t border-border-muted">
               <p className="text-[11px] text-ink-muted leading-relaxed">
                 {isRevealed
                   ? "🎉 Fully revealed! Hit Reset to scratch again."
-                  : `Scratch the black surface to reveal the hidden ${THEMES.find(t => t.id === theme)?.name.toLowerCase()} art!`}
+                  : "Scratch the white lines to reveal hidden rainbow colors underneath!"}
               </p>
             </div>
           </aside>
@@ -569,7 +558,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                 {product?.image && (
                   <img src={product.image} alt="" className="absolute inset-0 w-full h-full object-contain opacity-20 blur-md pointer-events-none select-none" />
                 )}
-                <div className="relative text-center z-10">
+                <div className="relative z-10 text-center">
                   <div className="w-10 h-10 border-2 border-ink border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                   <p className="text-sm text-ink-muted">Loading scratch book…</p>
                 </div>
@@ -589,57 +578,53 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
             {/* Canvas always mounted */}
             <div className="flex-1 relative overflow-hidden min-h-0">
-              {/* Scroll viewport */}
               <div className="absolute inset-0 overflow-auto flex items-center justify-center" style={{ background: "#EDEBE6" }}>
-                <div style={{ transform: "scale(1)", transformOrigin: "center center" }}>
-                  <div className="relative select-none rounded-2xl overflow-hidden shadow-lg"
-                    style={{ width: 680, height: Math.round(680 * (CANVAS_H / CANVAS_W)) }}>
+                <div className="relative rounded-2xl overflow-hidden shadow-lg select-none"
+                  style={{ width: 680, height: Math.round(680 * (CANVAS_H / CANVAS_W)) }}>
 
-                    {/* Page loading overlay */}
-                    {pageLoading && (
-                      <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/60 rounded-2xl">
-                        <div className="w-8 h-8 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+                  {pageLoading && (
+                    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 rounded-2xl">
+                      <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+
+                  {/* Layer 1 — Reveal: PDF with rainbow colors */}
+                  <canvas ref={revealRef} width={CANVAS_W} height={CANVAS_H}
+                    className="absolute inset-0 w-full h-full" />
+
+                  {/* Layer 2 — Scratch: PDF normally (white lines on black) — erased on scratch */}
+                  <canvas ref={scratchRef} width={CANVAS_W} height={CANVAS_H}
+                    className="absolute inset-0 w-full h-full"
+                    style={{ cursor: isRevealed ? "default" : "crosshair", touchAction: "none" }}
+                    onMouseDown={onPointerDown} onMouseMove={onPointerMove}
+                    onMouseUp={onPointerUp}    onMouseLeave={onPointerUp}
+                    onTouchStart={onPointerDown} onTouchMove={onPointerMove}
+                    onTouchEnd={onPointerUp} />
+
+                  {/* Layer 3 — Confetti */}
+                  <canvas ref={confettiRef} width={CANVAS_W} height={CANVAS_H}
+                    className="absolute inset-0 w-full h-full pointer-events-none" />
+
+                  {/* Hint */}
+                  {!pdfLoading && !pdfError && scratchPct === 0 && !isRevealed && (
+                    <div className="absolute inset-0 flex items-end justify-center pb-6 pointer-events-none">
+                      <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                        <Sparkles size={13} className="text-white/70" />
+                        <p className="text-white/70 text-xs font-medium">Scratch to reveal rainbow colors!</p>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Layer 1 — Reveal (PDF + color) */}
-                    <canvas ref={revealRef} width={CANVAS_W} height={CANVAS_H}
-                      className="absolute inset-0 w-full h-full" />
-
-                    {/* Layer 2 — Black scratch coating */}
-                    <canvas ref={scratchRef} width={CANVAS_W} height={CANVAS_H}
-                      className="absolute inset-0 w-full h-full"
-                      style={{ cursor: isRevealed ? "default" : "crosshair", touchAction: "none" }}
-                      onMouseDown={onPointerDown} onMouseMove={onPointerMove}
-                      onMouseUp={onPointerUp}    onMouseLeave={onPointerUp}
-                      onTouchStart={onPointerDown} onTouchMove={onPointerMove}
-                      onTouchEnd={onPointerUp} />
-
-                    {/* Layer 3 — Confetti */}
-                    <canvas ref={confettiRef} width={CANVAS_W} height={CANVAS_H}
-                      className="absolute inset-0 w-full h-full pointer-events-none" />
-
-                    {/* Scratch hint */}
-                    {!pdfLoading && !pdfError && scratchPct === 0 && !isRevealed && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="text-center">
-                          <Sparkles size={32} strokeWidth={1.5} className="text-white/50 mx-auto mb-2 animate-pulse" />
-                          <p className="text-white/50 text-sm font-medium">Scratch to reveal!</p>
-                        </div>
+                  {/* Celebration */}
+                  {isRevealed && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-center bg-white/85 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-lg">
+                        <p className="text-4xl mb-2 animate-bounce">🎉</p>
+                        <p className="font-serif text-xl text-ink font-semibold">Amazing!</p>
+                        <p className="text-sm text-ink-muted mt-1">Hit Reset to scratch again</p>
                       </div>
-                    )}
-
-                    {/* Celebration */}
-                    {isRevealed && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-lg">
-                          <p className="text-4xl mb-2 animate-bounce">🎉</p>
-                          <p className="font-serif text-xl text-ink font-semibold">Amazing reveal!</p>
-                          <p className="text-sm text-ink-muted mt-1">Hit Reset to scratch again</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -665,11 +650,11 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                   {Array.from({ length: totalPages }).map((_, i) => (
                     <button key={i} onClick={() => switchPage(i)}
                       className={`flex-shrink-0 flex flex-col items-center gap-1 transition-opacity ${currentPage === i ? "opacity-100" : "opacity-50 hover:opacity-75"}`}>
-                      <div className={`rounded-lg overflow-hidden border-2 bg-white transition-all ${currentPage === i ? "border-ink shadow-md" : "border-transparent"}`}
+                      <div className={`rounded-lg overflow-hidden border-2 bg-black transition-all ${currentPage === i ? "border-ink shadow-md" : "border-transparent"}`}
                         style={{ width: 60 }}>
                         {thumbnails[i]
                           ? <img src={thumbnails[i]} alt={`Page ${i + 1}`} className="w-full h-auto block" />
-                          : <div className="w-full bg-[#E8E4DC] animate-pulse" style={{ height: 78 }} />}
+                          : <div className="w-full bg-[#222] animate-pulse" style={{ height: 78 }} />}
                       </div>
                       <span className={`text-[10px] tabular-nums ${currentPage === i ? "text-ink font-semibold" : "text-ink-muted"}`}>{i + 1}</span>
                     </button>
@@ -684,17 +669,18 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
         <div className="md:hidden bg-cream border-t border-border-muted px-3 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
           {THEMES.map(t => (
             <button key={t.id} onClick={() => changeTheme(t.id)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors ${
                 theme === t.id ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink"
               }`}>
               {t.emoji} {t.name}
             </button>
           ))}
           <div className="w-px h-6 bg-border-muted shrink-0 mx-1" />
-          {[15, 35, 60].map(s => (
-            <button key={s} onClick={() => setBrushSize(s)}
-              className={`flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-colors ${brushSize === s ? "bg-ink" : "bg-[#EDEBE6]"}`}>
-              <div className={`rounded-full ${brushSize === s ? "bg-cream" : "bg-ink"}`} style={{ width: s / 8 + 6, height: s / 8 + 6 }} />
+          {[{ l: "Fine", s: 6 }, { l: "Med", s: 14 }, { l: "Wide", s: 28 }].map(b => (
+            <button key={b.s} onClick={() => setBrushSize(b.s)}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 transition-colors ${
+                brushSize === b.s ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink"
+              }`}>{b.l}
             </button>
           ))}
           <div className="w-px h-6 bg-border-muted shrink-0 mx-1" />
