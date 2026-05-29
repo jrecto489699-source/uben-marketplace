@@ -131,12 +131,12 @@ export default function DownloadsPage() {
                           const prod = allProducts.find((p) => p.id === purchase.product_id);
                           return (
                             <div key={purchase.id} className="flex gap-4 px-5 py-4">
-                              {/* Thumbnail */}
+                              {/* Thumbnail — prefer current product data, fall back to purchase snapshot */}
                               <a href={`/product/${purchase.product_id}`} className="shrink-0">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={purchase.product_image}
-                                  alt={purchase.product_title}
+                                  src={prod?.image ?? purchase.product_image}
+                                  alt={prod?.title ?? purchase.product_title}
                                   className="w-16 h-16 rounded-xl object-cover bg-card-hover"
                                 />
                               </a>
@@ -145,7 +145,7 @@ export default function DownloadsPage() {
                               <div className="flex-1 min-w-0">
                                 <a href={`/product/${purchase.product_id}`}>
                                   <h3 className="text-sm font-semibold text-ink leading-snug hover:underline underline-offset-2 mb-1 line-clamp-2">
-                                    {purchase.product_title}
+                                    {prod?.title ?? purchase.product_title}
                                   </h3>
                                 </a>
                                 <p className="text-xs text-ink-muted mb-1">Paid {purchase.sale_price}</p>
