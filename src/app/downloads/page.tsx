@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, ShoppingBag, Download, Palette, ChevronDown } from "lucide-react";
+import { FileText, ShoppingBag, Download, Palette, ChevronDown, Sparkles } from "lucide-react";
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -174,6 +174,15 @@ export default function DownloadsPage() {
                                   >
                                     <Palette size={12} strokeWidth={1.75} />
                                     Color Online
+                                  </a>
+                                )}
+                                {cat === "Scratch Art" && prod?.instantDownload && (
+                                  <a
+                                    href={`/scratch/${purchase.id}`}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#7C3AED] text-[#7C3AED] text-xs font-medium hover:bg-[#7C3AED] hover:text-white transition-colors duration-200 whitespace-nowrap justify-center"
+                                  >
+                                    <Sparkles size={12} strokeWidth={1.75} />
+                                    Scratch Online
                                   </a>
                                 )}
                               </div>
