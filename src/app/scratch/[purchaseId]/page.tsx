@@ -121,14 +121,45 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     drawImageCentered(canvas.getContext("2d")!, img);
   }
 
-  // ── Render scratch coating layer (the black & white image) ───────────────
+  // ── Per-page localStorage key ─────────────────────────────────────────────
+  function storageKey(pageIndex: number) {
+    return `uben_scratch_${purchaseId}_${pageIndex}`;
+  }
+
+  // ── Render scratch coating layer ──────────────────────────────────────────
+  // If a saved scratch state exists for this page, restore that.
+  // Otherwise draw the fresh B&W image.
   async function renderScratchLayer(pageIndex: number) {
     const canvas = scratchRef.current;
     if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+
+    // Try saved state first
+    try {
+      const saved = localStorage.getItem(storageKey(pageIndex));
+      if (saved) {
+        const savedImg = await loadImage(saved);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.drawImage(savedImg, 0, 0);
+        canvas.style.opacity = "1";
+        return;
+      }
+    } catch {}
+
     const img = await getScratchImage(pageIndex);
     if (!img) return;
-    drawImageCentered(canvas.getContext("2d")!, img);
+    drawImageCentered(ctx, img);
     canvas.style.opacity = "1";
+  }
+
+  // ── Save current scratch state to localStorage ───────────────────────────
+  function saveScratchState() {
+    const canvas = scratchRef.current;
+    if (!canvas) return;
+    try {
+      localStorage.setItem(storageKey(currentPageRef.current), canvas.toDataURL("image/png"));
+    } catch {}
   }
 
   // ── Load page list ────────────────────────────────────────────────────────
@@ -148,7 +179,10 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
         setTotalPages(total);
         await Promise.all([renderRevealLayer(0), renderScratchLayer(0)]);
         setImgLoading(false);
-        setScratchPct(0); setIsRevealed(false);
+        // Compute scratch % from restored state (if any)
+        const pct = computeScratchPct();
+        setScratchPct(pct);
+        setIsRevealed(pct >= 95);
         buildThumbnails();
       } catch {
         setImgError("Failed to load scratch images");
@@ -183,9 +217,13 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   async function switchPage(newPage: number) {
     if (newPage < 0 || newPage >= totalPages || newPage === currentPageRef.current) return;
     setPageLoading(true);
-    setCurrentPage(newPage); setIsRevealed(false); setScratchPct(0);
+    setCurrentPage(newPage);
     await Promise.all([renderRevealLayer(newPage), renderScratchLayer(newPage)]);
     setPageLoading(false);
+    // Restore progress from saved state on the new page
+    const pct = computeScratchPct();
+    setScratchPct(pct);
+    setIsRevealed(pct >= 95);
     setTimeout(() => {
       const strip = thumbStripRef.current;
       if (!strip) return;
@@ -252,15 +290,20 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     ctx.fillStyle = "rgba(0,0,0,1)"; ctx.fill();
   }
 
-  // ── Check scratch % ───────────────────────────────────────────────────────
-  function checkPercent() {
+  // ── Compute scratch % (sampled) ───────────────────────────────────────────
+  function computeScratchPct(): number {
     const ctx = scratchRef.current?.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) return 0;
     const data = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H).data;
     let transparent = 0;
     const step = 4, total = (CANVAS_W * CANVAS_H) / step;
     for (let i = 3; i < data.length; i += 4 * step) { if (data[i] < 128) transparent++; }
-    const pct = Math.min(Math.round((transparent / total) * 100), 100);
+    return Math.min(Math.round((transparent / total) * 100), 100);
+  }
+
+  // ── Check scratch % + maybe trigger auto-clear ────────────────────────────
+  function checkPercent() {
+    const pct = computeScratchPct();
     setScratchPct(pct);
     if (pct >= 70 && !isRevealed && !isAutoClearing) autoClear();
   }
@@ -277,6 +320,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     canvas.getContext("2d")?.clearRect(0, 0, CANVAS_W, CANVAS_H);
     canvas.style.transition = ""; canvas.style.opacity = "1";
     setIsRevealed(true); setIsAutoClearing(false); setScratchPct(100);
+    saveScratchState(); // persist fully-revealed state
     launchConfetti();
   }
 
@@ -356,6 +400,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (isDrawing.current) {
       isDrawing.current = false; lastPos.current = null;
       checkPercent();
+      saveScratchState();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRevealed, isAutoClearing]);
@@ -364,6 +409,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (!isDrawing.current) return;
     isDrawing.current = false; lastPos.current = null;
     checkPercent();
+    saveScratchState();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRevealed, isAutoClearing]);
 
@@ -372,7 +418,16 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (animRef.current) cancelAnimationFrame(animRef.current);
     particles.current = [];
     confettiRef.current?.getContext("2d")?.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    await renderScratchLayer(currentPageRef.current);
+    // Clear saved state first so renderScratchLayer draws the fresh B&W image
+    try { localStorage.removeItem(storageKey(currentPageRef.current)); } catch {}
+    const canvas = scratchRef.current;
+    if (canvas) {
+      const img = await getScratchImage(currentPageRef.current);
+      if (img) {
+        drawImageCentered(canvas.getContext("2d")!, img);
+        canvas.style.opacity = "1";
+      }
+    }
     setScratchPct(0); setIsRevealed(false); setIsAutoClearing(false);
   }
 
