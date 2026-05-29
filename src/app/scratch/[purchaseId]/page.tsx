@@ -12,6 +12,12 @@ import { allProducts } from "@/data/products";
 const CANVAS_W = 800;
 const CANVAS_H = 1040;
 
+// ── Page pair (two image URLs per page) ──────────────────────────────────────
+interface PagePair {
+  scratch: string; // black & white image (the coating)
+  reveal:  string; // rainbow colored image (what's underneath)
+}
+
 // ── Confetti particle ─────────────────────────────────────────────────────────
 interface Particle {
   x: number; y: number; vx: number; vy: number;
@@ -19,97 +25,7 @@ interface Particle {
   rotation: number; rotSpeed: number;
 }
 
-// ── Color themes ──────────────────────────────────────────────────────────────
-// Each theme paints a vivid neon gradient on top of the reveal canvas.
-// We then use a "multiply" blend so white lines pick up the color and black
-// background stays black — exactly like real scratch-art foil.
-type ThemeId = "rainbow" | "galaxy" | "sunset" | "ocean";
-
-interface Theme {
-  id: ThemeId;
-  name: string;
-  emoji: string;
-  paint: (ctx: CanvasRenderingContext2D) => void;
-}
-
-const THEMES: Theme[] = [
-  {
-    id: "rainbow", name: "Rainbow", emoji: "🌈",
-    paint(ctx) {
-      // Base diagonal rainbow (top-left → bottom-right)
-      const g1 = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
-      g1.addColorStop(0.00, "#FF1493"); // hot pink
-      g1.addColorStop(0.15, "#FF0080"); // magenta
-      g1.addColorStop(0.30, "#9400FF"); // violet
-      g1.addColorStop(0.45, "#3D00FF"); // deep blue
-      g1.addColorStop(0.55, "#00BFFF"); // cyan-blue
-      g1.addColorStop(0.70, "#00FF7F"); // spring green
-      g1.addColorStop(0.82, "#FFFF00"); // pure yellow
-      g1.addColorStop(0.92, "#FF6B00"); // orange
-      g1.addColorStop(1.00, "#FF0000"); // red
-      ctx.fillStyle = g1;
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-      // Second radial overlay from upper-center to add the glowing
-      // "centered hot spot" look from real scratch art
-      const g2 = ctx.createRadialGradient(
-        CANVAS_W * 0.55, CANVAS_H * 0.35, CANVAS_W * 0.05,
-        CANVAS_W * 0.55, CANVAS_H * 0.35, CANVAS_W * 0.8
-      );
-      g2.addColorStop(0.00, "rgba(255, 0, 200, 0.55)"); // magenta core
-      g2.addColorStop(0.30, "rgba(180, 0, 255, 0.30)"); // purple mid
-      g2.addColorStop(1.00, "rgba(0, 200, 255, 0.00)"); // fade
-      ctx.globalCompositeOperation = "screen";
-      ctx.fillStyle = g2;
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.globalCompositeOperation = "source-over";
-    },
-  },
-  {
-    id: "galaxy", name: "Galaxy", emoji: "✨",
-    paint(ctx) {
-      const g = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
-      g.addColorStop(0.00, "#FF00FF"); // magenta
-      g.addColorStop(0.25, "#9D00FF"); // violet
-      g.addColorStop(0.50, "#3D00FF"); // deep blue
-      g.addColorStop(0.75, "#00BFFF"); // cyan
-      g.addColorStop(1.00, "#FF1493"); // hot pink
-      ctx.fillStyle = g; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      const r = ctx.createRadialGradient(CANVAS_W*0.5, CANVAS_H*0.45, 50, CANVAS_W*0.5, CANVAS_H*0.45, CANVAS_W*0.7);
-      r.addColorStop(0, "rgba(255,255,255,0.35)");
-      r.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.globalCompositeOperation = "screen";
-      ctx.fillStyle = r; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.globalCompositeOperation = "source-over";
-    },
-  },
-  {
-    id: "sunset", name: "Sunset", emoji: "🌅",
-    paint(ctx) {
-      const g = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
-      g.addColorStop(0.00, "#FF006E"); // hot pink
-      g.addColorStop(0.25, "#FB5607"); // orange
-      g.addColorStop(0.50, "#FFBE0B"); // yellow
-      g.addColorStop(0.75, "#FF006E"); // pink
-      g.addColorStop(1.00, "#8338EC"); // purple
-      ctx.fillStyle = g; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    },
-  },
-  {
-    id: "ocean", name: "Ocean", emoji: "🌊",
-    paint(ctx) {
-      const g = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
-      g.addColorStop(0.00, "#00FFE0"); // bright cyan
-      g.addColorStop(0.25, "#00BFFF"); // azure
-      g.addColorStop(0.50, "#0066FF"); // electric blue
-      g.addColorStop(0.75, "#7B00FF"); // purple
-      g.addColorStop(1.00, "#00FFAA"); // mint
-      ctx.fillStyle = g; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    },
-  },
-];
-
-// ── Load an image URL into an HTMLImageElement ────────────────────────────────
+// ── Image loader ──────────────────────────────────────────────────────────────
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -120,8 +36,9 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-// ── Draw image centered + scaled on canvas ────────────────────────────────────
+// ── Draw image centered + scaled onto a canvas ────────────────────────────────
 function drawImageCentered(ctx: CanvasRenderingContext2D, img: HTMLImageElement) {
+  ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   const scale = Math.min(CANVAS_W / img.naturalWidth, CANVAS_H / img.naturalHeight);
@@ -140,24 +57,24 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const product  = purchase ? allProducts.find(p => p.id === purchase.product_id) : null;
 
   // ── Canvas refs ───────────────────────────────────────────────────────────
-  // revealRef  = bottom: image + rainbow colors (what gets uncovered)
-  // scratchRef = top:    image normally (white lines on black — gets scratched)
-  const revealRef    = useRef<HTMLCanvasElement>(null);
-  const scratchRef   = useRef<HTMLCanvasElement>(null);
-  const confettiRef  = useRef<HTMLCanvasElement>(null);
-  const cursorRef    = useRef<HTMLDivElement>(null);
+  // revealRef  = bottom: the colored "reveal" image (what gets uncovered)
+  // scratchRef = top:    the black-and-white image (gets scratched away)
+  const revealRef     = useRef<HTMLCanvasElement>(null);
+  const scratchRef    = useRef<HTMLCanvasElement>(null);
+  const confettiRef   = useRef<HTMLCanvasElement>(null);
+  const cursorRef     = useRef<HTMLDivElement>(null);
   const thumbStripRef = useRef<HTMLDivElement>(null);
 
-  const lastPos        = useRef<{ x: number; y: number } | null>(null);
-  const isDrawing      = useRef(false);
-  const animRef        = useRef<number | null>(null);
-  const particles      = useRef<Particle[]>([]);
-  const imageUrls      = useRef<string[]>([]);
-  const loadedImages   = useRef<Record<number, HTMLImageElement>>({});
-  const currentPageRef = useRef(0);
+  const lastPos              = useRef<{ x: number; y: number } | null>(null);
+  const isDrawing            = useRef(false);
+  const animRef              = useRef<number | null>(null);
+  const particles            = useRef<Particle[]>([]);
+  const pagePairs            = useRef<PagePair[]>([]);
+  const loadedScratchImages  = useRef<Record<number, HTMLImageElement>>({});
+  const loadedRevealImages   = useRef<Record<number, HTMLImageElement>>({});
+  const currentPageRef       = useRef(0);
 
-  const [theme,          setTheme]          = useState<ThemeId>("rainbow");
-  const [brushSize,      setBrushSize]      = useState(4); // thin default — precision scratching
+  const [brushSize,      setBrushSize]      = useState(4);
   const [scratchPct,     setScratchPct]     = useState(0);
   const [isRevealed,     setIsRevealed]     = useState(false);
   const [isAutoClearing, setIsAutoClearing] = useState(false);
@@ -172,47 +89,49 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
-  // ── Get or load image for a page ──────────────────────────────────────────
-  async function getImage(pageIndex: number): Promise<HTMLImageElement | null> {
-    if (loadedImages.current[pageIndex]) return loadedImages.current[pageIndex];
-    const url = imageUrls.current[pageIndex];
-    if (!url) return null;
+  // ── Load images (cached per page) ─────────────────────────────────────────
+  async function getScratchImage(pageIndex: number): Promise<HTMLImageElement | null> {
+    if (loadedScratchImages.current[pageIndex]) return loadedScratchImages.current[pageIndex];
+    const pair = pagePairs.current[pageIndex];
+    if (!pair) return null;
     try {
-      const img = await loadImage(url);
-      loadedImages.current[pageIndex] = img;
+      const img = await loadImage(pair.scratch);
+      loadedScratchImages.current[pageIndex] = img;
       return img;
     } catch { return null; }
   }
 
-  // ── Reveal layer: image + neon rainbow (multiply blend) ──────────────────
-  // Black background × any color = black, so the bg stays pure black.
-  // White lines × theme color = the color, so lines turn neon rainbow.
-  async function renderRevealLayer(pageIndex: number, themeId: ThemeId) {
-    const canvas = revealRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    const img = await getImage(pageIndex);
-    if (!img) return;
-    drawImageCentered(ctx, img);
-    ctx.globalCompositeOperation = "multiply";
-    const theme = THEMES.find(t => t.id === themeId)!;
-    theme.paint(ctx);
-    ctx.globalCompositeOperation = "source-over";
+  async function getRevealImage(pageIndex: number): Promise<HTMLImageElement | null> {
+    if (loadedRevealImages.current[pageIndex]) return loadedRevealImages.current[pageIndex];
+    const pair = pagePairs.current[pageIndex];
+    if (!pair) return null;
+    try {
+      const img = await loadImage(pair.reveal);
+      loadedRevealImages.current[pageIndex] = img;
+      return img;
+    } catch { return null; }
   }
 
-  // ── Scratch layer: image normally (white lines on black) ──────────────────
+  // ── Render reveal layer (the colored image) ──────────────────────────────
+  async function renderRevealLayer(pageIndex: number) {
+    const canvas = revealRef.current;
+    if (!canvas) return;
+    const img = await getRevealImage(pageIndex);
+    if (!img) return;
+    drawImageCentered(canvas.getContext("2d")!, img);
+  }
+
+  // ── Render scratch coating layer (the black & white image) ───────────────
   async function renderScratchLayer(pageIndex: number) {
     const canvas = scratchRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    const img = await getImage(pageIndex);
+    const img = await getScratchImage(pageIndex);
     if (!img) return;
-    ctx.globalCompositeOperation = "source-over";
-    drawImageCentered(ctx, img);
+    drawImageCentered(canvas.getContext("2d")!, img);
     canvas.style.opacity = "1";
   }
 
-  // ── Load all image URLs from API ──────────────────────────────────────────
+  // ── Load page list ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!purchase?.id) return;
     async function load() {
@@ -224,18 +143,13 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
           setImgError(body.error ?? "Scratch images not available yet");
           setImgLoading(false); return;
         }
-        const { urls, total } = await res.json();
-        imageUrls.current = urls;
+        const { pages, total } = await res.json();
+        pagePairs.current = pages;
         setTotalPages(total);
-        // Render first page
-        await Promise.all([
-          renderRevealLayer(0, theme),
-          renderScratchLayer(0),
-        ]);
+        await Promise.all([renderRevealLayer(0), renderScratchLayer(0)]);
         setImgLoading(false);
         setScratchPct(0); setIsRevealed(false);
-        // Build thumbnails from already-loaded image for page 0
-        buildThumbnails(urls);
+        buildThumbnails();
       } catch {
         setImgError("Failed to load scratch images");
         setImgLoading(false);
@@ -245,20 +159,19 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [purchase?.id]);
 
-  // ── Build thumbnail data URLs ─────────────────────────────────────────────
-  async function buildThumbnails(urls: string[]) {
+  // ── Build thumbnails from scratch (B&W) images ───────────────────────────
+  async function buildThumbnails() {
     const result: string[] = [];
-    for (let i = 0; i < urls.length; i++) {
+    for (let i = 0; i < pagePairs.current.length; i++) {
       try {
-        const img = await getImage(i);
+        const img = await getScratchImage(i);
         if (!img) { result.push(""); setThumbnails([...result]); continue; }
         const c = document.createElement("canvas");
         const scale = 120 / img.naturalWidth;
         c.width  = Math.round(img.naturalWidth  * scale);
         c.height = Math.round(img.naturalHeight * scale);
         const ctx = c.getContext("2d")!;
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, c.width, c.height);
         ctx.drawImage(img, 0, 0, c.width, c.height);
         result.push(c.toDataURL("image/jpeg", 0.7));
       } catch { result.push(""); }
@@ -271,10 +184,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (newPage < 0 || newPage >= totalPages || newPage === currentPageRef.current) return;
     setPageLoading(true);
     setCurrentPage(newPage); setIsRevealed(false); setScratchPct(0);
-    await Promise.all([
-      renderRevealLayer(newPage, theme),
-      renderScratchLayer(newPage),
-    ]);
+    await Promise.all([renderRevealLayer(newPage), renderScratchLayer(newPage)]);
     setPageLoading(false);
     setTimeout(() => {
       const strip = thumbStripRef.current;
@@ -322,7 +232,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     return { x: (m.clientX - rect.left) * sx, y: (m.clientY - rect.top) * sy };
   }
 
-  // ── Scratch stroke (hard-edged line like a coin/stylus) ───────────────────
+  // ── Scratch stroke (hard-edged line, like a real coin/stylus) ─────────────
   function scratchStroke(from: { x: number; y: number }, to: { x: number; y: number }, size: number) {
     const ctx = scratchRef.current?.getContext("2d");
     if (!ctx) return;
@@ -421,7 +331,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (isRevealed || isAutoClearing) return;
     e.preventDefault();
 
-    // Update cursor ring position (mouse only — touch doesn't need it)
+    // Update cursor ring position (mouse only)
     if (!("touches" in e) && cursorRef.current && scratchRef.current) {
       const rect = scratchRef.current.getBoundingClientRect();
       cursorRef.current.style.display = "block";
@@ -456,12 +366,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     checkPercent();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRevealed, isAutoClearing]);
-
-  // ── Change theme ──────────────────────────────────────────────────────────
-  async function changeTheme(t: ThemeId) {
-    setTheme(t);
-    await renderRevealLayer(currentPageRef.current, t);
-  }
 
   // ── Reset current page ────────────────────────────────────────────────────
   async function reset() {
@@ -572,20 +476,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
           <aside className="hidden md:flex flex-col gap-5 w-56 bg-cream border-r border-border-muted p-4 overflow-y-auto shrink-0">
 
             <div>
-              <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Reveal Color</p>
-              <div className="flex flex-col gap-1">
-                {THEMES.map(t => (
-                  <button key={t.id} onClick={() => changeTheme(t.id)}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left ${
-                      theme === t.id ? "bg-ink text-cream" : "text-ink hover:bg-[#EDEBE6]"
-                    }`}>
-                    <span>{t.emoji}</span>{t.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
                 Scratch Size — {brushSize}px
               </p>
@@ -618,7 +508,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               <p className="text-[11px] text-ink-muted leading-relaxed">
                 {isRevealed
                   ? "🎉 Fully revealed! Hit Reset to scratch again."
-                  : "Scratch the white lines to reveal hidden rainbow colors underneath!"}
+                  : "Scratch the white lines to reveal the hidden artwork underneath!"}
               </p>
             </div>
           </aside>
@@ -626,7 +516,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
           {/* ── Canvas area ──────────────────────────────────────────────── */}
           <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
 
-            {/* Loading overlay */}
             {imgLoading && (
               <div className="absolute inset-0 z-20 flex items-center justify-center" style={{ background: "#EDEBE6" }}>
                 {product?.image && (
@@ -639,7 +528,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               </div>
             )}
 
-            {/* Error */}
             {!imgLoading && imgError && (
               <div className="absolute inset-0 z-20 flex items-center justify-center px-6" style={{ background: "#EDEBE6" }}>
                 <div className="text-center max-w-sm">
@@ -650,7 +538,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               </div>
             )}
 
-            {/* Canvas always mounted */}
             <div className="flex-1 relative overflow-hidden min-h-0">
               <div className="absolute inset-0 overflow-auto flex items-center justify-center" style={{ background: "#EDEBE6" }}>
                 <div className="relative rounded-2xl overflow-hidden shadow-lg select-none"
@@ -662,11 +549,11 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     </div>
                   )}
 
-                  {/* Layer 1 — Reveal: image + rainbow colors */}
+                  {/* Layer 1 — Reveal (colored image) */}
                   <canvas ref={revealRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full" />
 
-                  {/* Layer 2 — Scratch: image normally (white lines on black) */}
+                  {/* Layer 2 — Scratch coating (B&W image) */}
                   <canvas ref={scratchRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full"
                     style={{ cursor: isRevealed ? "default" : "none", touchAction: "none" }}
@@ -680,7 +567,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                   <canvas ref={confettiRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full pointer-events-none" />
 
-                  {/* Custom cursor ring — shows exact scratch radius */}
+                  {/* Custom cursor ring */}
                   {!isRevealed && !imgLoading && !imgError && (
                     <div ref={cursorRef}
                       className="absolute pointer-events-none rounded-full -translate-x-1/2 -translate-y-1/2"
@@ -689,22 +576,20 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                         height: brushSize * 2 * (680 / CANVAS_W),
                         border: "1.5px solid rgba(255,255,255,0.85)",
                         boxShadow: "0 0 0 1px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.5)",
-                        display: "none", // shown by pointer handler
+                        display: "none",
                         zIndex: 5,
                       }} />
                   )}
 
-                  {/* Hint */}
                   {!imgLoading && !imgError && scratchPct === 0 && !isRevealed && (
                     <div className="absolute inset-0 flex items-end justify-center pb-6 pointer-events-none">
                       <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
                         <Sparkles size={13} className="text-white/70" />
-                        <p className="text-white/70 text-xs font-medium">Scratch to reveal rainbow colors!</p>
+                        <p className="text-white/70 text-xs font-medium">Scratch to reveal!</p>
                       </div>
                     </div>
                   )}
 
-                  {/* Celebration */}
                   {isRevealed && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="text-center bg-white/85 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-lg">
@@ -731,7 +616,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               )}
             </div>
 
-            {/* Thumbnail strip */}
             {!imgLoading && !imgError && totalPages > 0 && (
               <div className="bg-[#E8E4DC] border-t border-border-muted shrink-0">
                 <div ref={thumbStripRef} className="flex gap-2 px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
@@ -755,15 +639,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
         {/* ── Mobile bottom toolbar ─────────────────────────────────────── */}
         <div className="md:hidden bg-cream border-t border-border-muted px-3 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
-          {THEMES.map(t => (
-            <button key={t.id} onClick={() => changeTheme(t.id)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors ${
-                theme === t.id ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink"
-              }`}>
-              {t.emoji} {t.name}
-            </button>
-          ))}
-          <div className="w-px h-6 bg-border-muted shrink-0 mx-1" />
           {[{ l: "Fine", s: 3 }, { l: "Med", s: 6 }, { l: "Wide", s: 12 }].map(b => (
             <button key={b.s} onClick={() => setBrushSize(b.s)}
               className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 transition-colors ${
