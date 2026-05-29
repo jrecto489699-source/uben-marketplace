@@ -72,7 +72,7 @@ export const partyKitProducts: Product[] = [
 
 // ── Scratch Art ──────────────────────────────────────────────────────────────
 export const scratchArtProducts: Product[] = [
-  { id: 36, title: "Ginger the Giraffe Scratch Art (17 pages)", salePrice: "$6", originalPrice: "$10", seller: "Meadow Lane Prints", image: "/images/Ginger the giraffe.png", rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
+  { id: 36, title: "Animals Scratch Art (5 pages)",       salePrice: "$6", originalPrice: "$10", seller: "Meadow Lane Prints", image: "/images/Animals Scratch Art.png", rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
 ];
 
 // ── Trending — curated mix across all categories ─────────────────────────────
