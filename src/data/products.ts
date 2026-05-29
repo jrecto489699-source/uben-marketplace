@@ -70,6 +70,11 @@ export const partyKitProducts: Product[] = [
   { id: 34, title: "Christmas Party Activity Kit",         salePrice: "$7", originalPrice: "$11", seller: "Honey Bee Prints",    image: "/images/Christmas Party Activity Kit.png",            rating: 4.8, reviewCount: 138, onSale: true,  instantDownload: true  },
 ];
 
+// ── Scratch Art ──────────────────────────────────────────────────────────────
+export const scratchArtProducts: Product[] = [
+  { id: 36, title: "Ginger the Giraffe Scratch Art (17 pages)", salePrice: "$6", originalPrice: "$10", seller: "Meadow Lane Prints", image: "/images/Ginger the giraffe.png", rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
+];
+
 // ── Trending — curated mix across all categories ─────────────────────────────
 export const printableProducts: Product[] = [
   worksheetProducts[0], // Alphabet Tracing
@@ -99,6 +104,7 @@ export const allProducts: Product[] = [
   ...activityProducts,
   ...flashcardProducts,
   ...partyKitProducts,
+  ...scratchArtProducts,
 ];
 
 export function getProductById(id: number): Product | undefined {
@@ -126,5 +132,6 @@ export function getCategoryLabel(product: Product): string {
   if (activityProducts.find((p) => p.id === product.id))  return "Activities";
   if (flashcardProducts.find((p) => p.id === product.id)) return "Flashcards";
   if (partyKitProducts.find((p) => p.id === product.id))  return "Party Kits";
+  if (scratchArtProducts.find((p) => p.id === product.id)) return "Scratch Art";
   return "Printables";
 }
