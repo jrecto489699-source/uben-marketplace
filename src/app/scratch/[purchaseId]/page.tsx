@@ -19,33 +19,95 @@ interface Particle {
   rotation: number; rotSpeed: number;
 }
 
-// ── Color themes — applied over white lines via multiply blend ────────────────
+// ── Color themes ──────────────────────────────────────────────────────────────
+// Each theme paints a vivid neon gradient on top of the reveal canvas.
+// We then use a "multiply" blend so white lines pick up the color and black
+// background stays black — exactly like real scratch-art foil.
 type ThemeId = "rainbow" | "galaxy" | "sunset" | "ocean";
-const THEMES: { id: ThemeId; name: string; emoji: string; stops: [number, string][] }[] = [
+
+interface Theme {
+  id: ThemeId;
+  name: string;
+  emoji: string;
+  paint: (ctx: CanvasRenderingContext2D) => void;
+}
+
+const THEMES: Theme[] = [
   {
     id: "rainbow", name: "Rainbow", emoji: "🌈",
-    stops: [[0,"#FF0040"],[0.2,"#FF6600"],[0.4,"#FFD700"],[0.6,"#00DD44"],[0.8,"#00AAFF"],[1,"#AA44FF"]],
+    paint(ctx) {
+      // Base diagonal rainbow (top-left → bottom-right)
+      const g1 = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
+      g1.addColorStop(0.00, "#FF1493"); // hot pink
+      g1.addColorStop(0.15, "#FF0080"); // magenta
+      g1.addColorStop(0.30, "#9400FF"); // violet
+      g1.addColorStop(0.45, "#3D00FF"); // deep blue
+      g1.addColorStop(0.55, "#00BFFF"); // cyan-blue
+      g1.addColorStop(0.70, "#00FF7F"); // spring green
+      g1.addColorStop(0.82, "#FFFF00"); // pure yellow
+      g1.addColorStop(0.92, "#FF6B00"); // orange
+      g1.addColorStop(1.00, "#FF0000"); // red
+      ctx.fillStyle = g1;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Second radial overlay from upper-center to add the glowing
+      // "centered hot spot" look from real scratch art
+      const g2 = ctx.createRadialGradient(
+        CANVAS_W * 0.55, CANVAS_H * 0.35, CANVAS_W * 0.05,
+        CANVAS_W * 0.55, CANVAS_H * 0.35, CANVAS_W * 0.8
+      );
+      g2.addColorStop(0.00, "rgba(255, 0, 200, 0.55)"); // magenta core
+      g2.addColorStop(0.30, "rgba(180, 0, 255, 0.30)"); // purple mid
+      g2.addColorStop(1.00, "rgba(0, 200, 255, 0.00)"); // fade
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = g2;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalCompositeOperation = "source-over";
+    },
   },
   {
     id: "galaxy", name: "Galaxy", emoji: "✨",
-    stops: [[0,"#FF88FF"],[0.25,"#AA00FF"],[0.5,"#4400CC"],[0.75,"#00AAFF"],[1,"#FF44AA"]],
+    paint(ctx) {
+      const g = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
+      g.addColorStop(0.00, "#FF00FF"); // magenta
+      g.addColorStop(0.25, "#9D00FF"); // violet
+      g.addColorStop(0.50, "#3D00FF"); // deep blue
+      g.addColorStop(0.75, "#00BFFF"); // cyan
+      g.addColorStop(1.00, "#FF1493"); // hot pink
+      ctx.fillStyle = g; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      const r = ctx.createRadialGradient(CANVAS_W*0.5, CANVAS_H*0.45, 50, CANVAS_W*0.5, CANVAS_H*0.45, CANVAS_W*0.7);
+      r.addColorStop(0, "rgba(255,255,255,0.35)");
+      r.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = r; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalCompositeOperation = "source-over";
+    },
   },
   {
     id: "sunset", name: "Sunset", emoji: "🌅",
-    stops: [[0,"#FF2D55"],[0.25,"#FF6B35"],[0.5,"#FFD700"],[0.75,"#FF44AA"],[1,"#AA00FF"]],
+    paint(ctx) {
+      const g = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
+      g.addColorStop(0.00, "#FF006E"); // hot pink
+      g.addColorStop(0.25, "#FB5607"); // orange
+      g.addColorStop(0.50, "#FFBE0B"); // yellow
+      g.addColorStop(0.75, "#FF006E"); // pink
+      g.addColorStop(1.00, "#8338EC"); // purple
+      ctx.fillStyle = g; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    },
   },
   {
     id: "ocean", name: "Ocean", emoji: "🌊",
-    stops: [[0,"#00FFCC"],[0.3,"#00AAFF"],[0.6,"#0055FF"],[0.85,"#00DDAA"],[1,"#44FFAA"]],
+    paint(ctx) {
+      const g = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
+      g.addColorStop(0.00, "#00FFE0"); // bright cyan
+      g.addColorStop(0.25, "#00BFFF"); // azure
+      g.addColorStop(0.50, "#0066FF"); // electric blue
+      g.addColorStop(0.75, "#7B00FF"); // purple
+      g.addColorStop(1.00, "#00FFAA"); // mint
+      ctx.fillStyle = g; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    },
   },
 ];
-
-function buildGradient(ctx: CanvasRenderingContext2D, themeId: ThemeId) {
-  const t = THEMES.find(x => x.id === themeId)!;
-  const g = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
-  t.stops.forEach(([pos, color]) => g.addColorStop(pos, color));
-  return g;
-}
 
 // ── Load an image URL into an HTMLImageElement ────────────────────────────────
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -83,6 +145,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const revealRef    = useRef<HTMLCanvasElement>(null);
   const scratchRef   = useRef<HTMLCanvasElement>(null);
   const confettiRef  = useRef<HTMLCanvasElement>(null);
+  const cursorRef    = useRef<HTMLDivElement>(null);
   const thumbStripRef = useRef<HTMLDivElement>(null);
 
   const lastPos        = useRef<{ x: number; y: number } | null>(null);
@@ -94,7 +157,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const currentPageRef = useRef(0);
 
   const [theme,          setTheme]          = useState<ThemeId>("rainbow");
-  const [brushSize,      setBrushSize]      = useState(10);
+  const [brushSize,      setBrushSize]      = useState(4); // thin default — precision scratching
   const [scratchPct,     setScratchPct]     = useState(0);
   const [isRevealed,     setIsRevealed]     = useState(false);
   const [isAutoClearing, setIsAutoClearing] = useState(false);
@@ -121,7 +184,9 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     } catch { return null; }
   }
 
-  // ── Reveal layer: image + rainbow gradient (multiply) ─────────────────────
+  // ── Reveal layer: image + neon rainbow (multiply blend) ──────────────────
+  // Black background × any color = black, so the bg stays pure black.
+  // White lines × theme color = the color, so lines turn neon rainbow.
   async function renderRevealLayer(pageIndex: number, themeId: ThemeId) {
     const canvas = revealRef.current;
     if (!canvas) return;
@@ -129,10 +194,9 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     const img = await getImage(pageIndex);
     if (!img) return;
     drawImageCentered(ctx, img);
-    // multiply: white lines → rainbow color, black bg → stays black
     ctx.globalCompositeOperation = "multiply";
-    ctx.fillStyle = buildGradient(ctx, themeId);
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    const theme = THEMES.find(t => t.id === themeId)!;
+    theme.paint(ctx);
     ctx.globalCompositeOperation = "source-over";
   }
 
@@ -354,14 +418,37 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   }, [isRevealed, isAutoClearing, imgLoading, imgError, brushSize]);
 
   const onPointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing.current || isRevealed || isAutoClearing) return;
+    if (isRevealed || isAutoClearing) return;
     e.preventDefault();
+
+    // Update cursor ring position (mouse only — touch doesn't need it)
+    if (!("touches" in e) && cursorRef.current && scratchRef.current) {
+      const rect = scratchRef.current.getBoundingClientRect();
+      cursorRef.current.style.display = "block";
+      cursorRef.current.style.left = (e.clientX - rect.left) + "px";
+      cursorRef.current.style.top  = (e.clientY - rect.top)  + "px";
+    }
+
+    if (!isDrawing.current) return;
     const pos = getPos(e.nativeEvent as MouseEvent | TouchEvent);
     if (!pos) return;
     if (lastPos.current) scratchStroke(lastPos.current, pos, brushSize);
     lastPos.current = pos;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRevealed, isAutoClearing, brushSize]);
+
+  const onPointerEnter = useCallback(() => {
+    if (cursorRef.current) cursorRef.current.style.display = "block";
+  }, []);
+
+  const onPointerLeave = useCallback(() => {
+    if (cursorRef.current) cursorRef.current.style.display = "none";
+    if (isDrawing.current) {
+      isDrawing.current = false; lastPos.current = null;
+      checkPercent();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRevealed, isAutoClearing]);
 
   const onPointerUp = useCallback(() => {
     if (!isDrawing.current) return;
@@ -502,11 +589,11 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
                 Scratch Size — {brushSize}px
               </p>
-              <input type="range" min={4} max={40} value={brushSize}
+              <input type="range" min={2} max={20} value={brushSize}
                 onChange={e => setBrushSize(Number(e.target.value))}
                 className="w-full cursor-pointer mb-3" style={{ accentColor: "#222" }} />
               <div className="flex gap-2">
-                {[{ label: "Fine", size: 6 }, { label: "Med", size: 14 }, { label: "Wide", size: 28 }].map(b => (
+                {[{ label: "Fine", size: 3 }, { label: "Med", size: 6 }, { label: "Wide", size: 12 }].map(b => (
                   <button key={b.size} onClick={() => setBrushSize(b.size)}
                     className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
                       brushSize === b.size ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
@@ -582,15 +669,30 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                   {/* Layer 2 — Scratch: image normally (white lines on black) */}
                   <canvas ref={scratchRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full"
-                    style={{ cursor: isRevealed ? "default" : "crosshair", touchAction: "none" }}
+                    style={{ cursor: isRevealed ? "default" : "none", touchAction: "none" }}
                     onMouseDown={onPointerDown} onMouseMove={onPointerMove}
-                    onMouseUp={onPointerUp}    onMouseLeave={onPointerUp}
+                    onMouseUp={onPointerUp}    onMouseLeave={onPointerLeave}
+                    onMouseEnter={onPointerEnter}
                     onTouchStart={onPointerDown} onTouchMove={onPointerMove}
                     onTouchEnd={onPointerUp} />
 
                   {/* Layer 3 — Confetti */}
                   <canvas ref={confettiRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full pointer-events-none" />
+
+                  {/* Custom cursor ring — shows exact scratch radius */}
+                  {!isRevealed && !imgLoading && !imgError && (
+                    <div ref={cursorRef}
+                      className="absolute pointer-events-none rounded-full -translate-x-1/2 -translate-y-1/2"
+                      style={{
+                        width:  brushSize * 2 * (680 / CANVAS_W),
+                        height: brushSize * 2 * (680 / CANVAS_W),
+                        border: "1.5px solid rgba(255,255,255,0.85)",
+                        boxShadow: "0 0 0 1px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.5)",
+                        display: "none", // shown by pointer handler
+                        zIndex: 5,
+                      }} />
+                  )}
 
                   {/* Hint */}
                   {!imgLoading && !imgError && scratchPct === 0 && !isRevealed && (
@@ -662,7 +764,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             </button>
           ))}
           <div className="w-px h-6 bg-border-muted shrink-0 mx-1" />
-          {[{ l: "Fine", s: 6 }, { l: "Med", s: 14 }, { l: "Wide", s: 28 }].map(b => (
+          {[{ l: "Fine", s: 3 }, { l: "Med", s: 6 }, { l: "Wide", s: 12 }].map(b => (
             <button key={b.s} onClick={() => setBrushSize(b.s)}
               className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 transition-colors ${
                 brushSize === b.s ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink"
