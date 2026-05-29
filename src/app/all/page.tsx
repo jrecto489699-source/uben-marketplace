@@ -10,7 +10,7 @@ import { useCurrency } from "@/context/CurrencyContext";
 import {
   allProducts, printableProducts, classroomProducts,
   worksheetProducts, coloringProducts, storybookProducts,
-  activityProducts, flashcardProducts, partyKitProducts,
+  activityProducts, flashcardProducts, partyKitProducts, scratchArtProducts,
   type Product,
 } from "@/data/products";
 
@@ -22,8 +22,9 @@ const CATEGORY_SETS: Record<string, Product[]> = {
   storybooks: storybookProducts,
   activities: activityProducts,
   flashcards: flashcardProducts,
-  "party-kits": partyKitProducts,
-  classroom:  classroomProducts,
+  "party-kits":  partyKitProducts,
+  "scratch-art": scratchArtProducts,
+  classroom:     classroomProducts,
 };
 
 const SORT_OPTIONS = [
@@ -84,8 +85,9 @@ function ProductGrid() {
     storybooks:   "Storybooks",
     activities:   "Activities",
     flashcards:   "Flashcards",
-    "party-kits": "Party Kits",
-    classroom:    "Top Classroom Picks",
+    "party-kits":  "Party Kits",
+    "scratch-art": "Scratch Art",
+    classroom:     "Top Classroom Picks",
   };
   const pageTitle = searchQuery
     ? `Results for "${searchParams.get("search")}"`
