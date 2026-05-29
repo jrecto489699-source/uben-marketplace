@@ -753,15 +753,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     </div>
                   )}
 
-                  {isRevealed && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="text-center bg-white/85 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-lg">
-                        <p className="text-4xl mb-2 animate-bounce">🎉</p>
-                        <p className="font-serif text-xl text-ink font-semibold">Amazing!</p>
-                        <p className="text-sm text-ink-muted mt-1">Hit Reset to scratch again</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
