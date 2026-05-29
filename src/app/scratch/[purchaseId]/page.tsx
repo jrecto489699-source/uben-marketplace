@@ -3,7 +3,7 @@
 import { use, useEffect, useRef, useState, useCallback } from "react";
 import {
   ArrowLeft, RotateCcw, Download, Maximize, Minimize,
-  ChevronLeft, ChevronRight, BookOpen, Sparkles,
+  ChevronLeft, ChevronRight, BookOpen, Sparkles, Eye, EyeOff,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
@@ -102,8 +102,16 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const [pageLoading,    setPageLoading]    = useState(false);
   const [saved,          setSaved]          = useState(false);
   const [cloudSaving,    setCloudSaving]    = useState(false);
+  const [showGuide,      setShowGuide]      = useState(true);
+  const [guideUrl,       setGuideUrl]       = useState<string | null>(null);
 
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
+
+  // Update guide preview URL when the page changes or pages load
+  useEffect(() => {
+    const url = pagePairs.current[currentPage]?.reveal ?? null;
+    setGuideUrl(url);
+  }, [currentPage, totalPages]);
 
   // ── Load images (cached per page) ─────────────────────────────────────────
   async function getScratchImage(pageIndex: number): Promise<HTMLImageElement | null> {
@@ -687,6 +695,40 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                   {/* Layer 3 — Confetti */}
                   <canvas ref={confettiRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full pointer-events-none" />
+
+                  {/* Color guide preview (top-right corner) */}
+                  {!imgLoading && !imgError && guideUrl && !isRevealed && (
+                    <div className="absolute top-3 right-3 z-10">
+                      {showGuide ? (
+                        <div className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={guideUrl}
+                            alt="Color guide"
+                            className="w-24 h-32 sm:w-28 sm:h-36 object-cover rounded-xl border-2 border-white/90 shadow-lg bg-black"
+                          />
+                          <button
+                            onClick={() => setShowGuide(false)}
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-ink text-cream flex items-center justify-center shadow-md hover:bg-[#3a3a3a] transition-colors"
+                            title="Hide color guide"
+                          >
+                            <EyeOff size={11} />
+                          </button>
+                          <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-white/90 tracking-wider uppercase drop-shadow">
+                            Guide
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowGuide(true)}
+                          className="w-9 h-9 rounded-full bg-ink/85 hover:bg-ink text-cream flex items-center justify-center shadow-md transition-colors"
+                          title="Show color guide"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Custom cursor ring */}
                   {!isRevealed && !imgLoading && !imgError && (
