@@ -7,10 +7,22 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
+import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import { allProducts } from "@/data/products";
 
 const CANVAS_W = 800;
 const CANVAS_H = 1040;
+const SCRATCHES_BUCKET = "scratches";
+
+function dataURLtoBlob(dataURL: string): Blob {
+  const [header, data] = dataURL.split(",");
+  const mime = header.match(/:(.*?);/)![1];
+  const binary = atob(data);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
 
 // ── Page pair (two image URLs per page) ──────────────────────────────────────
 interface PagePair {
@@ -52,9 +64,12 @@ function drawImageCentered(ctx: CanvasRenderingContext2D, img: HTMLImageElement)
 export default function ScratchPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
   const { purchases, loading } = usePurchases();
+  const { user } = useAuth();
+  const supabase = createClient();
 
   const purchase = purchases.find(p => p.id === purchaseId);
   const product  = purchase ? allProducts.find(p => p.id === purchase.product_id) : null;
+  const cloudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Canvas refs ───────────────────────────────────────────────────────────
   // revealRef  = bottom: the colored "reveal" image (what gets uncovered)
@@ -86,6 +101,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const [thumbnails,     setThumbnails]     = useState<string[]>([]);
   const [pageLoading,    setPageLoading]    = useState(false);
   const [saved,          setSaved]          = useState(false);
+  const [cloudSaving,    setCloudSaving]    = useState(false);
 
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
@@ -121,22 +137,44 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     drawImageCentered(canvas.getContext("2d")!, img);
   }
 
-  // ── Per-page localStorage key ─────────────────────────────────────────────
-  function storageKey(pageIndex: number) {
+  // ── Per-page storage keys/paths ───────────────────────────────────────────
+  function localKey(pageIndex: number) {
     return `uben_scratch_${purchaseId}_${pageIndex}`;
+  }
+  function cloudPath(pageIndex: number) {
+    return user ? `${user.id}/${purchaseId}/${pageIndex}.png` : null;
   }
 
   // ── Render scratch coating layer ──────────────────────────────────────────
-  // If a saved scratch state exists for this page, restore that.
-  // Otherwise draw the fresh B&W image.
+  // 1. Try Supabase Storage (cross-device) → 2. localStorage → 3. fresh B&W
   async function renderScratchLayer(pageIndex: number) {
     const canvas = scratchRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
 
-    // Try saved state first
+    // 1. Cloud
+    const path = cloudPath(pageIndex);
+    if (path) {
+      try {
+        const { data: blob } = await supabase.storage.from(SCRATCHES_BUCKET).download(path);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const savedImg = await loadImage(url);
+          ctx.globalCompositeOperation = "source-over";
+          ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+          ctx.drawImage(savedImg, 0, 0);
+          URL.revokeObjectURL(url);
+          canvas.style.opacity = "1";
+          // Mirror to localStorage for offline reload
+          try { localStorage.setItem(localKey(pageIndex), canvas.toDataURL("image/png")); } catch {}
+          return;
+        }
+      } catch {}
+    }
+
+    // 2. localStorage
     try {
-      const saved = localStorage.getItem(storageKey(pageIndex));
+      const saved = localStorage.getItem(localKey(pageIndex));
       if (saved) {
         const savedImg = await loadImage(saved);
         ctx.globalCompositeOperation = "source-over";
@@ -147,19 +185,39 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
       }
     } catch {}
 
+    // 3. Fresh B&W image
     const img = await getScratchImage(pageIndex);
     if (!img) return;
     drawImageCentered(ctx, img);
     canvas.style.opacity = "1";
   }
 
-  // ── Save current scratch state to localStorage ───────────────────────────
+  // ── Save scratch state ────────────────────────────────────────────────────
+  // Immediate local save + debounced cloud upload (3 s after last stroke)
   function saveScratchState() {
     const canvas = scratchRef.current;
     if (!canvas) return;
-    try {
-      localStorage.setItem(storageKey(currentPageRef.current), canvas.toDataURL("image/png"));
-    } catch {}
+    const dataURL = canvas.toDataURL("image/png");
+    const pg = currentPageRef.current;
+
+    try { localStorage.setItem(localKey(pg), dataURL); } catch {}
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+
+    const path = cloudPath(pg);
+    if (!path) return;
+    if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current);
+    cloudTimerRef.current = setTimeout(async () => {
+      setCloudSaving(true);
+      try {
+        await supabase.storage.from(SCRATCHES_BUCKET).upload(path, dataURLtoBlob(dataURL), {
+          upsert: true,
+          contentType: "image/png",
+        });
+      } finally {
+        setCloudSaving(false);
+      }
+    }, 3000);
   }
 
   // ── Load page list ────────────────────────────────────────────────────────
@@ -191,7 +249,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [purchase?.id]);
+  }, [purchase?.id, user?.id]);
 
   // ── Build thumbnails from scratch (B&W) images ───────────────────────────
   async function buildThumbnails() {
@@ -418,8 +476,14 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (animRef.current) cancelAnimationFrame(animRef.current);
     particles.current = [];
     confettiRef.current?.getContext("2d")?.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    // Clear saved state first so renderScratchLayer draws the fresh B&W image
-    try { localStorage.removeItem(storageKey(currentPageRef.current)); } catch {}
+    // Clear saved state (local + cloud) so renderScratchLayer draws the fresh B&W image
+    const pg = currentPageRef.current;
+    try { localStorage.removeItem(localKey(pg)); } catch {}
+    const path = cloudPath(pg);
+    if (path) {
+      supabase.storage.from(SCRATCHES_BUCKET).remove([path]).catch(() => {});
+    }
+    if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current);
     const canvas = scratchRef.current;
     if (canvas) {
       const img = await getScratchImage(currentPageRef.current);
@@ -504,7 +568,9 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             </div>
           )}
 
-          <span className={`text-[11px] shrink-0 transition-opacity duration-300 ${saved ? "opacity-100 text-[#258635]" : "opacity-0"}`}>Saved</span>
+          <span className={`text-[11px] shrink-0 transition-opacity duration-300 ${cloudSaving ? "opacity-100 text-ink-muted" : saved ? "opacity-100 text-[#258635]" : "opacity-0"}`}>
+            {cloudSaving ? "Syncing…" : "Saved"}
+          </span>
 
           {!imgError && (
             <button onClick={reset}
