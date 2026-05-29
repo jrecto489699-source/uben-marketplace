@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { usePurchases } from "@/context/PurchasesContext";
+import { useCurrency } from "@/context/CurrencyContext";
 import AuthModal from "@/components/AuthModal";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -38,6 +39,7 @@ function StripeCardForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const { formatPrice } = useCurrency();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -150,7 +152,7 @@ function StripeCardForm({
           className="flex-1 h-12 rounded-full bg-ink text-cream text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#3a3a3a] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all duration-200"
         >
           <Lock size={13} strokeWidth={2} />
-          {loading ? "Processing…" : `Pay $${total.toFixed(2)}`}
+          {loading ? "Processing…" : `Pay ${formatPrice(total.toFixed(2))}`}
         </button>
       </div>
     </div>
@@ -164,6 +166,7 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
   const [email, setEmail] = useState("");
   const { items, removeFromCart } = useCart();
   const { savePurchases } = usePurchases();
+  const { formatPrice } = useCurrency();
 
   async function handleSuccess() {
     await savePurchases(items.map((i) => i.product));
@@ -184,7 +187,7 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
               {step === "success" ? "Order Confirmed!" : "Checkout"}
             </h2>
             {step !== "success" && (
-              <p className="text-xs text-ink-muted mt-0.5">Total: <span className="font-semibold text-ink">${total.toFixed(2)}</span></p>
+              <p className="text-xs text-ink-muted mt-0.5">Total: <span className="font-semibold text-ink">{formatPrice(total.toFixed(2))}</span></p>
             )}
           </div>
           {step !== "success" && (
@@ -328,6 +331,7 @@ function CheckoutModal({ total, onClose }: { total: number; onClose: () => void 
 export default function CartPage() {
   const { items, removeFromCart, cartCount } = useCart();
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
   const [showCheckout, setShowCheckout] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -387,8 +391,8 @@ export default function CartPage() {
                           <h3 className="text-sm font-medium text-ink leading-snug line-clamp-2 hover:underline underline-offset-2 mb-1">{product.title}</h3>
                         </a>
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-sm font-semibold text-sale-green">{product.salePrice}</span>
-                          <span className="text-xs text-ink-muted line-through">{product.originalPrice}</span>
+                          <span className="text-sm font-semibold text-sale-green">{formatPrice(product.salePrice)}</span>
+                          <span className="text-xs text-ink-muted line-through">{formatPrice(product.originalPrice)}</span>
                           {pct !== null && <span className="text-[10px] font-bold text-sale-green">{pct}% off</span>}
                         </div>
                         {product.instantDownload && (
@@ -418,12 +422,12 @@ export default function CartPage() {
                   <div className="space-y-2 mb-4 text-sm">
                     <div className="flex justify-between text-ink-muted">
                       <span>Subtotal ({items.length} {items.length === 1 ? "item" : "items"})</span>
-                      <span>${subtotal.toFixed(2)}</span>
+                      <span>{formatPrice(subtotal.toFixed(2))}</span>
                     </div>
                     {savings > 0 && (
                       <div className="flex justify-between text-sale-green font-medium">
                         <span>You save</span>
-                        <span>−${savings.toFixed(2)}</span>
+                        <span>−{formatPrice(savings.toFixed(2))}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-ink-muted">
@@ -434,7 +438,7 @@ export default function CartPage() {
                   <div className="border-t border-border-muted pt-4 mb-5">
                     <div className="flex justify-between font-semibold text-ink text-base">
                       <span>Total</span>
-                      <span>${subtotal.toFixed(2)}</span>
+                      <span>{formatPrice(subtotal.toFixed(2))}</span>
                     </div>
                   </div>
                   <button

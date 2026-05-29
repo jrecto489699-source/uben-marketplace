@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import DownloadButton from "@/components/DownloadButton";
 import { usePurchases } from "@/context/PurchasesContext";
 import { useAuth } from "@/context/AuthContext";
+import { useCurrency } from "@/context/CurrencyContext";
 import { allProducts, getCategoryLabel } from "@/data/products";
 
 const CATEGORY_ORDER = [
@@ -30,6 +31,7 @@ function formatDate(iso: string) {
 export default function DownloadsPage() {
   const { purchases, loading } = usePurchases();
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   if (!user) {
@@ -148,7 +150,7 @@ export default function DownloadsPage() {
                                     {prod?.title ?? purchase.product_title}
                                   </h3>
                                 </a>
-                                <p className="text-xs text-ink-muted mb-1">Paid {purchase.sale_price}</p>
+                                <p className="text-xs text-ink-muted mb-1">Paid {formatPrice(purchase.sale_price)}</p>
                                 <p className="text-xs text-ink-muted mb-2">{formatDate(purchase.created_at)}</p>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#134A4F] bg-[#134A4F]/10 px-2 py-0.5 rounded-full">
