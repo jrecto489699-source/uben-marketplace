@@ -570,6 +570,38 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                   <div className="relative rounded-xl overflow-hidden border border-border-muted bg-white">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={imageUrl} alt="Reference" className="w-full h-auto block" />
+                    {/* Jigsaw pattern overlay — same shapes as the board so kids
+                        can map each piece to its location on the reference. */}
+                    {(() => {
+                      const refSize = 100;
+                      const cell = refSize / gridN;
+                      const tab = cell * 0.18;
+                      return (
+                        <svg
+                          viewBox={`${-tab} ${-tab} ${refSize + 2 * tab} ${refSize + 2 * tab}`}
+                          preserveAspectRatio="none"
+                          className="absolute inset-0 w-full h-full pointer-events-none"
+                          style={{ overflow: "visible" }}
+                        >
+                          {edgeMap.map((row, r) => row.map((edges, c) => (
+                            <g key={`ref-${r}-${c}`} transform={`translate(${c * cell} ${r * cell})`}>
+                              <path
+                                d={piecePath(edges, cell, tab)}
+                                fill="none"
+                                stroke="rgba(255,255,255,0.9)"
+                                strokeWidth={0.6}
+                              />
+                              <path
+                                d={piecePath(edges, cell, tab)}
+                                fill="none"
+                                stroke="rgba(0,0,0,0.6)"
+                                strokeWidth={0.3}
+                              />
+                            </g>
+                          )))}
+                        </svg>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-border-muted bg-card-hover/30 py-6 text-center">
