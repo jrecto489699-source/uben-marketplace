@@ -21,6 +21,7 @@ const categories = [
   { label: "Flashcards",  slug: "flashcards"  },
   { label: "Party Kits",  slug: "party-kits"  },
   { label: "Scratch Art", slug: "scratch-art" },
+  { label: "Puzzle",      slug: "puzzle"      },
   { label: "Classroom",   slug: "classroom"   },
   { label: "Holiday",     slug: "holiday",    badge: "New" },
 ];

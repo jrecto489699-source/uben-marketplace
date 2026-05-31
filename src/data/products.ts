@@ -70,6 +70,11 @@ export const partyKitProducts: Product[] = [
   { id: 34, title: "Christmas Party Activity Kit",         salePrice: "$7", originalPrice: "$11", seller: "Honey Bee Prints",    image: "/images/Christmas Party Activity Kit.png",            rating: 4.8, reviewCount: 138, onSale: true,  instantDownload: true  },
 ];
 
+// ── Puzzle ───────────────────────────────────────────────────────────────────
+export const puzzleProducts: Product[] = [
+  { id: 37, title: "Animal Puzzle (5 pages)",             salePrice: "$5", originalPrice: "$8",  seller: "Meadow Lane Prints", image: "/images/Puzzle.png", rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
+];
+
 // ── Scratch Art ──────────────────────────────────────────────────────────────
 export const scratchArtProducts: Product[] = [
   { id: 36, title: "Animals Scratch Art (5 pages)",       salePrice: "$6", originalPrice: "$10", seller: "Meadow Lane Prints", image: "/images/Animals Scratch Art.png", rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
@@ -105,6 +110,7 @@ export const allProducts: Product[] = [
   ...flashcardProducts,
   ...partyKitProducts,
   ...scratchArtProducts,
+  ...puzzleProducts,
 ];
 
 export function getProductById(id: number): Product | undefined {
@@ -133,5 +139,6 @@ export function getCategoryLabel(product: Product): string {
   if (flashcardProducts.find((p) => p.id === product.id)) return "Flashcards";
   if (partyKitProducts.find((p) => p.id === product.id))  return "Party Kits";
   if (scratchArtProducts.find((p) => p.id === product.id)) return "Scratch Art";
+  if (puzzleProducts.find((p) => p.id === product.id))     return "Puzzle";
   return "Printables";
 }

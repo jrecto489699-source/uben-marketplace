@@ -18,6 +18,7 @@ const CATEGORY_ORDER = [
   "Flashcards",
   "Party Kits",
   "Scratch Art",
+  "Puzzle",
   "Printables",
 ];
 
