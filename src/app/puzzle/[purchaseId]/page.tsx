@@ -415,8 +415,20 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
     return () => document.removeEventListener("fullscreenchange", fn);
   }, []);
   function toggleFullscreen() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-    else document.exitFullscreen().catch(() => {});
+    // Flip the state immediately so the UI responds even on iOS Safari,
+    // which doesn't support the Fullscreen API for non-video elements.
+    // We still try the real API as a bonus where supported (desktop, Android).
+    setIsFullscreen(prev => {
+      const next = !prev;
+      try {
+        if (next && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else if (!next && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch {}
+      return next;
+    });
   }
 
   // Arrow keys
@@ -679,7 +691,15 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
   return (
     <>
       {!isFullscreen && <Navbar />}
-      <main className="bg-[#EDEBE6] flex flex-col" style={{ height: isFullscreen ? "100vh" : "calc(100vh - 64px)" }}>
+      <main
+        className="bg-[#EDEBE6] flex flex-col"
+        style={{
+          // dvh accounts for the mobile address bar; vh is the fallback.
+          height: isFullscreen ? "100dvh" : "calc(100dvh - 64px)",
+          // When in pseudo-fullscreen on mobile, pin to the viewport so
+          // nothing on the page behind it can scroll into view.
+          ...(isFullscreen ? { position: "fixed", inset: 0, zIndex: 50 } : {}),
+        }}>
 
         {/* ── Top bar ──────────────────────────────────────────────────────── */}
         <div className="relative z-20 bg-cream border-b border-border-muted px-4 py-2.5 flex items-center gap-3 shrink-0">

@@ -328,8 +328,17 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     return () => document.removeEventListener("fullscreenchange", fn);
   }, []);
   function toggleFullscreen() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-    else document.exitFullscreen().catch(() => {});
+    setIsFullscreen(prev => {
+      const next = !prev;
+      try {
+        if (next && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else if (!next && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch {}
+      return next;
+    });
   }
 
   // Arrow key navigation
@@ -566,7 +575,12 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   return (
     <>
       {!isFullscreen && <Navbar />}
-      <main className="bg-[#EDEBE6] flex flex-col" style={{ height: isFullscreen ? "100vh" : "calc(100vh - 64px)" }}>
+      <main
+        className="bg-[#EDEBE6] flex flex-col"
+        style={{
+          height: isFullscreen ? "100dvh" : "calc(100dvh - 64px)",
+          ...(isFullscreen ? { position: "fixed", inset: 0, zIndex: 50 } : {}),
+        }}>
 
         {/* ── Top bar ──────────────────────────────────────────────────────── */}
         <div className="relative z-20 bg-cream border-b border-border-muted px-4 py-2.5 flex items-center gap-3 shrink-0">
