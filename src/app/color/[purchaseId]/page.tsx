@@ -204,7 +204,7 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
       try {
         // Kick off both the signed-URL fetch and PDF.js warm-up in parallel
         const [res, lib] = await Promise.all([
-          fetch(`/api/coloring-pdf/${purchase!.id}`),
+          fetch(`/api/coloring-pdf/${purchase!.id}`, { credentials: "include", cache: "no-store" }),
           getPdfJs(),
         ]);
         if (!res.ok) {
@@ -754,8 +754,14 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
               <div className="absolute inset-0 z-20 flex items-center justify-center px-6" style={{ background: "#EDEBE6" }}>
                 <div className="text-center max-w-sm">
                   <BookOpen size={40} strokeWidth={1.2} className="text-ink-muted mx-auto mb-4" />
-                  <p className="font-serif text-xl text-ink mb-2">Coloring pages coming soon</p>
-                  <p className="text-sm text-ink-muted">The interactive coloring book for this product is being prepared. Check back soon!</p>
+                  <p className="font-serif text-xl text-ink mb-2">Couldn&apos;t load the coloring book</p>
+                  <p className="text-sm text-ink-muted mb-4">{pdfError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-5 py-2 rounded-full bg-ink text-cream text-xs font-medium hover:bg-[#3a3a3a] transition-colors"
+                  >
+                    Retry
+                  </button>
                 </div>
               </div>
             )}

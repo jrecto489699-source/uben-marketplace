@@ -256,7 +256,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     async function load() {
       setImgLoading(true); setImgError(null);
       try {
-        const res = await fetch(`/api/scratch-images/${purchase!.id}`);
+        const res = await fetch(`/api/scratch-images/${purchase!.id}`, { credentials: "include", cache: "no-store" });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           setImgError(body.error ?? "Scratch images not available yet");
