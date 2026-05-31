@@ -317,6 +317,18 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
     else document.exitFullscreen().catch(() => {});
   }
 
+  // ── Initial zoom for small screens ──────────────────────────────────────
+  // The canvas wrapper is 680px wide. On phones narrower than that the page
+  // overflows. Auto-fit on first mount so the whole sheet is visible.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vw = window.innerWidth;
+    if (vw < 680) {
+      const fit = Math.max(MIN_ZOOM, parseFloat(((vw - 32) / 680).toFixed(2)));
+      setZoom(fit);
+    }
+  }, []);
+
   // ── Mouse-wheel zoom ──────────────────────────────────────────────────────
   useEffect(() => {
     const el = viewportRef.current;
