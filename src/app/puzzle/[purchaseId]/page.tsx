@@ -410,34 +410,78 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
         if (absDx < THRESHOLD && absDy < THRESHOLD) return;
         // Horizontal-dominant → user is scrolling the tray; abort drag
         if (absDx > absDy * 1.3) {
-          window.removeEventListener("pointermove",   handleMove);
-          window.removeEventListener("pointerup",     handleUp);
-          window.removeEventListener("pointercancel", handleUp);
+          cleanup();
           return;
         }
-        // Vertical-dominant → commit to drag
+        // Vertical-dominant → commit to drag and lock page scroll
         committed = true;
         justDraggedRef.current = true;
+        lockBodyScroll();
         setDraggingId(pieceIdx);
         setSelectedId(pieceIdx);
       }
       ev.preventDefault();
       setDraggingPos({ x: ev.clientX, y: ev.clientY });
     };
+    // Block touchmove explicitly on iOS Safari — preventDefault on a
+    // pointermove isn't enough to stop the page from scrolling there.
+    const handleTouchMove = (ev: TouchEvent) => {
+      if (committed) ev.preventDefault();
+    };
     const handleUp = (ev: PointerEvent) => {
-      window.removeEventListener("pointermove",   handleMove);
-      window.removeEventListener("pointerup",     handleUp);
-      window.removeEventListener("pointercancel", handleUp);
-      if (committed) {
-        finishDrag(pieceIdx, ev.clientX, ev.clientY);
-      }
+      cleanup();
+      if (committed) finishDrag(pieceIdx, ev.clientX, ev.clientY);
       // If not committed, the gesture is a tap; the click handler runs
       // and fires selectPiece.
     };
+    function cleanup() {
+      window.removeEventListener("pointermove",   handleMove);
+      window.removeEventListener("pointerup",     handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+      window.removeEventListener("touchmove",     handleTouchMove);
+      if (committed) unlockBodyScroll();
+    }
     window.addEventListener("pointermove",   handleMove);
     window.addEventListener("pointerup",     handleUp);
     window.addEventListener("pointercancel", handleUp);
+    // passive: false is required so preventDefault on touchmove actually
+    // blocks the browser from scrolling.
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
   }
+
+  // ── Body scroll lock helpers ─────────────────────────────────────────────
+  // Lock the document scroll position so dragging a piece out of the
+  // puzzle area doesn't pull the page along with it.
+  function lockBodyScroll() {
+    const y = window.scrollY;
+    document.body.dataset.puzzleScrollY = String(y);
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${y}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+  }
+  function unlockBodyScroll() {
+    const y = parseInt(document.body.dataset.puzzleScrollY ?? "0", 10);
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    document.body.style.overflow = "";
+    document.body.style.touchAction = "";
+    delete document.body.dataset.puzzleScrollY;
+    window.scrollTo(0, y);
+  }
+
+  // Always restore body scroll on unmount in case a drag never finished
+  useEffect(() => {
+    return () => {
+      if (document.body.dataset.puzzleScrollY !== undefined) unlockBodyScroll();
+    };
+  }, []);
 
   function finishDrag(pieceIdx: number, clientX: number, clientY: number) {
     setDraggingId(null);
