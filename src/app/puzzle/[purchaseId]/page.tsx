@@ -382,32 +382,60 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
     setSelectedId(null);
   }
 
+  // Tracks whether the most recent pointer interaction became a drag —
+  // used to suppress the click handler that fires after pointerup so a
+  // drag doesn't also trigger selectPiece.
+  const justDraggedRef = useRef(false);
+
   // ── Drag (unified mouse + touch via window listeners) ────────────────────
-  // The previous version used setPointerCapture on SVG <image> elements,
-  // which isn't reliable across browsers, and document.elementFromPoint
-  // for drop detection — but overlapping slot hitboxes (tabs extend past
-  // their cell) caused the wrong slot to be picked. Now we use geometric
-  // hit-testing against the board wrapper's bounding rect.
+  // We start the drag only after the pointer moves past a small threshold,
+  // and only if the movement is more vertical than horizontal. This lets
+  // the user swipe horizontally to scroll the tray on mobile, while
+  // vertical drags pick the piece up.
   function startDrag(e: React.PointerEvent, pieceIdx: number) {
     if (completed) return;
-    e.preventDefault();
     e.stopPropagation();
-    setDraggingId(pieceIdx);
-    setSelectedId(pieceIdx);
-    setDraggingPos({ x: e.clientX, y: e.clientY });
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let committed = false;
+    const THRESHOLD = 6; // px before we commit to anything
 
     const handleMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (!committed) {
+        if (absDx < THRESHOLD && absDy < THRESHOLD) return;
+        // Horizontal-dominant → user is scrolling the tray; abort drag
+        if (absDx > absDy * 1.3) {
+          window.removeEventListener("pointermove",   handleMove);
+          window.removeEventListener("pointerup",     handleUp);
+          window.removeEventListener("pointercancel", handleUp);
+          return;
+        }
+        // Vertical-dominant → commit to drag
+        committed = true;
+        justDraggedRef.current = true;
+        setDraggingId(pieceIdx);
+        setSelectedId(pieceIdx);
+      }
       ev.preventDefault();
       setDraggingPos({ x: ev.clientX, y: ev.clientY });
     };
     const handleUp = (ev: PointerEvent) => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup",   handleUp);
+      window.removeEventListener("pointermove",   handleMove);
+      window.removeEventListener("pointerup",     handleUp);
       window.removeEventListener("pointercancel", handleUp);
-      finishDrag(pieceIdx, ev.clientX, ev.clientY);
+      if (committed) {
+        finishDrag(pieceIdx, ev.clientX, ev.clientY);
+      }
+      // If not committed, the gesture is a tap; the click handler runs
+      // and fires selectPiece.
     };
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup",   handleUp);
+    window.addEventListener("pointermove",   handleMove);
+    window.addEventListener("pointerup",     handleUp);
     window.addEventListener("pointercancel", handleUp);
   }
 
@@ -824,14 +852,22 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                         <div key={p.id} data-piece-id={p.id}
                           onPointerDown={e => startDrag(e, idx)}
                           onClick={(e) => {
-                            // Only fire if no drag happened (browser fires click after pointerup unless there was movement)
-                            if (draggingId === null) selectPiece(idx);
+                            if (justDraggedRef.current) {
+                              justDraggedRef.current = false;
+                              e.preventDefault();
+                              return;
+                            }
+                            selectPiece(idx);
                             e.preventDefault();
                           }}
                           style={{
                             width:  traySize + 2 * trayTab,
                             height: traySize + 2 * trayTab,
-                            cursor: "grab", touchAction: "none",
+                            cursor: "grab",
+                            // pan-x lets the browser scroll the tray horizontally
+                            // when the user swipes sideways; vertical movement is
+                            // intercepted by our drag handler.
+                            touchAction: "pan-x",
                             visibility: draggingId === idx ? "hidden" : "visible",
                           }}
                           className={`shrink-0 hover:scale-110 active:scale-95 transition-transform rounded-lg ${isSelected ? "ring-4 ring-emerald-500" : ""}`}
