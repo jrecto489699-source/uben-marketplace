@@ -16,9 +16,9 @@ const BOARD_H = 480;
 
 // ── Difficulty presets (grid size) ────────────────────────────────────────────
 const DIFFICULTIES = [
-  { id: "easy",   label: "Easy",   n: 3, emoji: "🌟" },
-  { id: "medium", label: "Medium", n: 4, emoji: "🔥" },
-  { id: "hard",   label: "Hard",   n: 5, emoji: "🏆" },
+  { id: "easy",   label: "Easy",   n: 3, emoji: "🐣" },
+  { id: "medium", label: "Medium", n: 4, emoji: "🦊" },
+  { id: "hard",   label: "Hard",   n: 5, emoji: "🦁" },
 ] as const;
 type DifficultyId = typeof DIFFICULTIES[number]["id"];
 
@@ -798,15 +798,6 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                     <canvas ref={confettiRef} width={480} height={480}
                       className="absolute inset-0 w-full h-full pointer-events-none rounded-2xl" />
 
-                    {/* Completion banner — text only, no card */}
-                    {completed && (
-                      <div className="absolute inset-x-0 -top-2 flex justify-center pointer-events-none">
-                        <p className="font-serif text-lg sm:text-xl font-bold text-emerald-700 animate-bounce"
-                          style={{ textShadow: "0 2px 8px rgba(255,255,255,0.9)" }}>
-                          🎉 You solved it in {moves} moves!
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
 
