@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState, useCallback } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft, RotateCcw, Maximize, Minimize,
   ChevronLeft, ChevronRight, BookOpen, Puzzle, Shuffle,
@@ -186,21 +186,15 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
   const product  = purchase ? allProducts.find(p => p.id === purchase.product_id) : null;
 
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const boardRef    = useRef<HTMLDivElement>(null);
+  const boardWrapperRef = useRef<HTMLDivElement>(null);
   const trayRef     = useRef<HTMLDivElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
-  const dragImgRef  = useRef<HTMLDivElement>(null);
 
   const animRef        = useRef<number | null>(null);
   const particles      = useRef<Particle[]>([]);
   const imageUrls      = useRef<string[]>([]);
   const loadedImages   = useRef<Record<number, HTMLImageElement>>({});
   const currentPageRef = useRef(0);
-  // Picked-up piece tracking for click-to-place mode
-  const selectedPiece  = useRef<number | null>(null);
-  // Pointer drag tracking
-  const draggingId     = useRef<number | null>(null);
-  const dragOffset     = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const [difficulty,     setDifficulty]     = useState<DifficultyId>("easy");
   const [pieces,         setPieces]         = useState<Piece[]>([]);
@@ -216,6 +210,8 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
   const [thumbnails,     setThumbnails]     = useState<string[]>([]);
   const [moves,          setMoves]          = useState(0);
   const [draggingPos,    setDraggingPos]    = useState<{ x: number; y: number } | null>(null);
+  const [draggingId,     setDraggingId]     = useState<number | null>(null);
+  const [selectedId,     setSelectedId]     = useState<number | null>(null);
   const [edgeMap,        setEdgeMap]        = useState<PieceEdges[][]>([]);
 
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
@@ -235,7 +231,9 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
     setPieces(shuffled.map((id) => ({ id, current: -1, inTray: true })));
     setCompleted(false);
     setMoves(0);
-    selectedPiece.current = null;
+    setSelectedId(null);
+    setDraggingId(null);
+    setDraggingPos(null);
   }
 
   // ── Load image for current page ───────────────────────────────────────────
@@ -375,67 +373,71 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
   // ── Click/tap-to-place ────────────────────────────────────────────────────
   function selectPiece(pieceIdx: number) {
     if (completed) return;
-    selectedPiece.current = pieceIdx;
+    // Toggle off if same piece, otherwise select
+    setSelectedId(prev => (prev === pieceIdx ? null : pieceIdx));
   }
   function placeIntoSlot(slot: number) {
-    if (selectedPiece.current === null || completed) return;
-    placePiece(selectedPiece.current, slot);
-    selectedPiece.current = null;
-  }
-  function returnToTray() {
-    if (selectedPiece.current === null || completed) return;
-    placePiece(selectedPiece.current, null);
-    selectedPiece.current = null;
+    if (selectedId === null || completed) return;
+    placePiece(selectedId, slot);
+    setSelectedId(null);
   }
 
-  // ── Pointer drag (mouse + touch) ──────────────────────────────────────────
-  function getClient(e: React.PointerEvent | PointerEvent) {
-    return { x: e.clientX, y: e.clientY };
-  }
-
-  function onPiecePointerDown(e: React.PointerEvent, pieceIdx: number) {
+  // ── Drag (unified mouse + touch via window listeners) ────────────────────
+  // The previous version used setPointerCapture on SVG <image> elements,
+  // which isn't reliable across browsers, and document.elementFromPoint
+  // for drop detection — but overlapping slot hitboxes (tabs extend past
+  // their cell) caused the wrong slot to be picked. Now we use geometric
+  // hit-testing against the board wrapper's bounding rect.
+  function startDrag(e: React.PointerEvent, pieceIdx: number) {
     if (completed) return;
     e.preventDefault();
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    dragOffset.current = { x: e.clientX - rect.left - rect.width / 2, y: e.clientY - rect.top - rect.height / 2 };
-    draggingId.current = pieceIdx;
-    selectedPiece.current = pieceIdx;
+    e.stopPropagation();
+    setDraggingId(pieceIdx);
+    setSelectedId(pieceIdx);
     setDraggingPos({ x: e.clientX, y: e.clientY });
-    target.setPointerCapture(e.pointerId);
+
+    const handleMove = (ev: PointerEvent) => {
+      ev.preventDefault();
+      setDraggingPos({ x: ev.clientX, y: ev.clientY });
+    };
+    const handleUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup",   handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+      finishDrag(pieceIdx, ev.clientX, ev.clientY);
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup",   handleUp);
+    window.addEventListener("pointercancel", handleUp);
   }
 
-  function onPiecePointerMove(e: React.PointerEvent) {
-    if (draggingId.current === null) return;
-    e.preventDefault();
-    setDraggingPos({ x: e.clientX, y: e.clientY });
-  }
-
-  function onPiecePointerUp(e: React.PointerEvent) {
-    if (draggingId.current === null) return;
-    e.preventDefault();
-    const pieceIdx = draggingId.current;
-    draggingId.current = null;
+  function finishDrag(pieceIdx: number, clientX: number, clientY: number) {
+    setDraggingId(null);
     setDraggingPos(null);
 
-    // Determine drop target: a board slot, or back to tray
-    const dropEl = document.elementFromPoint(e.clientX, e.clientY);
-    if (!dropEl) { selectedPiece.current = null; return; }
-    const slotEl = dropEl.closest("[data-slot-index]");
-    if (slotEl) {
-      const slot = Number(slotEl.getAttribute("data-slot-index"));
-      if (!Number.isNaN(slot)) {
-        placePiece(pieceIdx, slot);
-        selectedPiece.current = null;
-        return;
+    // 1. Geometric hit-test on the board wrapper. If pointer is inside,
+    //    compute which cell it's over and place the piece there.
+    const board = boardWrapperRef.current;
+    if (board) {
+      const rect = board.getBoundingClientRect();
+      if (
+        clientX >= rect.left && clientX <= rect.right &&
+        clientY >= rect.top  && clientY <= rect.bottom
+      ) {
+        const col = Math.floor(((clientX - rect.left) / rect.width)  * gridN);
+        const row = Math.floor(((clientY - rect.top)  / rect.height) * gridN);
+        if (col >= 0 && col < gridN && row >= 0 && row < gridN) {
+          const slot = row * gridN + col;
+          placePiece(pieceIdx, slot);
+          setSelectedId(null);
+          return;
+        }
       }
     }
-    // Drop into tray (or anywhere else) → back to tray
-    const trayEl = dropEl.closest("[data-tray]");
-    if (trayEl) {
-      placePiece(pieceIdx, null);
-    }
-    selectedPiece.current = null;
+
+    // 2. Otherwise, if released anywhere outside the board, send back to tray.
+    placePiece(pieceIdx, null);
+    setSelectedId(null);
   }
 
   // ── Confetti ──────────────────────────────────────────────────────────────
@@ -691,7 +693,7 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
 
                 {/* Board area */}
                 <div className="flex-1 flex items-center justify-center p-3 min-h-0 overflow-auto" style={{ background: "#EDEBE6" }}>
-                  <div className="relative select-none"
+                  <div ref={boardWrapperRef} className="relative select-none"
                     style={{
                       width:  "min(90vw, 480px)",
                       height: "min(90vw, 480px)",
@@ -706,33 +708,21 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                     )}
 
                     {(() => {
-                      // ── Board: SVG that draws jigsaw slot outlines (the
-                      // empty puzzle shape pattern) plus the placed pieces
-                      // on top, clipped to their jigsaw shapes.
+                      // ── Board: jigsaw slot outlines + placed pieces ───
                       const cell = BOARD_W / gridN;
-                      const tab = cell * 0.18;
+                      const tab  = cell * 0.18;
                       return (
                         <svg
-                          ref={boardRef as unknown as React.RefObject<SVGSVGElement>}
                           viewBox={`${-tab} ${-tab} ${BOARD_W + 2 * tab} ${BOARD_H + 2 * tab}`}
                           className="absolute inset-0 w-full h-full"
-                          style={{ overflow: "visible" }}
+                          style={{ overflow: "visible", pointerEvents: "none" }}
                         >
                           {/* Slot outlines (the "pattern shape" backdrop) */}
                           {edgeMap.map((row, r) => row.map((edges, c) => {
                             const slot = r * gridN + c;
                             const placed = pieces.find(p => p.current === slot && !p.inTray);
                             return (
-                              <g key={`slot-${slot}`} transform={`translate(${c * cell} ${r * cell})`}
-                                onClick={() => placeIntoSlot(slot)}
-                                style={{ cursor: "pointer" }}>
-                                {/* Invisible hit area covering the cell + tab zone */}
-                                <rect
-                                  x={-tab} y={-tab}
-                                  width={cell + 2 * tab} height={cell + 2 * tab}
-                                  fill="transparent"
-                                  data-slot-index={slot}
-                                />
+                              <g key={`slot-${slot}`} transform={`translate(${c * cell} ${r * cell})`}>
                                 <path
                                   d={piecePath(edges, cell, tab)}
                                   fill={placed ? "transparent" : "rgba(34,34,34,0.04)"}
@@ -747,17 +737,22 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                           {/* Placed pieces — drawn last so they sit above the slot pattern */}
                           {pieces.map((p, idx) => {
                             if (p.inTray) return null;
-                            if (draggingId.current === idx) return null;
+                            if (draggingId === idx) return null;
                             const slotR = Math.floor(p.current / gridN);
                             const slotC = p.current % gridN;
                             const origR = Math.floor(p.id / gridN);
                             const origC = p.id % gridN;
+                            const edges = edgeMap[origR]?.[origC];
+                            if (!edges) return null;
                             const correct = p.id === p.current;
                             return (
-                              <g key={`piece-${idx}`} transform={`translate(${slotC * cell} ${slotR * cell})`}>
+                              <g key={`piece-${idx}`}
+                                transform={`translate(${slotC * cell} ${slotR * cell})`}
+                                style={{ pointerEvents: "auto", cursor: completed ? "default" : "grab", touchAction: "none" }}
+                                onPointerDown={(e) => startDrag(e as unknown as React.PointerEvent, idx)}>
                                 <defs>
                                   <clipPath id={`clip-board-${idx}-${gridN}`}>
-                                    <path d={piecePath(edgeMap[origR]?.[origC] ?? p, cell, tab)} />
+                                    <path d={piecePath(edges, cell, tab)} />
                                   </clipPath>
                                 </defs>
                                 <image href={imageUrl ?? ""}
@@ -765,13 +760,9 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                                   width={gridN * cell} height={gridN * cell}
                                   preserveAspectRatio="xMidYMid slice"
                                   clipPath={`url(#clip-board-${idx}-${gridN})`}
-                                  onPointerDown={(e) => onPiecePointerDown(e as unknown as React.PointerEvent, idx)}
-                                  onPointerMove={(e) => onPiecePointerMove(e as unknown as React.PointerEvent)}
-                                  onPointerUp={(e) => onPiecePointerUp(e as unknown as React.PointerEvent)}
-                                  style={{ cursor: completed ? "default" : "grab", touchAction: "none" }}
                                 />
                                 <path
-                                  d={piecePath(edgeMap[origR]?.[origC] ?? p, cell, tab)}
+                                  d={piecePath(edges, cell, tab)}
                                   fill="none"
                                   stroke={correct ? "rgb(16,185,129)" : "rgba(0,0,0,0.5)"}
                                   strokeWidth={correct ? 2.5 : 1.2}
@@ -783,6 +774,25 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                         </svg>
                       );
                     })()}
+
+                    {/* Click-to-place overlay: a transparent N×N grid of buttons.
+                        Used for tap-to-place after selecting a tray piece.
+                        Pointer events ignored when nothing is selected. */}
+                    {selectedId !== null && !completed && (
+                      <div className="absolute inset-0 grid"
+                        style={{
+                          gridTemplateColumns: `repeat(${gridN}, 1fr)`,
+                          gridTemplateRows:    `repeat(${gridN}, 1fr)`,
+                        }}>
+                        {Array.from({ length: pieceCount }).map((_, slot) => (
+                          <button key={`hit-${slot}`}
+                            onClick={() => placeIntoSlot(slot)}
+                            className="bg-emerald-400/0 hover:bg-emerald-400/20 transition-colors"
+                            style={{ cursor: "pointer" }}
+                            aria-label={`Place piece at slot ${slot + 1}`} />
+                        ))}
+                      </div>
+                    )}
 
                     {/* Confetti */}
                     <canvas ref={confettiRef} width={480} height={480}
@@ -818,19 +828,22 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                       const origC = p.id % gridN;
                       const edges = edgeMap[origR]?.[origC];
                       if (!edges) return null;
+                      const isSelected = selectedId === idx;
                       return (
                         <div key={p.id} data-piece-id={p.id}
-                          onPointerDown={e => onPiecePointerDown(e, idx)}
-                          onPointerMove={onPiecePointerMove}
-                          onPointerUp={onPiecePointerUp}
-                          onClick={() => selectPiece(idx)}
+                          onPointerDown={e => startDrag(e, idx)}
+                          onClick={(e) => {
+                            // Only fire if no drag happened (browser fires click after pointerup unless there was movement)
+                            if (draggingId === null) selectPiece(idx);
+                            e.preventDefault();
+                          }}
                           style={{
-                            width: traySize + 2 * trayTab,
+                            width:  traySize + 2 * trayTab,
                             height: traySize + 2 * trayTab,
                             cursor: "grab", touchAction: "none",
-                            visibility: draggingId.current === idx ? "hidden" : "visible",
+                            visibility: draggingId === idx ? "hidden" : "visible",
                           }}
-                          className="shrink-0 hover:scale-110 active:scale-95 transition-transform"
+                          className={`shrink-0 hover:scale-110 active:scale-95 transition-transform rounded-lg ${isSelected ? "ring-4 ring-emerald-500" : ""}`}
                           title={`Piece ${p.id + 1}`}
                         >
                           <svg width="100%" height="100%"
@@ -854,39 +867,39 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                         </div>
                       );
                     })}
-                    <div className="ml-auto shrink-0 flex items-center gap-2 pr-2">
-                      <button onClick={returnToTray}
-                        title="Return selected piece"
-                        className="text-[10px] text-ink-muted px-2 py-1 rounded hover:bg-cream transition-colors">
-                        {selectedPiece.current !== null ? "Tap board" : ""}
-                      </button>
-                    </div>
+                    {selectedId !== null && !completed && (
+                      <p className="ml-auto shrink-0 text-[11px] font-medium text-emerald-700 pr-2">
+                        Tap a board slot to place
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Floating drag image — follows the pointer */}
-            {draggingPos && draggingId.current !== null && imageUrl && (() => {
-              const p = pieces[draggingId.current];
+            {/* Floating drag piece — follows the pointer */}
+            {draggingPos && draggingId !== null && imageUrl && (() => {
+              const p = pieces[draggingId];
+              if (!p) return null;
               const origR = Math.floor(p.id / gridN);
               const origC = p.id % gridN;
               const edges = edgeMap[origR]?.[origC];
               if (!edges) return null;
-              const ds = 80, dt = ds * 0.18;
+              const ds = 84, dt = ds * 0.18;
+              const full = ds + 2 * dt;
               return (
-                <div ref={dragImgRef}
+                <div
                   className="fixed pointer-events-none z-50"
                   style={{
-                    width:  ds + 2 * dt,
-                    height: ds + 2 * dt,
-                    left: draggingPos.x - (ds + 2 * dt) / 2 - dragOffset.current.x,
-                    top:  draggingPos.y - (ds + 2 * dt) / 2 - dragOffset.current.y,
+                    width:  full,
+                    height: full,
+                    left: draggingPos.x - full / 2,
+                    top:  draggingPos.y - full / 2,
                     transform: "rotate(-4deg) scale(1.05)",
                   }}>
                   <svg width="100%" height="100%"
-                    viewBox={`${-dt} ${-dt} ${ds + 2 * dt} ${ds + 2 * dt}`}
-                    style={{ filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.35))" }}>
+                    viewBox={`${-dt} ${-dt} ${full} ${full}`}
+                    style={{ filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))" }}>
                     <defs>
                       <clipPath id={`clip-drag-${p.id}`}>
                         <path d={piecePath(edges, ds, dt)} />
