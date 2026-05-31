@@ -214,25 +214,35 @@ export default function ColorPage({ params }: { params: Promise<{ purchaseId: st
           return;
         }
         const { url } = await res.json();
-        // Range requests: PDF.js fetches only what it needs per page
-        // instead of downloading the entire file up front.
-        const doc = await lib.getDocument({
-          url,
-          rangeChunkSize: 65536,   // 64 KB chunks
-          disableAutoFetch: true,  // don't pre-fetch the whole file
-          disableStream: false,
-        }).promise;
+        // Try range-request mode first (small download). If that fails — some
+        // mobile networks strip Range headers — fall back to a full download.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let doc: any;
+        try {
+          doc = await lib.getDocument({
+            url,
+            rangeChunkSize: 65536,
+            disableAutoFetch: true,
+            disableStream: false,
+          }).promise;
+        } catch (rangeErr) {
+          console.warn("[color] Range-mode PDF load failed, retrying full download:", rangeErr);
+          doc = await lib.getDocument({
+            url,
+            disableRange:  true,
+            disableStream: true,
+          }).promise;
+        }
         pdfDocRef.current = doc;
         setTotalPages(doc.numPages);
-        // Render first page overlay
         await renderPageToOverlay(doc, 0);
         setImageLoaded(true);
         setPdfLoading(false);
-        // Load drawing for page 0 then render thumbnails in background
         await loadPageDrawing(0);
         renderThumbnails(doc);
-      } catch {
-        setPdfError("Failed to load coloring book");
+      } catch (err) {
+        console.error("[color] PDF load failed:", err);
+        setPdfError(err instanceof Error ? err.message : "Failed to load coloring book");
         setPdfLoading(false);
       }
     }
