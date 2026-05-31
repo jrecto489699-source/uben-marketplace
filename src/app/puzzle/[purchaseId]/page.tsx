@@ -8,7 +8,19 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
+import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import { allProducts } from "@/data/products";
+
+const PUZZLES_BUCKET = "puzzles";
+
+interface SaveState {
+  version: 1;
+  difficulty: "easy" | "medium" | "hard";
+  pieces: { id: number; current: number; inTray: boolean }[];
+  moves: number;
+  completed: boolean;
+}
 
 // ── Board dimensions ──────────────────────────────────────────────────────────
 const BOARD_W = 480; // CSS px on desktop
@@ -181,9 +193,15 @@ function piecePath(edges: PieceEdges, size: number, tab: number): string {
 export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
   const { purchases, loading } = usePurchases();
+  const { user } = useAuth();
+  const supabase = createClient();
 
   const purchase = purchases.find(p => p.id === purchaseId);
   const product  = purchase ? allProducts.find(p => p.id === purchase.product_id) : null;
+  const cloudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isRestoringRef = useRef(false); // skip auto-save while loading state
+  const [cloudSaving, setCloudSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const boardWrapperRef = useRef<HTMLDivElement>(null);
@@ -236,6 +254,83 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
     setDraggingPos(null);
   }
 
+  // ── Save / load per-page state ────────────────────────────────────────────
+  function localKey(pageIndex: number) {
+    return `uben_puzzle_${purchaseId}_${pageIndex}`;
+  }
+  function cloudPath(pageIndex: number) {
+    return user ? `${user.id}/${purchaseId}/${pageIndex}.json` : null;
+  }
+
+  // Restore state from cloud → localStorage. Sets difficulty + pieces +
+  // moves + completed if a save exists. Returns true if anything restored.
+  async function restoreState(pageIndex: number): Promise<boolean> {
+    isRestoringRef.current = true;
+    try {
+      let raw: string | null = null;
+      const path = cloudPath(pageIndex);
+      if (path) {
+        const { data: blob } = await supabase.storage.from(PUZZLES_BUCKET).download(path);
+        if (blob) raw = await blob.text();
+      }
+      if (!raw) raw = localStorage.getItem(localKey(pageIndex));
+      if (!raw) return false;
+      const state = JSON.parse(raw) as SaveState;
+      if (!state || state.version !== 1 || !Array.isArray(state.pieces)) return false;
+      // Apply in this order: difficulty first (so edgeMap rebuilds), then pieces
+      setDifficulty(state.difficulty);
+      setPieces(state.pieces.map(p => ({ id: p.id, current: p.current, inTray: p.inTray })));
+      setMoves(state.moves);
+      setCompleted(state.completed);
+      setSelectedId(null);
+      setDraggingId(null);
+      setDraggingPos(null);
+      // Mirror cloud → local for offline reloads
+      try { localStorage.setItem(localKey(pageIndex), raw); } catch {}
+      return true;
+    } catch { return false; }
+    finally {
+      // Defer clearing the flag so the auto-save effect doesn't re-fire
+      // for the state we just restored.
+      setTimeout(() => { isRestoringRef.current = false; }, 0);
+    }
+  }
+
+  // Persist current state. Debounced cloud upload + immediate localStorage.
+  function persistState(state: SaveState, pageIndex: number) {
+    const json = JSON.stringify(state);
+    try { localStorage.setItem(localKey(pageIndex), json); } catch {}
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+
+    const path = cloudPath(pageIndex);
+    if (!path) return;
+    if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current);
+    cloudTimerRef.current = setTimeout(async () => {
+      setCloudSaving(true);
+      try {
+        await supabase.storage.from(PUZZLES_BUCKET).upload(
+          path,
+          new Blob([json], { type: "application/json" }),
+          { upsert: true, contentType: "application/json" },
+        );
+      } finally { setCloudSaving(false); }
+    }, 1500);
+  }
+
+  // Auto-save whenever pieces / moves / completed / difficulty change,
+  // after the initial mount and skipping the in-flight restore.
+  useEffect(() => {
+    if (isRestoringRef.current) return;
+    if (totalPages === 0) return;     // images not loaded yet
+    if (pieces.length === 0) return;  // not initialized yet
+    persistState(
+      { version: 1, difficulty, pieces, moves, completed },
+      currentPageRef.current,
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pieces, moves, completed, difficulty]);
+
   // ── Load image for current page ───────────────────────────────────────────
   async function getImage(pageIndex: number) {
     if (loadedImages.current[pageIndex]) return loadedImages.current[pageIndex];
@@ -266,7 +361,9 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
         setImageUrl(urls[0]);
         await getImage(0);
         setImgLoading(false);
-        resetPuzzle();
+        // Restore saved state for page 0 if any, otherwise shuffle fresh
+        const restored = await restoreState(0);
+        if (!restored) resetPuzzle();
         buildThumbnails();
       } catch {
         setImgError("Failed to load puzzles");
@@ -301,10 +398,12 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
     if (newPage < 0 || newPage >= totalPages || newPage === currentPageRef.current) return;
     setPageLoading(true);
     setCurrentPage(newPage);
+    currentPageRef.current = newPage;
     setImageUrl(imageUrls.current[newPage]);
     await getImage(newPage);
     setPageLoading(false);
-    resetPuzzle();
+    const restored = await restoreState(newPage);
+    if (!restored) resetPuzzle();
   }
   function nextPage() { switchPage(currentPage + 1); }
   function prevPage() { switchPage(currentPage - 1); }
@@ -331,11 +430,13 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, totalPages]);
 
-  // ── Reset puzzle when difficulty changes ──────────────────────────────────
-  useEffect(() => {
-    if (totalPages > 0) resetPuzzle(gridN);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [difficulty]);
+  // Switching difficulty intentionally starts a fresh shuffled puzzle.
+  function changeDifficulty(d: DifficultyId) {
+    if (d === difficulty) return;
+    const n = DIFFICULTIES.find(x => x.id === d)!.n;
+    setDifficulty(d);
+    resetPuzzle(n);
+  }
 
   // ── Win check ─────────────────────────────────────────────────────────────
   function checkWin(updated: Piece[]) {
@@ -610,6 +711,10 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
             </div>
           )}
 
+          <span className={`text-[11px] shrink-0 transition-opacity duration-300 ${cloudSaving ? "opacity-100 text-ink-muted" : saved ? "opacity-100 text-[#258635]" : "opacity-0"}`}>
+            {cloudSaving ? "Syncing…" : "Saved"}
+          </span>
+
           {!imgError && (
             <button onClick={() => resetPuzzle()}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#EDEBE6] hover:bg-card-hover text-ink text-xs font-medium transition-colors shrink-0">
@@ -691,7 +796,7 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Difficulty</p>
               <div className="flex flex-col gap-1">
                 {DIFFICULTIES.map(d => (
-                  <button key={d.id} onClick={() => setDifficulty(d.id)}
+                  <button key={d.id} onClick={() => changeDifficulty(d.id)}
                     className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
                       difficulty === d.id ? "bg-ink text-cream" : "text-ink hover:bg-[#EDEBE6]"
                     }`}>
@@ -1013,7 +1118,7 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
         {/* Mobile bottom toolbar */}
         <div className="md:hidden bg-cream border-t border-border-muted px-3 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
           {DIFFICULTIES.map(d => (
-            <button key={d.id} onClick={() => setDifficulty(d.id)}
+            <button key={d.id} onClick={() => changeDifficulty(d.id)}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors ${
                 difficulty === d.id ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink"
               }`}>
