@@ -54,6 +54,130 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
+// Deterministic pseudo-random — gives the same edge layout per page/difficulty
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// Edge type: 0 = flat (border), +1 = tab pointing out, −1 = blank cut in
+type Edge = 0 | 1 | -1;
+interface PieceEdges { top: Edge; right: Edge; bottom: Edge; left: Edge }
+
+// Build interlocking edge layout for every piece. Adjacent pieces always
+// share opposite edges (one has a tab, the other has a blank).
+function buildEdgeMap(n: number, seed: number): PieceEdges[][] {
+  const rng = mulberry32(seed);
+  const grid: PieceEdges[][] = [];
+  for (let r = 0; r < n; r++) {
+    grid[r] = [];
+    for (let c = 0; c < n; c++) {
+      const top:    Edge = r === 0   ? 0 : (-grid[r - 1][c].bottom as Edge);
+      const left:   Edge = c === 0   ? 0 : (-grid[r][c - 1].right as Edge);
+      const bottom: Edge = r === n-1 ? 0 : (rng() > 0.5 ? 1 : -1);
+      const right:  Edge = c === n-1 ? 0 : (rng() > 0.5 ? 1 : -1);
+      grid[r][c] = { top, right, bottom, left };
+    }
+  }
+  return grid;
+}
+
+// Generate the SVG path string for one piece. The path occupies a
+// (size × size) cell, but tabs extend tabSize beyond that, so the SVG
+// viewBox needs (-tabSize, -tabSize, size+2tabSize, size+2tabSize).
+function piecePath(edges: PieceEdges, size: number, tab: number): string {
+  const ear = size * 0.18;                   // neck width
+  const tabH = tab;                          // tab/blank height
+  const c = size / 2;                        // center of edge
+
+  // helper: side function returns path commands for one edge.
+  // Each edge goes from current point at start to (size, 0) in local coords
+  // before any transform is applied.
+  function edgeSide(eType: Edge): string {
+    if (eType === 0) return ` L ${size},0`;
+    // tab=+1 (curve OUT, away from center), blank=-1 (curve IN, toward center)
+    const dir = eType;
+    return [
+      ` L ${c - ear},0`,
+      // neck
+      ` c ${ear * 0.3},0 ${ear * 0.6},${-dir * tabH * 0.4} ${ear * 0.6},${-dir * tabH * 0.4}`,
+      // bulb
+      ` c 0,${-dir * tabH * 0.55} ${ear * 0.8 - 0},${-dir * tabH * 0.95} ${ear * 1.4},${-dir * tabH * 0.95}`,
+      ` c ${ear * 0.6},0 ${ear * 1.4},${dir * tabH * 0.4} ${ear * 1.4},${dir * tabH * 0.95}`.replace(/(\.[0-9]+)([+-])/g, "$1 $2"),
+      // back to neck
+      ` c 0,${dir * tabH * 0.55} ${ear * 0.3},${dir * tabH * 0.55} ${ear * 0.6},${dir * tabH * 0.4}`,
+      ` L ${size},0`,
+    ].join("");
+  }
+
+  // Build the four sides in counter-clockwise order, rotating via SVG
+  // transforms. Instead we'll emit absolute commands by composing.
+  // Simpler: emit commands relative to current point, rotating mental model.
+  // We use a chained path by constructing each side oriented along +x then
+  // applying virtual rotation by computing rotated endpoints.
+
+  // To keep things readable, build each side with absolute coords:
+  function topEdge(): string {
+    const e = edges.top;
+    if (e === 0) return `M 0,0 L ${size},0`;
+    const dir = e; // tab=+1: bulb goes UP (-y direction)
+    return [
+      `M 0,0`,
+      `L ${c - ear},0`,
+      `C ${c - ear * 0.7},0 ${c - ear * 0.4},${-dir * tabH * 0.4} ${c - ear * 0.4},${-dir * tabH * 0.4}`,
+      `C ${c - ear * 0.4},${-dir * tabH * 0.95} ${c - ear * 0.9},${-dir * tabH * 1.15} ${c},${-dir * tabH * 1.15}`,
+      `C ${c + ear * 0.9},${-dir * tabH * 1.15} ${c + ear * 0.4},${-dir * tabH * 0.95} ${c + ear * 0.4},${-dir * tabH * 0.4}`,
+      `C ${c + ear * 0.4},${-dir * tabH * 0.4} ${c + ear * 0.7},0 ${c + ear},0`,
+      `L ${size},0`,
+    ].join(" ");
+  }
+  function rightEdge(): string {
+    const e = edges.right;
+    if (e === 0) return ` L ${size},${size}`;
+    const dir = e;
+    return [
+      ` L ${size},${c - ear}`,
+      `C ${size},${c - ear * 0.7} ${size + dir * tabH * 0.4},${c - ear * 0.4} ${size + dir * tabH * 0.4},${c - ear * 0.4}`,
+      `C ${size + dir * tabH * 0.95},${c - ear * 0.4} ${size + dir * tabH * 1.15},${c - ear * 0.9} ${size + dir * tabH * 1.15},${c}`,
+      `C ${size + dir * tabH * 1.15},${c + ear * 0.9} ${size + dir * tabH * 0.95},${c + ear * 0.4} ${size + dir * tabH * 0.4},${c + ear * 0.4}`,
+      `C ${size + dir * tabH * 0.4},${c + ear * 0.4} ${size},${c + ear * 0.7} ${size},${c + ear}`,
+      `L ${size},${size}`,
+    ].join(" ");
+  }
+  function bottomEdge(): string {
+    const e = edges.bottom;
+    if (e === 0) return ` L 0,${size}`;
+    const dir = e; // tab=+1 → bulb goes DOWN (+y)
+    return [
+      ` L ${c + ear},${size}`,
+      `C ${c + ear * 0.7},${size} ${c + ear * 0.4},${size + dir * tabH * 0.4} ${c + ear * 0.4},${size + dir * tabH * 0.4}`,
+      `C ${c + ear * 0.4},${size + dir * tabH * 0.95} ${c + ear * 0.9},${size + dir * tabH * 1.15} ${c},${size + dir * tabH * 1.15}`,
+      `C ${c - ear * 0.9},${size + dir * tabH * 1.15} ${c - ear * 0.4},${size + dir * tabH * 0.95} ${c - ear * 0.4},${size + dir * tabH * 0.4}`,
+      `C ${c - ear * 0.4},${size + dir * tabH * 0.4} ${c - ear * 0.7},${size} ${c - ear},${size}`,
+      `L 0,${size}`,
+    ].join(" ");
+  }
+  function leftEdge(): string {
+    const e = edges.left;
+    if (e === 0) return ` L 0,0 Z`;
+    const dir = e;
+    return [
+      ` L 0,${c + ear}`,
+      `C 0,${c + ear * 0.7} ${-dir * tabH * 0.4},${c + ear * 0.4} ${-dir * tabH * 0.4},${c + ear * 0.4}`,
+      `C ${-dir * tabH * 0.95},${c + ear * 0.4} ${-dir * tabH * 1.15},${c + ear * 0.9} ${-dir * tabH * 1.15},${c}`,
+      `C ${-dir * tabH * 1.15},${c - ear * 0.9} ${-dir * tabH * 0.95},${c - ear * 0.4} ${-dir * tabH * 0.4},${c - ear * 0.4}`,
+      `C ${-dir * tabH * 0.4},${c - ear * 0.4} 0,${c - ear * 0.7} 0,${c - ear}`,
+      `L 0,0 Z`,
+    ].join(" ");
+  }
+
+  return topEdge() + rightEdge() + bottomEdge() + leftEdge();
+}
+
 export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
   const { purchases, loading } = usePurchases();
@@ -92,11 +216,17 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
   const [thumbnails,     setThumbnails]     = useState<string[]>([]);
   const [moves,          setMoves]          = useState(0);
   const [draggingPos,    setDraggingPos]    = useState<{ x: number; y: number } | null>(null);
+  const [edgeMap,        setEdgeMap]        = useState<PieceEdges[][]>([]);
 
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
   const gridN = DIFFICULTIES.find(d => d.id === difficulty)!.n;
   const pieceCount = gridN * gridN;
+
+  // Rebuild jigsaw edge layout when difficulty or page changes
+  useEffect(() => {
+    setEdgeMap(buildEdgeMap(gridN, currentPage * 1000 + gridN * 17));
+  }, [difficulty, currentPage, gridN]);
 
   // ── Initialize pieces (shuffled, all in tray) ─────────────────────────────
   function resetPuzzle(n: number = gridN) {
@@ -342,19 +472,6 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
     } else { ctx.clearRect(0, 0, canvas.width, canvas.height); }
   }
 
-  // ── Helper: piece style returns background-image position ────────────────
-  function pieceBg(pieceId: number, size: number) {
-    if (!imageUrl) return {};
-    const row = Math.floor(pieceId / gridN);
-    const col = pieceId % gridN;
-    return {
-      backgroundImage: `url(${imageUrl})`,
-      backgroundSize: `${size * gridN}px ${size * gridN}px`,
-      backgroundPosition: `-${col * size}px -${row * size}px`,
-      backgroundRepeat: "no-repeat",
-    };
-  }
-
   // ── Tray pieces (in shuffled order, not by id) ────────────────────────────
   const trayPieces = pieces.filter(p => p.inTray);
 
@@ -556,46 +673,84 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                       </div>
                     )}
 
-                    {/* Faded reference behind the board (visual guide) */}
-                    {imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={imageUrl} alt=""
-                        className="absolute inset-0 w-full h-full object-cover rounded-2xl pointer-events-none"
-                        style={{ opacity: 0.12 }} />
-                    )}
+                    {(() => {
+                      // ── Board: SVG that draws jigsaw slot outlines (the
+                      // empty puzzle shape pattern) plus the placed pieces
+                      // on top, clipped to their jigsaw shapes.
+                      const cell = BOARD_W / gridN;
+                      const tab = cell * 0.18;
+                      return (
+                        <svg
+                          ref={boardRef as unknown as React.RefObject<SVGSVGElement>}
+                          viewBox={`${-tab} ${-tab} ${BOARD_W + 2 * tab} ${BOARD_H + 2 * tab}`}
+                          className="absolute inset-0 w-full h-full"
+                          style={{ overflow: "visible" }}
+                        >
+                          {/* Slot outlines (the "pattern shape" backdrop) */}
+                          {edgeMap.map((row, r) => row.map((edges, c) => {
+                            const slot = r * gridN + c;
+                            const placed = pieces.find(p => p.current === slot && !p.inTray);
+                            return (
+                              <g key={`slot-${slot}`} transform={`translate(${c * cell} ${r * cell})`}
+                                onClick={() => placeIntoSlot(slot)}
+                                style={{ cursor: "pointer" }}>
+                                {/* Invisible hit area covering the cell + tab zone */}
+                                <rect
+                                  x={-tab} y={-tab}
+                                  width={cell + 2 * tab} height={cell + 2 * tab}
+                                  fill="transparent"
+                                  data-slot-index={slot}
+                                />
+                                <path
+                                  d={piecePath(edges, cell, tab)}
+                                  fill={placed ? "transparent" : "rgba(34,34,34,0.04)"}
+                                  stroke={placed ? "transparent" : "rgba(34,34,34,0.28)"}
+                                  strokeWidth={1.5}
+                                  strokeDasharray="4,3"
+                                />
+                              </g>
+                            );
+                          }))}
 
-                    {/* The N×N board grid */}
-                    <div ref={boardRef}
-                      className="absolute inset-0 grid rounded-2xl border-2 border-ink/30 overflow-hidden"
-                      style={{ gridTemplateColumns: `repeat(${gridN}, 1fr)`, gridTemplateRows: `repeat(${gridN}, 1fr)` }}>
-                      {Array.from({ length: pieceCount }).map((_, slot) => {
-                        const placed = pieces.find(p => p.current === slot && !p.inTray);
-                        const correct = placed && placed.id === slot;
-                        return (
-                          <div key={slot} data-slot-index={slot}
-                            onClick={() => placeIntoSlot(slot)}
-                            className={`relative border border-ink/15 transition-colors ${
-                              correct ? "border-emerald-500/60" : ""
-                            }`}>
-                            {placed && (
-                              <div
-                                onPointerDown={e => onPiecePointerDown(e, pieces.indexOf(placed))}
-                                onPointerMove={onPiecePointerMove}
-                                onPointerUp={onPiecePointerUp}
-                                style={{
-                                  ...pieceBg(placed.id, (BOARD_W) / gridN),
-                                  width: "100%", height: "100%",
-                                  cursor: completed ? "default" : "grab",
-                                  touchAction: "none",
-                                  visibility: draggingId.current === pieces.indexOf(placed) ? "hidden" : "visible",
-                                }}
-                                className={`${correct ? "ring-2 ring-emerald-500/70" : ""}`}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                          {/* Placed pieces — drawn last so they sit above the slot pattern */}
+                          {pieces.map((p, idx) => {
+                            if (p.inTray) return null;
+                            if (draggingId.current === idx) return null;
+                            const slotR = Math.floor(p.current / gridN);
+                            const slotC = p.current % gridN;
+                            const origR = Math.floor(p.id / gridN);
+                            const origC = p.id % gridN;
+                            const correct = p.id === p.current;
+                            return (
+                              <g key={`piece-${idx}`} transform={`translate(${slotC * cell} ${slotR * cell})`}>
+                                <defs>
+                                  <clipPath id={`clip-board-${idx}-${gridN}`}>
+                                    <path d={piecePath(edgeMap[origR]?.[origC] ?? p, cell, tab)} />
+                                  </clipPath>
+                                </defs>
+                                <image href={imageUrl ?? ""}
+                                  x={-origC * cell} y={-origR * cell}
+                                  width={gridN * cell} height={gridN * cell}
+                                  preserveAspectRatio="xMidYMid slice"
+                                  clipPath={`url(#clip-board-${idx}-${gridN})`}
+                                  onPointerDown={(e) => onPiecePointerDown(e as unknown as React.PointerEvent, idx)}
+                                  onPointerMove={(e) => onPiecePointerMove(e as unknown as React.PointerEvent)}
+                                  onPointerUp={(e) => onPiecePointerUp(e as unknown as React.PointerEvent)}
+                                  style={{ cursor: completed ? "default" : "grab", touchAction: "none" }}
+                                />
+                                <path
+                                  d={piecePath(edgeMap[origR]?.[origC] ?? p, cell, tab)}
+                                  fill="none"
+                                  stroke={correct ? "rgb(16,185,129)" : "rgba(0,0,0,0.5)"}
+                                  strokeWidth={correct ? 2.5 : 1.2}
+                                  pointerEvents="none"
+                                />
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      );
+                    })()}
 
                     {/* Confetti */}
                     <canvas ref={confettiRef} width={480} height={480}
@@ -625,6 +780,12 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                       </p>
                     ) : trayPieces.map((p) => {
                       const idx = pieces.indexOf(p);
+                      const traySize = 72;
+                      const trayTab = traySize * 0.18;
+                      const origR = Math.floor(p.id / gridN);
+                      const origC = p.id % gridN;
+                      const edges = edgeMap[origR]?.[origC];
+                      if (!edges) return null;
                       return (
                         <div key={p.id} data-piece-id={p.id}
                           onPointerDown={e => onPiecePointerDown(e, idx)}
@@ -632,14 +793,33 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
                           onPointerUp={onPiecePointerUp}
                           onClick={() => selectPiece(idx)}
                           style={{
-                            ...pieceBg(p.id, 64),
-                            width: 64, height: 64,
+                            width: traySize + 2 * trayTab,
+                            height: traySize + 2 * trayTab,
                             cursor: "grab", touchAction: "none",
                             visibility: draggingId.current === idx ? "hidden" : "visible",
                           }}
-                          className="shrink-0 rounded-lg border-2 border-white shadow-md hover:scale-105 active:scale-95 transition-transform"
+                          className="shrink-0 hover:scale-110 active:scale-95 transition-transform"
                           title={`Piece ${p.id + 1}`}
-                        />
+                        >
+                          <svg width="100%" height="100%"
+                            viewBox={`${-trayTab} ${-trayTab} ${traySize + 2 * trayTab} ${traySize + 2 * trayTab}`}
+                            style={{ filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.25))" }}>
+                            <defs>
+                              <clipPath id={`clip-tray-${p.id}-${gridN}`}>
+                                <path d={piecePath(edges, traySize, trayTab)} />
+                              </clipPath>
+                            </defs>
+                            <image href={imageUrl ?? ""}
+                              x={-origC * traySize} y={-origR * traySize}
+                              width={gridN * traySize} height={gridN * traySize}
+                              preserveAspectRatio="xMidYMid slice"
+                              clipPath={`url(#clip-tray-${p.id}-${gridN})`} />
+                            <path d={piecePath(edges, traySize, trayTab)}
+                              fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth={2} />
+                            <path d={piecePath(edges, traySize, trayTab)}
+                              fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth={0.8} />
+                          </svg>
+                        </div>
                       );
                     })}
                     <div className="ml-auto shrink-0 flex items-center gap-2 pr-2">
@@ -655,17 +835,42 @@ export default function PuzzlePage({ params }: { params: Promise<{ purchaseId: s
             )}
 
             {/* Floating drag image — follows the pointer */}
-            {draggingPos && draggingId.current !== null && imageUrl && (
-              <div ref={dragImgRef}
-                className="fixed pointer-events-none z-50 rounded-lg shadow-xl border-2 border-white"
-                style={{
-                  ...pieceBg(pieces[draggingId.current].id, 64),
-                  width: 64, height: 64,
-                  left: draggingPos.x - 32 - dragOffset.current.x,
-                  top:  draggingPos.y - 32 - dragOffset.current.y,
-                  transform: "rotate(-3deg)",
-                }} />
-            )}
+            {draggingPos && draggingId.current !== null && imageUrl && (() => {
+              const p = pieces[draggingId.current];
+              const origR = Math.floor(p.id / gridN);
+              const origC = p.id % gridN;
+              const edges = edgeMap[origR]?.[origC];
+              if (!edges) return null;
+              const ds = 80, dt = ds * 0.18;
+              return (
+                <div ref={dragImgRef}
+                  className="fixed pointer-events-none z-50"
+                  style={{
+                    width:  ds + 2 * dt,
+                    height: ds + 2 * dt,
+                    left: draggingPos.x - (ds + 2 * dt) / 2 - dragOffset.current.x,
+                    top:  draggingPos.y - (ds + 2 * dt) / 2 - dragOffset.current.y,
+                    transform: "rotate(-4deg) scale(1.05)",
+                  }}>
+                  <svg width="100%" height="100%"
+                    viewBox={`${-dt} ${-dt} ${ds + 2 * dt} ${ds + 2 * dt}`}
+                    style={{ filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.35))" }}>
+                    <defs>
+                      <clipPath id={`clip-drag-${p.id}`}>
+                        <path d={piecePath(edges, ds, dt)} />
+                      </clipPath>
+                    </defs>
+                    <image href={imageUrl}
+                      x={-origC * ds} y={-origR * ds}
+                      width={gridN * ds} height={gridN * ds}
+                      preserveAspectRatio="xMidYMid slice"
+                      clipPath={`url(#clip-drag-${p.id})`} />
+                    <path d={piecePath(edges, ds, dt)}
+                      fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+                  </svg>
+                </div>
+              );
+            })()}
 
             {/* Thumbnail strip */}
             {!imgLoading && !imgError && totalPages > 0 && (
