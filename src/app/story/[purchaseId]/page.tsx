@@ -441,22 +441,34 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   return (
     <>
       <style>{`
-        /* ─── Page-flip — smooth rotation, glued at the binding.
-           Pure rotateY around the spine for a clean, jank-free turn.
-           Box-shadow grows as the page lifts so it visually "bends"
-           up off the underlying spread without sign-flipping a
-           rotateX through zero (which made the previous animation
-           snap at the midpoint). filter is also avoided —
-           drop-shadow is far more expensive than box-shadow.        */
+        /* ─── Floppy page-flip — pure rotateY around the binding with
+           a multi-stop dynamic shadow that follows the page, plus a
+           small overshoot at the end to settle like real paper.
+           The shadow translates across the page as it rotates, which
+           gives a "floppy / waving" feel even though the page itself
+           is a single flat element — your eye reads the moving shadow
+           as the page bending and lifting.                          */
         @keyframes pageBendForward {
-          0%   { transform: rotateY(0deg);    box-shadow: 0 2px 6px rgba(0,0,0,0.10); }
-          50%  { transform: rotateY(-90deg);  box-shadow: 0 24px 50px rgba(0,0,0,0.30); }
-          100% { transform: rotateY(-180deg); box-shadow: 0 2px 6px rgba(0,0,0,0.10); }
+          0%   { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
+          18%  { transform: rotateY(-30deg);  box-shadow: -8px 14px 22px rgba(0,0,0,0.20); }
+          40%  { transform: rotateY(-70deg);  box-shadow: -18px 26px 36px rgba(0,0,0,0.28); }
+          50%  { transform: rotateY(-90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); }
+          60%  { transform: rotateY(-110deg); box-shadow: 18px 26px 36px rgba(0,0,0,0.28); }
+          82%  { transform: rotateY(-150deg); box-shadow: 8px 14px 22px rgba(0,0,0,0.20); }
+          92%  { transform: rotateY(-184deg); box-shadow: 0 4px 10px rgba(0,0,0,0.14); }
+          97%  { transform: rotateY(-178deg); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
+          100% { transform: rotateY(-180deg); box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
         @keyframes pageBendBackward {
-          0%   { transform: rotateY(0deg);    box-shadow: 0 2px 6px rgba(0,0,0,0.10); }
-          50%  { transform: rotateY(90deg);   box-shadow: 0 24px 50px rgba(0,0,0,0.30); }
-          100% { transform: rotateY(180deg);  box-shadow: 0 2px 6px rgba(0,0,0,0.10); }
+          0%   { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
+          18%  { transform: rotateY(30deg);   box-shadow: 8px 14px 22px rgba(0,0,0,0.20); }
+          40%  { transform: rotateY(70deg);   box-shadow: 18px 26px 36px rgba(0,0,0,0.28); }
+          50%  { transform: rotateY(90deg);   box-shadow: 0 30px 48px rgba(0,0,0,0.34); }
+          60%  { transform: rotateY(110deg);  box-shadow: -18px 26px 36px rgba(0,0,0,0.28); }
+          82%  { transform: rotateY(150deg);  box-shadow: -8px 14px 22px rgba(0,0,0,0.20); }
+          92%  { transform: rotateY(184deg);  box-shadow: 0 4px 10px rgba(0,0,0,0.14); }
+          97%  { transform: rotateY(178deg);  box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
+          100% { transform: rotateY(180deg);  box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
         @keyframes fadeIn {
           0%   { opacity: 0; }
@@ -590,7 +602,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                     style={{
                       transformOrigin: "left center",
                       transformStyle: "preserve-3d",
-                      animation: `pageBendForward ${FLIP_DURATION}ms ease-in-out forwards`,
+                      animation: `pageBendForward ${FLIP_DURATION}ms linear forwards`,
                       willChange: "transform, filter",
                     }}
                   >
@@ -611,7 +623,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                     style={{
                       transformOrigin: "right center",
                       transformStyle: "preserve-3d",
-                      animation: `pageBendBackward ${FLIP_DURATION}ms ease-in-out forwards`,
+                      animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
                       willChange: "transform, filter",
                     }}
                   >
@@ -674,7 +686,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                           style={{
                             transformOrigin: "left center",
                             transformStyle: "preserve-3d",
-                            animation: `pageBendForward ${FLIP_DURATION}ms ease-in-out forwards`,
+                            animation: `pageBendForward ${FLIP_DURATION}ms linear forwards`,
                             willChange: "transform, filter",
                           }}
                         >
@@ -702,7 +714,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                           style={{
                             transformOrigin: "right center",
                             transformStyle: "preserve-3d",
-                            animation: `pageBendBackward ${FLIP_DURATION}ms ease-in-out forwards`,
+                            animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
                             willChange: "transform, filter",
                           }}
                         >
