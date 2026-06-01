@@ -559,12 +559,16 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     }
 
     if (isRevealed) return;
-    // Update cursor ring position (mouse only)
+    // Update cursor ring position (mouse only).
+    // The cursor div lives INSIDE the zoom-transformed wrapper, so its
+    // CSS position is multiplied by zoom when rendered. Divide the
+    // pointer-relative offset by zoom so the ring lands under the mouse
+    // at every zoom level.
     if (!("touches" in e) && cursorRef.current && scratchRef.current) {
       const rect = scratchRef.current.getBoundingClientRect();
       cursorRef.current.style.display = "block";
-      cursorRef.current.style.left = (e.clientX - rect.left) + "px";
-      cursorRef.current.style.top  = (e.clientY - rect.top)  + "px";
+      cursorRef.current.style.left = (e.clientX - rect.left) / zoom + "px";
+      cursorRef.current.style.top  = (e.clientY - rect.top)  / zoom + "px";
     }
 
     if (!isDrawing.current) return;
@@ -898,6 +902,10 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     <div ref={cursorRef}
                       className="absolute pointer-events-none rounded-full -translate-x-1/2 -translate-y-1/2"
                       style={{
+                        // Brush radius is in canvas pixels (800-wide canvas).
+                        // The cursor lives inside the canvas wrapper which is
+                        // 680 CSS px wide → factor is 680/CANVAS_W. Scale
+                        // (zoom) is then applied automatically by the parent.
                         width:  brushSize * 2 * (680 / CANVAS_W),
                         height: brushSize * 2 * (680 / CANVAS_W),
                         border: "1.5px solid rgba(255,255,255,0.85)",
