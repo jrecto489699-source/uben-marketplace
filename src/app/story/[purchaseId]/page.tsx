@@ -19,8 +19,8 @@ async function getPdfJs() {
   return _pdfjsLib;
 }
 
-const PAGE_RENDER_SCALE = 1.5;
-const FLIP_DURATION    = 1100; // a touch longer so the wave reads naturally
+const PAGE_RENDER_SCALE = 1.2; // 1.5 was overkill — pages display at ~480px wide
+const FLIP_DURATION    = 1100;
 const AUTO_PLAY_DELAY  = 5000;
 const SWIPE_THRESHOLD  = 45;
 
@@ -38,6 +38,9 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   const [pdfLoading, setPdfLoading] = useState(true);
   const [pdfError,   setPdfError]   = useState<string | null>(null);
   const [pageImages, setPageImages] = useState<Record<number, string>>({});
+  // Pages currently being rendered — prevents the same page being
+  // rendered twice when both the useEffect and startFlip kick it off.
+  const renderingRef = useRef(new Set<number>());
 
   // ── Layout ────────────────────────────────────────────────────────────────
   const [isWide, setIsWide] = useState(false);
@@ -81,6 +84,8 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     const doc = pdfDocRef.current;
     if (!doc || pageIndex < 0 || pageIndex >= doc.numPages) return;
     if (pageImages[pageIndex]) return;
+    if (renderingRef.current.has(pageIndex)) return;
+    renderingRef.current.add(pageIndex);
     try {
       const page = await doc.getPage(pageIndex + 1);
       const viewport = page.getViewport({ scale: PAGE_RENDER_SCALE });
@@ -92,6 +97,8 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
       setPageImages(prev => ({ ...prev, [pageIndex]: url }));
     } catch (err) {
       console.warn(`[story] page ${pageIndex + 1} render failed:`, err);
+    } finally {
+      renderingRef.current.delete(pageIndex);
     }
   }
 
@@ -601,10 +608,13 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]"><Cover /></div>
               )}
 
-              {/* COVER OPENING — cover bends like paper around its left edge */}
+              {/* COVER OPENING — cover bends like paper around its left edge.
+                  The underneath spread is rendered immediately (no fadeIn);
+                  the cover's back face is transparent so the spread shows
+                  through as soon as the cover rotates past 90°. */}
               {flipMode === "cover-open" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: target spread */}
+                  {/* Underneath: target spread, fully visible from frame 1 */}
                   <div className="absolute inset-0">
                     {isWide ? (
                       <div className="flex h-full">
@@ -622,32 +632,47 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                       transformOrigin: "left center",
                       transformStyle: "preserve-3d",
                       animation: `pageBendForward ${FLIP_DURATION}ms linear forwards`,
-                      willChange: "transform, filter",
+                      willChange: "transform",
                     }}
                   >
                     <div className="flip-face"><Cover /></div>
-                    <div className="flip-face back" style={{ background: "linear-gradient(180deg, #FFFAF0 0%, #FFE7C7 100%)" }} />
+                    {/* Transparent back face so the spread shows through */}
+                    <div className="flip-face back" />
                   </div>
                 </div>
               )}
 
-              {/* COVER CLOSING — current spread's left page bends back to reveal cover */}
+              {/* COVER CLOSING — current spread closes back into cover.
+                  Same trick: underneath shows the cover, and the front face
+                  of the flipping page is the spread content (so the user
+                  sees what they were reading flipping away). */}
               {flipMode === "cover-close" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
                   {/* Underneath: cover */}
                   <div className="absolute inset-0"><Cover /></div>
-                  {/* Top: the left-most page bends to the right, around its right edge */}
+                  {/* Top: spread content flips back to the right */}
                   <div
                     className="absolute inset-0"
                     style={{
                       transformOrigin: "right center",
                       transformStyle: "preserve-3d",
                       animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
-                      willChange: "transform, filter",
+                      willChange: "transform",
                     }}
                   >
-                    <div className="flip-face" style={{ background: "linear-gradient(180deg, #FFFAF0 0%, #FFE7C7 100%)" }} />
-                    <div className="flip-face back"><Cover /></div>
+                    {/* Front face: the spread the reader was looking at */}
+                    <div className="flip-face">
+                      {isWide ? (
+                        <div className="flex h-full">
+                          <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
+                          <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
+                        </div>
+                      ) : (
+                        <PageInPanel pageIndex={currentPages.right} side="single" />
+                      )}
+                    </div>
+                    {/* Transparent back so the cover shows through past 90° */}
+                    <div className="flip-face back" />
                   </div>
                 </div>
               )}
