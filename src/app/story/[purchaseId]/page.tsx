@@ -227,9 +227,34 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     startFlip("prev", "page", () => setSpread(s.spread - 1));
   }
 
+  // ── Auto-play loop ────────────────────────────────────────────────────────
+  // Three states:
+  //  1. On the cover → after a short pause, open the book.
+  //  2. On any inside spread that's not the last → advance after the
+  //     delay.
+  //  3. On the LAST spread → after the delay, animate the book closed
+  //     and turn auto-play off.
   useEffect(() => {
-    if (!isAutoPlay || showCover || isFlipping || pdfLoading || pdfError) return;
-    if (spread >= totalSpreads - 1) { setIsAutoPlay(false); return; }
+    if (!isAutoPlay || isFlipping || pdfLoading || pdfError) return;
+
+    if (showCover) {
+      // Auto-open from the cover with a short pause first
+      const timer = setTimeout(() => goNext(), AUTO_PLAY_DELAY * 0.6);
+      return () => clearTimeout(timer);
+    }
+
+    if (totalSpreads > 0 && spread >= totalSpreads - 1) {
+      // Reached the end — close the book and stop auto-play
+      const timer = setTimeout(() => {
+        setIsAutoPlay(false);
+        startFlip("prev", "cover-close", () => {
+          setShowCover(true);
+          setSpread(0);
+        });
+      }, AUTO_PLAY_DELAY);
+      return () => clearTimeout(timer);
+    }
+
     const timer = setTimeout(() => goNext(), AUTO_PLAY_DELAY);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -556,7 +581,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
             </div>
           )}
 
-          {!showCover && !pdfError && (
+          {!pdfError && !pdfLoading && (
             <button onClick={() => setIsAutoPlay(v => !v)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
                 isAutoPlay ? "bg-ink text-cream hover:bg-[#3a3a3a]" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
