@@ -40,6 +40,7 @@ export const storybookProducts: Product[] = [
   { id: 23, title: "Mia and the Magic Garden",             salePrice: "$6", originalPrice: "$9",  seller: "Wild Oak Learning",   image: "/images/Mia and the Magic Garden.png",                rating: 4.9, reviewCount: 211, onSale: false, instantDownload: false },
   { id: 24, title: "Rex the Brave Dino – Read-Aloud Pack", salePrice: "$7", originalPrice: "$11", seller: "The Crayon Atelier",  image: "/images/Rex the Brave Dino – Read-Aloud Pack.png",    rating: 4.7, reviewCount: 44,  onSale: true,  instantDownload: true  },
   { id: 25, title: "Owl's First Day at School",            salePrice: "$5", originalPrice: "$8",  seller: "Morning Light Studio",image: "/images/Owl's First Day at School.png",               rating: 4.6, reviewCount: 78,  onSale: false, instantDownload: false },
+  { id: 38, title: "Abe the Service Dog",                  salePrice: "$6", originalPrice: "$10", seller: "Sunshine Stories",    image: "/images/Dog.png",                                     rating: 5.0, reviewCount: 0,   onSale: false, instantDownload: true  },
 ];
 
 // ── Activities ───────────────────────────────────────────────────────────────
