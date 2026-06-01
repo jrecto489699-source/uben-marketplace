@@ -4,7 +4,7 @@ import { use, useEffect, useRef, useState, useCallback } from "react";
 import {
   ArrowLeft, RotateCcw, Download, Maximize, Minimize,
   ChevronLeft, ChevronRight, BookOpen, Sparkles, ZoomIn, ZoomOut,
-  Hand, Eraser as ScratchIcon,
+  Hand, Paintbrush,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
@@ -748,8 +748,8 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Tool</p>
               <div className="flex flex-col gap-1">
                 {([
-                  { id: "scratch" as const, Icon: ScratchIcon, label: "Scratch" },
-                  { id: "pan"     as const, Icon: Hand,        label: "Pan  (Space)" },
+                  { id: "scratch" as const, Icon: Paintbrush, label: "Brush" },
+                  { id: "pan"     as const, Icon: Hand,       label: "Pan  (Space)" },
                 ]).map(({ id, Icon, label }) => (
                   <button key={id}
                     onClick={() => { prevToolRef.current = id !== "pan" ? id : prevToolRef.current; setTool(id); }}
@@ -960,7 +960,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
         <div className="md:hidden bg-cream border-t border-border-muted px-3 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
           {/* Tool buttons (mobile) */}
           {([
-            { id: "scratch" as const, Icon: ScratchIcon },
+            { id: "scratch" as const, Icon: Paintbrush },
             { id: "pan"     as const, Icon: Hand },
           ]).map(({ id, Icon }) => (
             <button key={id} onClick={() => setTool(id)}
