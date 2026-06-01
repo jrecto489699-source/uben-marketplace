@@ -48,24 +48,20 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-// ── Draw image into the canvas ────────────────────────────────────────────────
-// Uses "cover" scaling (Math.max): the image fills the entire canvas with the
-// overflow cropped off the edges. This guarantees the scratch coating layer
-// and the reveal layer occupy exactly the same pixel area, so scratching
-// always uncovers the right part of the artwork regardless of source aspect.
-// Returns the visible bounds (in canvas pixels) — under cover mode this is
-// always the full canvas — used by the scratch-percentage calculation.
+// ── Draw image centered + scaled onto a canvas ────────────────────────────────
+// Returns the bounds (in canvas pixels) where the image was drawn so callers
+// can use it for scratch-percentage calculations.
 function drawImageCentered(ctx: CanvasRenderingContext2D, img: HTMLImageElement) {
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  const scale = Math.max(CANVAS_W / img.naturalWidth, CANVAS_H / img.naturalHeight);
+  const scale = Math.min(CANVAS_W / img.naturalWidth, CANVAS_H / img.naturalHeight);
   const dw = Math.round(img.naturalWidth  * scale);
   const dh = Math.round(img.naturalHeight * scale);
   const dx = Math.round((CANVAS_W - dw) / 2);
   const dy = Math.round((CANVAS_H - dh) / 2);
   ctx.drawImage(img, dx, dy, dw, dh);
-  return { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
+  return { x: dx, y: dy, w: dw, h: dh };
 }
 
 export default function ScratchPage({ params }: { params: Promise<{ purchaseId: string }> }) {
