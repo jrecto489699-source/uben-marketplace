@@ -764,6 +764,15 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
             <div>
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+                Scratch Size — {brushSize}px
+              </p>
+              <input type="range" min={2} max={20} value={brushSize}
+                onChange={e => setBrushSize(Number(e.target.value))}
+                className="w-full cursor-pointer" style={{ accentColor: "#222" }} />
+            </div>
+
+            <div>
+              <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
                 Zoom — {Math.round(zoom * 100)}%
               </p>
               <div className="flex items-center gap-1 bg-[#EDEBE6] rounded-full px-1 py-1 mb-2">
@@ -962,6 +971,18 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             </button>
           ))}
           <div className="w-px h-6 bg-border-muted shrink-0 mx-0.5" />
+          {/* Brush size pill (mobile) */}
+          <div className="flex items-center gap-1 bg-[#EDEBE6] rounded-full px-2 py-1 shrink-0">
+            <input
+              type="range" min={2} max={20} value={brushSize}
+              onChange={e => setBrushSize(Number(e.target.value))}
+              className="cursor-pointer w-20" style={{ accentColor: "#222" }}
+              aria-label="Brush size"
+            />
+            <span className="text-[10px] font-semibold text-ink-muted w-6 text-center tabular-nums">{brushSize}</span>
+          </div>
+          <div className="w-px h-6 bg-border-muted shrink-0 mx-0.5" />
+
           {/* Zoom pill (mobile) */}
           <div className="flex items-center gap-1 bg-[#EDEBE6] rounded-full px-1 py-1 shrink-0">
             <button onClick={zoomOut} disabled={zoom <= MIN_ZOOM}
