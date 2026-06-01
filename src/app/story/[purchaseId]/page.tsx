@@ -441,21 +441,30 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   return (
     <>
       <style>{`
-        /* ─── Spread lift-and-slide animation (Heyzine-style) ──────────
-           The whole spread lifts off the underlying spread, tilts in
-           3D, slides toward the gutter, and fades — revealing the
-           target spread which was already drawn underneath.          */
-        @keyframes spreadLiftForward {
-          0%   { transform: translateZ(0px)  translateX(0)    rotateY(0deg)   rotate(0deg);    opacity: 1;  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.0));  }
-          25%  { transform: translateZ(60px) translateX(-3%)  rotateY(-6deg)  rotate(-1deg);   opacity: 1;  filter: drop-shadow(-12px 24px 32px rgba(0,0,0,0.22)); }
-          55%  { transform: translateZ(80px) translateX(-22%) rotateY(-14deg) rotate(-2deg);   opacity: 1;  filter: drop-shadow(-22px 30px 44px rgba(0,0,0,0.26)); }
-          100% { transform: translateZ(40px) translateX(-105%) rotateY(-22deg) rotate(-3deg);  opacity: 0;  filter: drop-shadow(-30px 30px 50px rgba(0,0,0,0));    }
+        /* ─── Page-bend flip — single page rotates and bends like
+           real paper. The bend is simulated by combining rotateY with
+           a small rotateX through the rotation, so the page tilts
+           forward (toward the viewer) in the first half and backward
+           in the second half — mimicking the natural curl of paper.
+           A live drop-shadow follows the page so it casts a shadow on
+           the spread beneath.                                         */
+        @keyframes pageBendForward {
+          0%   { transform: rotateY(0deg)    rotateX(0deg)  translateZ(0px)  scaleX(1);    filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+          18%  { transform: rotateY(-26deg)  rotateX(4deg)  translateZ(28px) scaleX(0.98); filter: drop-shadow(-10px 14px 18px rgba(0,0,0,0.22)); }
+          38%  { transform: rotateY(-65deg)  rotateX(6deg)  translateZ(55px) scaleX(0.94); filter: drop-shadow(-22px 22px 32px rgba(0,0,0,0.30)); }
+          50%  { transform: rotateY(-90deg)  rotateX(0deg)  translateZ(60px) scaleX(0.92); filter: drop-shadow(0   28px 40px rgba(0,0,0,0.35)); }
+          62%  { transform: rotateY(-115deg) rotateX(-6deg) translateZ(55px) scaleX(0.94); filter: drop-shadow(22px 22px 32px rgba(0,0,0,0.30)); }
+          82%  { transform: rotateY(-154deg) rotateX(-4deg) translateZ(28px) scaleX(0.98); filter: drop-shadow(10px 14px 18px rgba(0,0,0,0.22)); }
+          100% { transform: rotateY(-180deg) rotateX(0deg)  translateZ(0px)  scaleX(1);    filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
         }
-        @keyframes spreadLiftBackward {
-          0%   { transform: translateZ(0px)  translateX(0)    rotateY(0deg)  rotate(0deg);   opacity: 1;  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.0));  }
-          25%  { transform: translateZ(60px) translateX(3%)   rotateY(6deg)  rotate(1deg);   opacity: 1;  filter: drop-shadow(12px 24px 32px rgba(0,0,0,0.22)); }
-          55%  { transform: translateZ(80px) translateX(22%)  rotateY(14deg) rotate(2deg);   opacity: 1;  filter: drop-shadow(22px 30px 44px rgba(0,0,0,0.26)); }
-          100% { transform: translateZ(40px) translateX(105%) rotateY(22deg) rotate(3deg);   opacity: 0;  filter: drop-shadow(30px 30px 50px rgba(0,0,0,0));    }
+        @keyframes pageBendBackward {
+          0%   { transform: rotateY(0deg)   rotateX(0deg)  translateZ(0px)  scaleX(1);    filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+          18%  { transform: rotateY(26deg)  rotateX(4deg)  translateZ(28px) scaleX(0.98); filter: drop-shadow(10px 14px 18px rgba(0,0,0,0.22)); }
+          38%  { transform: rotateY(65deg)  rotateX(6deg)  translateZ(55px) scaleX(0.94); filter: drop-shadow(22px 22px 32px rgba(0,0,0,0.30)); }
+          50%  { transform: rotateY(90deg)  rotateX(0deg)  translateZ(60px) scaleX(0.92); filter: drop-shadow(0   28px 40px rgba(0,0,0,0.35)); }
+          62%  { transform: rotateY(115deg) rotateX(-6deg) translateZ(55px) scaleX(0.94); filter: drop-shadow(-22px 22px 32px rgba(0,0,0,0.30)); }
+          82%  { transform: rotateY(154deg) rotateX(-4deg) translateZ(28px) scaleX(0.98); filter: drop-shadow(-10px 14px 18px rgba(0,0,0,0.22)); }
+          100% { transform: rotateY(180deg) rotateX(0deg)  translateZ(0px)  scaleX(1);    filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
         }
         @keyframes fadeIn {
           0%   { opacity: 0; }
@@ -569,11 +578,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]"><Cover /></div>
               )}
 
-              {/* COVER OPENING — cover lifts and slides off, spread underneath */}
+              {/* COVER OPENING — cover bends like paper around its left edge */}
               {flipMode === "cover-open" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: target spread, fades in as cover slides */}
-                  <div className="absolute inset-0" style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}>
+                  {/* Underneath: target spread */}
+                  <div className="absolute inset-0">
                     {isWide ? (
                       <div className="flex h-full">
                         <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.left}  side="left"  /></div>
@@ -583,44 +592,39 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                       <PageInPanel pageIndex={targetPages.right} side="single" />
                     )}
                   </div>
-                  {/* On top: cover lifts and slides to the left */}
+                  {/* Top: cover bends and rotates around its left edge */}
                   <div
                     className="absolute inset-0"
                     style={{
+                      transformOrigin: "left center",
                       transformStyle: "preserve-3d",
-                      animation: `spreadLiftForward ${FLIP_DURATION}ms cubic-bezier(0.55, 0, 0.45, 1) forwards`,
-                      willChange: "transform, opacity, filter",
+                      animation: `pageBendForward ${FLIP_DURATION}ms cubic-bezier(0.45, 0, 0.55, 1) forwards`,
+                      willChange: "transform, filter",
                     }}
                   >
-                    <Cover />
+                    <div className="flip-face"><Cover /></div>
+                    <div className="flip-face back" style={{ background: "linear-gradient(180deg, #FFFAF0 0%, #FFE7C7 100%)" }} />
                   </div>
                 </div>
               )}
 
-              {/* COVER CLOSING — first spread lifts and slides to the right, cover underneath */}
+              {/* COVER CLOSING — current spread's left page bends back to reveal cover */}
               {flipMode === "cover-close" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
                   {/* Underneath: cover */}
-                  <div className="absolute inset-0" style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}>
-                    <Cover />
-                  </div>
-                  {/* On top: current spread lifts and slides right */}
+                  <div className="absolute inset-0"><Cover /></div>
+                  {/* Top: the left-most page bends to the right, around its right edge */}
                   <div
                     className="absolute inset-0"
                     style={{
+                      transformOrigin: "right center",
                       transformStyle: "preserve-3d",
-                      animation: `spreadLiftBackward ${FLIP_DURATION}ms cubic-bezier(0.55, 0, 0.45, 1) forwards`,
-                      willChange: "transform, opacity, filter",
+                      animation: `pageBendBackward ${FLIP_DURATION}ms cubic-bezier(0.45, 0, 0.55, 1) forwards`,
+                      willChange: "transform, filter",
                     }}
                   >
-                    {isWide ? (
-                      <div className="flex h-full">
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
-                      </div>
-                    ) : (
-                      <PageInPanel pageIndex={currentPages.right} side="single" />
-                    )}
+                    <div className="flip-face" style={{ background: "linear-gradient(180deg, #FFFAF0 0%, #FFE7C7 100%)" }} />
+                    <div className="flip-face back"><Cover /></div>
                   </div>
                 </div>
               )}
@@ -648,10 +652,10 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* INSIDE — flipping a spread (lift-and-slide) */}
+              {/* INSIDE — single page bends around the binding */}
               {flipMode === "page" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: TARGET spread, sitting fully visible */}
+                  {/* Underneath: TARGET spread, fully visible */}
                   <div className="absolute inset-0">
                     {isWide ? (
                       <div className="flex h-full">
@@ -663,24 +667,63 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                     )}
                   </div>
 
-                  {/* On top: CURRENT spread lifts off and slides toward the side */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      transformStyle: "preserve-3d",
-                      animation: `${flipDir === "next" ? "spreadLiftForward" : "spreadLiftBackward"} ${FLIP_DURATION}ms cubic-bezier(0.55, 0, 0.45, 1) forwards`,
-                      willChange: "transform, opacity, filter",
-                    }}
-                  >
-                    {isWide ? (
-                      <div className="flex h-full">
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
+                  {flipDir === "next" ? (
+                    <>
+                      {/* On desktop, the static left page (current) stays put during the flip */}
+                      {isWide && (
+                        <div className="absolute top-0 left-0 bottom-0 w-1/2 h-full">
+                          <PageInPanel pageIndex={currentPages.left} side="left" />
+                        </div>
+                      )}
+                      {/* Flipping page = current right; bends around its left edge */}
+                      <div className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}>
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            transformOrigin: "left center",
+                            transformStyle: "preserve-3d",
+                            animation: `pageBendForward ${FLIP_DURATION}ms cubic-bezier(0.45, 0, 0.55, 1) forwards`,
+                            willChange: "transform, filter",
+                          }}
+                        >
+                          <div className="flip-face">
+                            <PageInPanel pageIndex={currentPages.right} side={isWide ? "right" : "single"} />
+                          </div>
+                          <div className="flip-face back">
+                            <PageInPanel pageIndex={isWide ? targetPages.left : targetPages.right} side="left" />
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      <PageInPanel pageIndex={currentPages.right} side="single" />
-                    )}
-                  </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Static right page stays put */}
+                      {isWide && (
+                        <div className="absolute top-0 right-0 bottom-0 w-1/2 h-full">
+                          <PageInPanel pageIndex={currentPages.right} side="right" />
+                        </div>
+                      )}
+                      {/* Flipping page = current left; bends around its right edge */}
+                      <div className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}>
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            transformOrigin: "right center",
+                            transformStyle: "preserve-3d",
+                            animation: `pageBendBackward ${FLIP_DURATION}ms cubic-bezier(0.45, 0, 0.55, 1) forwards`,
+                            willChange: "transform, filter",
+                          }}
+                        >
+                          <div className="flip-face">
+                            <PageInPanel pageIndex={isWide ? currentPages.left : currentPages.right} side={isWide ? "left" : "single"} />
+                          </div>
+                          <div className="flip-face back">
+                            <PageInPanel pageIndex={isWide ? targetPages.right : targetPages.right} side="right" />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
