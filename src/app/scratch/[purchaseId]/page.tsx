@@ -107,10 +107,12 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const [zoom,           setZoom]           = useState(1); // 0.5 = 50%, 1 = 100%, 2 = 200%
   const [tool,           setTool]           = useState<"scratch" | "pan">("scratch");
   const [isPanning,      setIsPanning]      = useState(false);
+  const [panX,           setPanX]           = useState(0);
+  const [panY,           setPanY]           = useState(0);
 
   // Refs for pan
   const viewportRef = useRef<HTMLDivElement>(null);
-  const panStartRef = useRef<{ clientX: number; clientY: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const panStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
   const spaceHeld   = useRef(false);
   const prevToolRef = useRef<"scratch" | "pan">("scratch");
   const [imgLoading,     setImgLoading]     = useState(true);
@@ -356,7 +358,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const MAX_ZOOM = 2;
   function zoomIn()    { setZoom(z => Math.min(MAX_ZOOM, parseFloat((z + 0.25).toFixed(2)))); }
   function zoomOut()   { setZoom(z => Math.max(MIN_ZOOM, parseFloat((z - 0.25).toFixed(2)))); }
-  function zoomReset() { setZoom(1); }
+  function zoomReset() { setZoom(1); setPanX(0); setPanY(0); }
 
   // Auto-fit zoom on mobile so the whole scratch page fits the screen width
   useEffect(() => {
@@ -519,14 +521,13 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (isAutoClearing || imgLoading || !!imgError) return;
     e.preventDefault();
 
-    // Pan tool: start dragging the viewport
+    // Pan tool: start translating the canvas
     if (tool === "pan") {
       const xy = getClientXY(e);
-      const vp = viewportRef.current;
-      if (!xy || !vp) return;
+      if (!xy) return;
       panStartRef.current = {
         clientX: xy.clientX, clientY: xy.clientY,
-        scrollLeft: vp.scrollLeft, scrollTop: vp.scrollTop,
+        panX, panY,
       };
       setIsPanning(true);
       return;
@@ -546,14 +547,14 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (isAutoClearing) return;
     e.preventDefault();
 
-    // Pan: drag the viewport
-    if (tool === "pan" && panStartRef.current && viewportRef.current) {
+    // Pan: translate the canvas freely
+    if (tool === "pan" && panStartRef.current) {
       const xy = getClientXY(e);
       if (!xy) return;
       const dx = xy.clientX - panStartRef.current.clientX;
       const dy = xy.clientY - panStartRef.current.clientY;
-      viewportRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
-      viewportRef.current.scrollTop  = panStartRef.current.scrollTop  - dy;
+      setPanX(panStartRef.current.panX + dx);
+      setPanY(panStartRef.current.panY + dy);
       return;
     }
 
@@ -858,9 +859,9 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                   transition: "width 0.12s ease-out, height 0.12s ease-out",
                 }}>
                 <div style={{
-                  transform: `scale(${zoom})`,
+                  transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
                   transformOrigin: "top left",
-                  transition: "transform 0.12s ease-out",
+                  transition: isPanning ? "none" : "transform 0.12s ease-out",
                 }}>
                 <div className="relative rounded-2xl overflow-hidden shadow-lg select-none"
                   style={{ width: 680, height: Math.round(680 * (CANVAS_H / CANVAS_W)) }}>
