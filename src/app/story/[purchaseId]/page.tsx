@@ -455,9 +455,20 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     }
   })();
 
-  const pageUnitStyle = { width: "min(86vw, 400px)", aspectRatio: "3/4" };
-  const spreadStyle   = isWide
-    ? { width: "min(94vw, 820px)", aspectRatio: "3/2" }
+  // Sizing — the book uses `min()` of viewport width, an absolute cap,
+  // and a height-derived value so it grows to fill the screen on iPad
+  // and desktop without overflowing vertically in landscape.
+  // 75dvh × 0.75 = single-page max height. 78dvh × 1.5 = spread width
+  // limit when the viewport is short and wide.
+  const pageUnitStyle = {
+    width: "min(92vw, 560px, calc(78dvh * 0.75))",
+    aspectRatio: "3/4",
+  };
+  const spreadStyle = isWide
+    ? {
+        width: "min(96vw, 1200px, calc(78dvh * 1.5))",
+        aspectRatio: "3/2",
+      }
     : pageUnitStyle;
 
   const containerStyle = (showCover && !isFlipping) || flipMode === "cover-open"
@@ -565,7 +576,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
         {/* ── Book stage ─────────────────────────────────────────────────── */}
         <div
-          className="flex-1 relative overflow-hidden min-h-0 flex items-center justify-center px-3 py-5 bg-cream"
+          className="flex-1 relative overflow-hidden min-h-0 flex items-center justify-center px-2 py-3 bg-cream"
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
           style={{ perspective: "2400px" }}
