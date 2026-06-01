@@ -530,6 +530,10 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
         panX, panY,
       };
       setIsPanning(true);
+      // On touch, also lock page scroll so the document doesn't pan
+      // along with the canvas — otherwise the canvas appears to move
+      // twice as fast as the finger.
+      if ("touches" in e) lockBodyScroll();
       return;
     }
 
@@ -585,6 +589,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (tool === "pan" || panStartRef.current) {
       panStartRef.current = null;
       setIsPanning(false);
+      if (document.body.dataset.scratchScrollY !== undefined) unlockBodyScroll();
       return;
     }
     if (isDrawing.current) {
@@ -599,6 +604,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (tool === "pan" || panStartRef.current) {
       panStartRef.current = null;
       setIsPanning(false);
+      if (document.body.dataset.scratchScrollY !== undefined) unlockBodyScroll();
       return;
     }
     if (!isDrawing.current) return;
@@ -607,6 +613,39 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     saveScratchState();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRevealed, isAutoClearing, tool]);
+
+  // ── Body scroll lock — used during touch pan so the page doesn't
+  //    move along with the canvas.
+  function lockBodyScroll() {
+    const y = window.scrollY;
+    document.body.dataset.scratchScrollY = String(y);
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${y}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+  }
+  function unlockBodyScroll() {
+    const y = parseInt(document.body.dataset.scratchScrollY ?? "0", 10);
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    document.body.style.overflow = "";
+    document.body.style.touchAction = "";
+    delete document.body.dataset.scratchScrollY;
+    window.scrollTo(0, y);
+  }
+
+  // Safety: if the component unmounts mid-pan, restore body scroll.
+  useEffect(() => {
+    return () => {
+      if (document.body.dataset.scratchScrollY !== undefined) unlockBodyScroll();
+    };
+  }, []);
 
   // ── Reset current page ────────────────────────────────────────────────────
   async function reset() {
