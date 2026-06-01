@@ -24,6 +24,190 @@ const FLIP_DURATION    = 900;
 const AUTO_PLAY_DELAY  = 5000;
 const SWIPE_THRESHOLD  = 45;
 
+// ── Palette ───────────────────────────────────────────────────────────────────
+const NAVY_DEEP  = "#0f1735";
+const NAVY_MID   = "#1e2a55";
+const NAVY_SOFT  = "#2a3970";
+const GOLD       = "#c8a44a";
+const GOLD_SOFT  = "#d8b85e";
+const GOLD_DEEP  = "#8a6a26";
+
+// ── Decorative SVG layer (navy book panel with gold ornaments) ───────────────
+// Renders the dark navy panel with stars, moon, castle, gold border, and the
+// gold arch that surrounds the page content. The arched area itself is
+// transparent so the PDF/title underneath shows through.
+function BookPanel({ side = "single", randSeed = 1 }: {
+  side?: "single" | "left" | "right";
+  randSeed?: number;
+}) {
+  // The right page mirrors moon position to the upper-LEFT corner so the
+  // castle stays on the right; the left page keeps moon top-right & castle
+  // bottom-left. The "single" cover keeps moon top-right & castle bottom-left.
+  const moonRight = side !== "right"; // moon on the right of the panel
+
+  // Deterministic random star positions
+  const rng = mulberry32(randSeed);
+  const stars = Array.from({ length: 28 }, (_, i) => ({
+    cx: 30 + rng() * 540,
+    cy: 30 + rng() * 350,
+    r:  i % 5 === 0 ? 2.4 : (i % 3 === 0 ? 1.6 : 1.1),
+  }));
+
+  return (
+    <svg
+      viewBox="0 0 600 800"
+      preserveAspectRatio="none"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ background: `linear-gradient(180deg, ${NAVY_MID} 0%, ${NAVY_DEEP} 100%)` }}
+    >
+      <defs>
+        <linearGradient id={`navy-bg-${side}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"  stopColor={NAVY_MID} />
+          <stop offset="100%" stopColor={NAVY_DEEP} />
+        </linearGradient>
+        <radialGradient id={`mountain-fog-${side}`} cx="50%" cy="100%" r="80%">
+          <stop offset="0%"  stopColor="#e8d8a8" stopOpacity="0.35" />
+          <stop offset="40%" stopColor={NAVY_SOFT} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={NAVY_DEEP} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* Background */}
+      <rect width="600" height="800" fill={`url(#navy-bg-${side})`} />
+
+      {/* Stars */}
+      {stars.map((s, i) => (
+        <circle key={i} cx={s.cx} cy={s.cy} r={s.r}
+          fill={GOLD_SOFT} opacity={0.55 + rng() * 0.4} />
+      ))}
+
+      {/* Crescent moon */}
+      <g transform={`translate(${moonRight ? 490 : 110}, 110)`}>
+        <circle r="28" fill={GOLD} />
+        <circle cx={moonRight ? -12 : 12} cy={-4} r="26" fill={NAVY_MID} />
+      </g>
+
+      {/* Distant mountain glow */}
+      <rect x="0" y="500" width="600" height="300" fill={`url(#mountain-fog-${side})`} />
+
+      {/* Mountain silhouettes (distant) */}
+      <path
+        d="M 0,650 L 80,580 L 160,620 L 240,560 L 330,610 L 420,560 L 510,605 L 600,560 L 600,800 L 0,800 Z"
+        fill={NAVY_SOFT} opacity="0.55"
+      />
+      {/* Mountain silhouettes (closer) */}
+      <path
+        d="M 0,720 L 90,640 L 180,690 L 290,620 L 400,690 L 500,640 L 600,710 L 600,800 L 0,800 Z"
+        fill={NAVY_DEEP}
+      />
+
+      {/* Pine trees on the right edge */}
+      <g fill={NAVY_DEEP} opacity="0.95">
+        <path d="M 540 720 L 555 660 L 570 720 Z" />
+        <path d="M 520 740 L 533 680 L 546 740 Z" />
+        <path d="M 565 745 L 578 695 L 592 745 Z" />
+      </g>
+
+      {/* Castle silhouette (bottom-left for cover & left page; bottom-right for right page) */}
+      <g
+        fill={NAVY_DEEP}
+        transform={side === "right" ? "translate(600, 0) scale(-1, 1)" : ""}
+      >
+        {/* Hill */}
+        <path d="M 40 700 Q 130 640 240 690 L 240 800 L 40 800 Z" />
+        {/* Castle body */}
+        <g>
+          <rect x="100" y="600" width="60" height="100" />
+          <rect x="115" y="585" width="30" height="20" />
+          {/* Towers */}
+          <rect x="85"  y="565" width="20" height="135" />
+          <rect x="155" y="555" width="20" height="145" />
+          <rect x="125" y="540" width="14" height="160" />
+          {/* Spires */}
+          <path d="M 85 565 L 95 545 L 105 565 Z" />
+          <path d="M 155 555 L 165 530 L 175 555 Z" />
+          <path d="M 125 540 L 132 515 L 139 540 Z" />
+          {/* Windows (warm glow) */}
+          <rect x="119" y="625" width="6" height="10" fill="#f0c66a" opacity="0.85" />
+          <rect x="135" y="625" width="6" height="10" fill="#f0c66a" opacity="0.85" />
+          <rect x="92"  y="610" width="6" height="9"  fill="#f0c66a" opacity="0.75" />
+          <rect x="160" y="600" width="6" height="9"  fill="#f0c66a" opacity="0.75" />
+        </g>
+      </g>
+
+      {/* Outer gold border */}
+      <rect x="22" y="22" width="556" height="756" fill="none" stroke={GOLD} strokeWidth="2.5" />
+      <rect x="30" y="30" width="540" height="740" fill="none" stroke={GOLD} strokeWidth="0.8" opacity="0.7" />
+
+      {/* Border diamond ornaments */}
+      {[
+        { x: 300, y: 30 }, { x: 300, y: 770 },
+        { x: 30,  y: 400 }, { x: 570, y: 400 },
+      ].map((p, i) => (
+        <g key={i} transform={`translate(${p.x}, ${p.y}) rotate(45)`}>
+          <rect x="-5" y="-5" width="10" height="10" fill={GOLD} />
+        </g>
+      ))}
+
+      {/* Corner flourishes — small ornate curves */}
+      {([
+        { x: 30,  y: 30,  flip: "" },
+        { x: 570, y: 30,  flip: "scale(-1, 1) translate(-1140, 0)" },
+        { x: 30,  y: 770, flip: "scale(1, -1) translate(0, -1540)" },
+        { x: 570, y: 770, flip: "scale(-1, -1) translate(-1140, -1540)" },
+      ]).map((c, i) => (
+        <g key={i} transform={c.flip} stroke={GOLD} strokeWidth="1.3" fill="none">
+          {/* L-shaped flourish near corner — curves */}
+          <path d={`M ${c.x + 10} ${c.y + 50} q 5 -25 30 -28 q -8 -10 0 -22 q 10 -3 18 7`} />
+          <path d={`M ${c.x + 14} ${c.y + 40} c 6 -6 14 -7 22 -3`} opacity="0.7" />
+          {/* Little dots */}
+          <circle cx={c.x + 42} cy={c.y + 22} r="1.6" fill={GOLD} />
+          <circle cx={c.x + 22} cy={c.y + 60} r="1.6" fill={GOLD} />
+        </g>
+      ))}
+
+      {/* The arched window — outlines the content area */}
+      <path
+        d="M 90 220 L 90 560 Q 90 605 135 605 L 465 605 Q 510 605 510 560 L 510 220 Q 510 90 300 90 Q 90 90 90 220 Z"
+        fill="none"
+        stroke={GOLD}
+        strokeWidth="2"
+      />
+      <path
+        d="M 96 220 L 96 558 Q 96 599 137 599 L 463 599 Q 504 599 504 558 L 504 220 Q 504 96 300 96 Q 96 96 96 220 Z"
+        fill="none"
+        stroke={GOLD_DEEP}
+        strokeWidth="0.6"
+        opacity="0.7"
+      />
+
+      {/* Small fleurs along the arch top */}
+      <g fill={GOLD}>
+        <circle cx="300" cy="92" r="4" />
+        <path d="M 300 78 L 305 88 L 300 98 L 295 88 Z" />
+      </g>
+
+      {/* Inner vine flourishes on either side of the arch */}
+      <g stroke={GOLD} strokeWidth="1.1" fill="none" opacity="0.85">
+        <path d="M 120 540 q 0 -40 25 -40 q -10 -16 5 -28 q 12 -2 14 12" />
+        <path d="M 480 540 q 0 -40 -25 -40 q 10 -16 -5 -28 q -12 -2 -14 12" />
+        <circle cx="155" cy="490" r="2" fill={GOLD} />
+        <circle cx="445" cy="490" r="2" fill={GOLD} />
+      </g>
+    </svg>
+  );
+}
+
+// Deterministic random
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
 export default function StoryPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
   const { purchases, loading } = usePurchases();
@@ -39,7 +223,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   const [pdfError,   setPdfError]   = useState<string | null>(null);
   const [pageImages, setPageImages] = useState<Record<number, string>>({});
 
-  // ── Layout — single page on mobile, two-page spread on desktop ──────────
+  // ── Layout ────────────────────────────────────────────────────────────────
   const [isWide, setIsWide] = useState(false);
   useEffect(() => {
     const check = () => setIsWide(window.innerWidth >= 768);
@@ -60,10 +244,8 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAutoPlay,   setIsAutoPlay]   = useState(false);
 
-  // ── Touch swipe ───────────────────────────────────────────────────────────
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
-  // Latest values for async callbacks
   const stateRef = useRef({ showCover, spread, isFlipping, totalPages, isWide });
   useEffect(() => {
     stateRef.current = { showCover, spread, isFlipping, totalPages, isWide };
@@ -79,7 +261,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
   useEffect(() => { getPdfJs(); }, []);
 
-  // ── Render a PDF page to a data URL (cached) ─────────────────────────────
   async function renderPage(pageIndex: number) {
     const doc = pdfDocRef.current;
     if (!doc || pageIndex < 0 || pageIndex >= doc.numPages) return;
@@ -98,7 +279,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     }
   }
 
-  // ── Load PDF ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!purchase?.id) return;
     async function load() {
@@ -137,7 +317,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [purchase?.id]);
 
-  // ── Pre-render nearby pages ──────────────────────────────────────────────
   useEffect(() => {
     if (pdfLoading || pdfError || showCover) return;
     const current = pagesForSpread(spread);
@@ -150,7 +329,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spread, totalPages, showCover, pdfLoading, pdfError, isWide]);
 
-  // ── Save & restore reading position ───────────────────────────────────────
   const localKey = `uben_story_${purchaseId}`;
   useEffect(() => {
     if (pdfLoading || pdfError) return;
@@ -172,7 +350,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfLoading]);
 
-  // ── Page navigation ───────────────────────────────────────────────────────
   function startFlip(direction: "next" | "prev", mode: "cover-open" | "cover-close" | "page", afterFlip: () => void) {
     setFlipDir(direction);
     setFlipMode(mode);
@@ -207,7 +384,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     startFlip("prev", "page", () => setSpread(s.spread - 1));
   }
 
-  // ── Auto-play ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isAutoPlay || showCover || isFlipping || pdfLoading || pdfError) return;
     if (spread >= totalSpreads - 1) { setIsAutoPlay(false); return; }
@@ -216,7 +392,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAutoPlay, spread, showCover, isFlipping, pdfLoading, pdfError, totalSpreads]);
 
-  // ── Keyboard ──────────────────────────────────────────────────────────────
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
@@ -228,7 +403,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // ── Touch swipe ───────────────────────────────────────────────────────────
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
     touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
@@ -246,7 +420,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     if (dx < 0) goNext(); else goPrev();
   }
 
-  // ── Fullscreen ────────────────────────────────────────────────────────────
   useEffect(() => {
     const fn = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", fn);
@@ -266,7 +439,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     });
   }
 
-  // ── Guards ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <><Navbar />
@@ -289,81 +461,99 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     );
   }
 
-  // ── PageSlot ─────────────────────────────────────────────────────────────
-  function PageSlot({ pageIndex, side, halfShadow = true }: {
-    pageIndex: number | null;
-    side: "left" | "right";
-    halfShadow?: boolean;
-  }) {
+  // ── Page content placed INSIDE the arched panel area ─────────────────────
+  // The arched area in the SVG runs roughly (90,90) → (510,605) in a 600×800
+  // viewbox. We position the PDF page over that area using percentages.
+  function ArchedContent({ children }: { children: React.ReactNode }) {
+    return (
+      <div
+        className="absolute"
+        style={{
+          // Match the SVG arch interior
+          top:    "11%",
+          left:   "15%",
+          right:  "15%",
+          bottom: "24%",
+          // Soft inner shadow to seat the content into the panel
+          boxShadow: "inset 0 0 20px rgba(0,0,0,0.4)",
+          overflow: "hidden",
+          // Clip the content roughly to the arch outline
+          borderRadius: "8px",
+          // Subtle paper backdrop where content lives
+          background: "#f6efe1",
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  function PageInPanel({ pageIndex, side }: { pageIndex: number | null; side: "left" | "right" | "single" }) {
     const url = pageIndex !== null ? pageImages[pageIndex] : null;
     const hasContent = pageIndex !== null && pageIndex >= 0 && pageIndex < totalPages;
+    const seed = side === "left" ? 7 : side === "right" ? 11 : 5;
     return (
-      <div className="relative w-full h-full bg-white overflow-hidden">
-        {hasContent && url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={`Page ${pageIndex + 1}`}
-            className="absolute inset-0 w-full h-full object-contain bg-white" draggable={false} />
-        ) : hasContent ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-white">
-            <div className="w-8 h-8 border-2 border-ink border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="absolute inset-0 bg-white" />
-        )}
+      <div className="relative w-full h-full overflow-hidden" style={{ background: NAVY_DEEP }}>
+        <BookPanel side={side === "single" ? "single" : side} randSeed={seed} />
+        <ArchedContent>
+          {hasContent && url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt={`Page ${pageIndex + 1}`}
+              className="absolute inset-0 w-full h-full object-contain"
+              style={{ background: "#f6efe1" }}
+              draggable={false} />
+          ) : hasContent ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="absolute inset-0" style={{ background: "#f6efe1" }} />
+          )}
+        </ArchedContent>
         {hasContent && (
-          <div className={`absolute bottom-2 ${side === "left" ? "left-3" : "right-3"} text-[10px] text-ink/40 tabular-nums select-none`}>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] tabular-nums select-none"
+            style={{ color: GOLD_SOFT }}>
             {pageIndex + 1}
           </div>
         )}
-        {halfShadow && (
-          <div className="absolute top-0 bottom-0 pointer-events-none"
-            style={{
-              [side === "left" ? "right" : "left"]: 0,
-              width: "14%",
-              background: side === "left"
-                ? "linear-gradient(to right, transparent 50%, rgba(0,0,0,0.13))"
-                : "linear-gradient(to left, transparent 50%, rgba(0,0,0,0.13))",
-            } as React.CSSProperties} />
-        )}
       </div>
     );
   }
 
-  // ── Cover content ────────────────────────────────────────────────────────
+  // ── Cover content (title in the arch) ────────────────────────────────────
   function Cover() {
     return (
-      <div className="relative w-full h-full overflow-hidden bg-cream">
-        <div className="absolute top-6 left-6 w-24 h-20 opacity-30 pointer-events-none"
-          style={{ backgroundImage: "radial-gradient(rgba(34,34,34,0.6) 1px, transparent 1px)", backgroundSize: "9px 9px" }} />
-        <div className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 text-[9px] sm:text-[10px] tracking-[0.45em] text-ink/65 select-none"
-          style={{ writingMode: "vertical-rl", transform: "translateY(-50%) rotate(180deg)" }}>
-          A&nbsp;&nbsp;STORYBOOK
-        </div>
-        <div className="absolute top-[7%] left-[20%] right-[6%] bottom-[24%] rounded-sm overflow-hidden shadow-sm bg-card-hover">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={product!.image} alt={product!.title}
-            className="absolute inset-0 w-full h-full object-cover" draggable={false} />
-        </div>
-        <div className="absolute left-6 bottom-[30%] w-20 h-32 opacity-40 pointer-events-none"
-          style={{ backgroundImage: "radial-gradient(rgba(34,34,34,0.7) 1px, transparent 1px)", backgroundSize: "8px 8px" }} />
-        <div className="absolute bottom-[7%] left-[8%] right-[8%]">
-          <h1 className="font-serif text-[#1F4842] uppercase font-semibold tracking-wide"
-            style={{ fontSize: "clamp(24px, 5.5vw, 48px)", lineHeight: 1, letterSpacing: "0.02em" }}>
-            {product!.title}
-          </h1>
-          <div className="mt-3 border-t border-ink/30 pt-2 flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] uppercase tracking-widest text-ink-muted">{product!.seller}</span>
-            <span className="text-[10px] sm:text-[11px] uppercase tracking-widest text-ink-muted">Read &amp; Enjoy</span>
+      <div className="relative w-full h-full overflow-hidden" style={{ background: NAVY_DEEP }}>
+        <BookPanel side="single" randSeed={3} />
+        <ArchedContent>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4"
+            style={{ background: "linear-gradient(180deg, #f6efe1 0%, #e9d9b3 100%)" }}>
+            <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.4em] mb-3" style={{ color: GOLD_DEEP }}>
+              A Storybook
+            </div>
+            <h1 className="font-serif uppercase font-bold leading-tight px-2 mb-4" style={{
+              color: NAVY_DEEP,
+              fontSize: "clamp(22px, 4.5vw, 38px)",
+              letterSpacing: "0.02em",
+            }}>
+              {product!.title}
+            </h1>
+            <div className="w-12 h-px mb-3" style={{ background: GOLD_DEEP }} />
+            <div className="text-[10px] sm:text-[11px] uppercase tracking-widest" style={{ color: GOLD_DEEP }}>
+              {product!.seller}
+            </div>
+          </div>
+        </ArchedContent>
+        {/* Cover lower decoration: title-style */}
+        <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
+          <div className="text-[10px] tracking-[0.45em]" style={{ color: GOLD }}>
+            ✦ &nbsp; READ &amp; ENJOY &nbsp; ✦
           </div>
         </div>
-        {/* Binding shadow on the right edge — the side that will lift when opening */}
-        <div className="absolute top-0 bottom-0 right-0 w-3 pointer-events-none"
-          style={{ background: "linear-gradient(to left, rgba(0,0,0,0.18), transparent)" }} />
       </div>
     );
   }
 
-  // ── Compute current and target pages for animation ───────────────────────
   const currentPages = showCover
     ? { left: null as number | null, right: null as number | null }
     : pagesForSpread(spread);
@@ -379,44 +569,36 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     }
   })();
 
-  // ── Dimensions ───────────────────────────────────────────────────────────
-  // The "page unit" is what we use for cover and single-page views.
-  // Two-page spreads are twice as wide.
   const pageUnitStyle = { width: "min(86vw, 400px)", aspectRatio: "3/4" };
   const spreadStyle   = isWide
     ? { width: "min(94vw, 820px)", aspectRatio: "3/2" }
     : pageUnitStyle;
 
-  // Container holds whichever layout is currently active.
   const containerStyle = (showCover && !isFlipping) || flipMode === "cover-open"
     ? pageUnitStyle
     : spreadStyle;
 
-  // Spread or single page: the "right" half displays the leaf the user is
-  // looking at. The cover always occupies the full page-unit.
-
   return (
     <>
       <style>{`
-        /* ── Page flip keyframes ───────────────────────────────────── */
         @keyframes flipForward {
           0%   { transform: rotateY(0deg);    box-shadow: -2px 0 8px rgba(0,0,0,0); }
-          50%  {                              box-shadow: -8px 0 24px rgba(0,0,0,0.18); }
+          50%  {                              box-shadow: -10px 0 28px rgba(0,0,0,0.25); }
           100% { transform: rotateY(-180deg); box-shadow: -2px 0 8px rgba(0,0,0,0); }
         }
         @keyframes flipBackward {
           0%   { transform: rotateY(0deg);    box-shadow: 2px 0 8px rgba(0,0,0,0); }
-          50%  {                              box-shadow: 8px 0 24px rgba(0,0,0,0.18); }
+          50%  {                              box-shadow: 10px 0 28px rgba(0,0,0,0.25); }
           100% { transform: rotateY(180deg);  box-shadow: 2px 0 8px rgba(0,0,0,0); }
         }
         @keyframes coverOpen {
           0%   { transform: rotateY(0deg);    box-shadow: -2px 0 12px rgba(0,0,0,0); }
-          40%  {                              box-shadow: -12px 0 32px rgba(0,0,0,0.22); }
+          40%  {                              box-shadow: -14px 0 36px rgba(0,0,0,0.3); }
           100% { transform: rotateY(-160deg); box-shadow: -2px 0 12px rgba(0,0,0,0); }
         }
         @keyframes coverClose {
           0%   { transform: rotateY(-160deg); box-shadow: -2px 0 12px rgba(0,0,0,0); }
-          60%  {                              box-shadow: -12px 0 32px rgba(0,0,0,0.22); }
+          60%  {                              box-shadow: -14px 0 36px rgba(0,0,0,0.3); }
           100% { transform: rotateY(0deg);    box-shadow: -2px 0 12px rgba(0,0,0,0); }
         }
         @keyframes fadeIn {
@@ -424,7 +606,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           50%  { opacity: 0; }
           100% { opacity: 1; }
         }
-
         .flip-face {
           position: absolute; inset: 0;
           backface-visibility: hidden;
@@ -432,7 +613,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           overflow: hidden;
         }
         .flip-face.back { transform: rotateY(180deg); }
-
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
       `}</style>
@@ -471,13 +651,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           )}
 
           {!showCover && !pdfError && (
-            <button
-              onClick={() => setIsAutoPlay(v => !v)}
+            <button onClick={() => setIsAutoPlay(v => !v)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
                 isAutoPlay ? "bg-ink text-cream hover:bg-[#3a3a3a]" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
               }`}
-              title={isAutoPlay ? "Stop auto-flip" : "Auto-flip pages"}
-            >
+              title={isAutoPlay ? "Stop auto-flip" : "Auto-flip pages"}>
               {isAutoPlay ? <Pause size={12} /> : <Play size={12} />}
               {isAutoPlay ? "Stop" : "Auto"}
             </button>
@@ -497,10 +675,9 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           onTouchEnd={onTouchEnd}
           style={{
             perspective: "2600px",
-            background: "radial-gradient(ellipse at center, #EDEBE6 0%, #DCD8CF 100%)",
+            background: "radial-gradient(ellipse at center, #EDEBE6 0%, #C8C2B5 100%)",
           }}
         >
-          {/* Loading */}
           {pdfLoading && (
             <div className="text-center">
               <div className="w-10 h-10 border-2 border-ink border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -508,7 +685,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
             </div>
           )}
 
-          {/* Error */}
           {!pdfLoading && pdfError && (
             <div className="text-center max-w-sm px-6">
               <BookOpen size={40} strokeWidth={1.2} className="text-ink-muted mx-auto mb-4" />
@@ -521,136 +697,116 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
             </div>
           )}
 
-          {/* Book container */}
           {!pdfLoading && !pdfError && (
             <div
               className="relative select-none"
               style={{
                 ...containerStyle,
-                boxShadow: "0 30px 80px -20px rgba(0,0,0,0.45), 0 10px 20px -10px rgba(0,0,0,0.2)",
+                boxShadow: "0 30px 80px -20px rgba(0,0,0,0.5), 0 12px 24px -10px rgba(0,0,0,0.25)",
                 borderRadius: 6,
-                background: "#ffffff",
+                background: NAVY_DEEP,
                 transformStyle: "preserve-3d",
                 transition: "width 0.45s ease-in-out, aspect-ratio 0.45s ease-in-out",
               }}
             >
-              {/* ─── COVER (closed) — single page centered ─── */}
+              {/* COVER closed */}
               {showCover && !isFlipping && (
-                <div className="absolute inset-0 overflow-hidden rounded-[6px]">
-                  <Cover />
-                </div>
+                <div className="absolute inset-0 overflow-hidden rounded-[6px]"><Cover /></div>
               )}
 
-              {/* ─── COVER OPENING — cover flips left, spread fades in behind ─── */}
+              {/* COVER OPENING */}
               {flipMode === "cover-open" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[6px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: the first spread, fades in */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards`,
-                    }}
-                  >
+                  <div className="absolute inset-0" style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}>
                     {isWide ? (
                       <div className="flex h-full">
-                        <div className="w-1/2 h-full bg-white"><PageSlot pageIndex={targetPages.left} side="left" /></div>
-                        <div className="w-1/2 h-full bg-white"><PageSlot pageIndex={targetPages.right} side="right" /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.left}  side="left"  /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.right} side="right" /></div>
                       </div>
                     ) : (
-                      <div className="h-full bg-white"><PageSlot pageIndex={targetPages.right} side="right" /></div>
+                      <PageInPanel pageIndex={targetPages.right} side="single" />
                     )}
                   </div>
-
-                  {/* Top: cover flipping around its LEFT edge */}
-                  <div
-                    className="absolute inset-0"
+                  <div className="absolute inset-0"
                     style={{
                       transformOrigin: "left center",
                       transformStyle: "preserve-3d",
                       animation: `coverOpen ${FLIP_DURATION}ms ease-in-out forwards`,
                       willChange: "transform",
-                    }}
-                  >
+                    }}>
                     <div className="flip-face"><Cover /></div>
-                    <div className="flip-face back bg-white">
-                      {/* The interior of the front cover — keep it blank/cream */}
-                      <div className="w-full h-full bg-cream" />
+                    <div className="flip-face back" style={{ background: NAVY_DEEP }}>
+                      <div className="w-full h-full" style={{ background: NAVY_DEEP }} />
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* ─── COVER CLOSING — first spread closes back into cover ─── */}
+              {/* COVER CLOSING */}
               {flipMode === "cover-close" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[6px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: the cover, fades in */}
-                  <div
-                    className="absolute inset-0"
-                    style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}
-                  >
+                  <div className="absolute inset-0" style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}>
                     <Cover />
                   </div>
-                  {/* Top: cover element closing (reverse of open) */}
-                  <div
-                    className="absolute inset-0"
+                  <div className="absolute inset-0"
                     style={{
                       transformOrigin: "left center",
                       transformStyle: "preserve-3d",
                       animation: `coverClose ${FLIP_DURATION}ms ease-in-out forwards`,
                       willChange: "transform",
-                    }}
-                  >
-                    <div className="flip-face bg-cream" />
+                    }}>
+                    <div className="flip-face" style={{ background: NAVY_DEEP }} />
                     <div className="flip-face back"><Cover /></div>
                   </div>
                 </div>
               )}
 
-              {/* ─── INSIDE — spread visible (no flip in progress) ─── */}
+              {/* INSIDE — static */}
               {!showCover && !isFlipping && (
                 <div className="absolute inset-0 overflow-hidden rounded-[6px]">
                   {isWide ? (
                     <>
                       <div className="flex h-full">
-                        <div className="w-1/2 h-full bg-white"><PageSlot pageIndex={currentPages.left}  side="left"  /></div>
-                        <div className="w-1/2 h-full bg-white"><PageSlot pageIndex={currentPages.right} side="right" /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
                       </div>
-                      {/* Center binding shadow */}
+                      {/* Center spine — gold double line on navy */}
                       <div className="absolute top-0 bottom-0 pointer-events-none"
-                        style={{ left: "50%", width: 18, transform: "translateX(-50%)",
-                          background: "linear-gradient(to right, transparent, rgba(0,0,0,0.18) 50%, transparent)", zIndex: 3 }} />
+                        style={{
+                          left: "50%", width: 16, transform: "translateX(-50%)",
+                          background: `linear-gradient(to right, ${NAVY_MID} 0%, ${NAVY_DEEP} 50%, ${NAVY_MID} 100%)`,
+                          boxShadow: `inset 1px 0 0 ${GOLD}, inset -1px 0 0 ${GOLD}`,
+                          zIndex: 3,
+                        }} />
                     </>
                   ) : (
-                    <div className="h-full bg-white"><PageSlot pageIndex={currentPages.right} side="right" /></div>
+                    <PageInPanel pageIndex={currentPages.right} side="single" />
                   )}
                 </div>
               )}
 
-              {/* ─── INSIDE — flipping a page ─── */}
+              {/* INSIDE — flipping page */}
               {flipMode === "page" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[6px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: target spread (visible after flip) */}
+                  {/* Underneath: target spread */}
                   <div className="absolute inset-0">
                     {isWide ? (
                       <div className="flex h-full">
-                        <div className="w-1/2 h-full bg-white"><PageSlot pageIndex={targetPages.left}  side="left"  /></div>
-                        <div className="w-1/2 h-full bg-white"><PageSlot pageIndex={targetPages.right} side="right" /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.left}  side="left"  /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.right} side="right" /></div>
                       </div>
                     ) : (
-                      <div className="h-full bg-white"><PageSlot pageIndex={flipDir === "next" ? targetPages.right : targetPages.right} side="right" /></div>
+                      <PageInPanel pageIndex={targetPages.right} side="single" />
                     )}
                   </div>
 
-                  {/* Top: current spread with the flipping page on one side */}
                   {flipDir === "next" ? (
                     <>
-                      {/* Left page stays during forward flip (desktop only) */}
                       {isWide && (
-                        <div className="absolute top-0 left-0 bottom-0 w-1/2 h-full bg-white">
-                          <PageSlot pageIndex={currentPages.left} side="left" />
+                        <div className="absolute top-0 left-0 bottom-0 w-1/2 h-full">
+                          <PageInPanel pageIndex={currentPages.left} side="left" />
                         </div>
                       )}
-                      {/* Right page flips around its LEFT edge */}
                       <div className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}>
                         <div className="absolute inset-0"
                           style={{
@@ -659,24 +815,22 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                             animation: `flipForward ${FLIP_DURATION}ms ease-in-out forwards`,
                             willChange: "transform",
                           }}>
-                          <div className="flip-face bg-white">
-                            <PageSlot pageIndex={currentPages.right} side="right" />
+                          <div className="flip-face">
+                            <PageInPanel pageIndex={currentPages.right} side={isWide ? "right" : "single"} />
                           </div>
-                          <div className="flip-face back bg-white">
-                            <PageSlot pageIndex={isWide ? targetPages.left : targetPages.right} side="left" />
+                          <div className="flip-face back">
+                            <PageInPanel pageIndex={isWide ? targetPages.left : targetPages.right} side="left" />
                           </div>
                         </div>
                       </div>
                     </>
                   ) : (
                     <>
-                      {/* Right page stays during backward flip (desktop only) */}
                       {isWide && (
-                        <div className="absolute top-0 right-0 bottom-0 w-1/2 h-full bg-white">
-                          <PageSlot pageIndex={currentPages.right} side="right" />
+                        <div className="absolute top-0 right-0 bottom-0 w-1/2 h-full">
+                          <PageInPanel pageIndex={currentPages.right} side="right" />
                         </div>
                       )}
-                      {/* Left page flips around its RIGHT edge */}
                       <div className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}>
                         <div className="absolute inset-0"
                           style={{
@@ -685,11 +839,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                             animation: `flipBackward ${FLIP_DURATION}ms ease-in-out forwards`,
                             willChange: "transform",
                           }}>
-                          <div className="flip-face bg-white">
-                            <PageSlot pageIndex={isWide ? currentPages.left : currentPages.right} side="left" />
+                          <div className="flip-face">
+                            <PageInPanel pageIndex={isWide ? currentPages.left : currentPages.right} side={isWide ? "left" : "single"} />
                           </div>
-                          <div className="flip-face back bg-white">
-                            <PageSlot pageIndex={isWide ? targetPages.right : targetPages.right} side="right" />
+                          <div className="flip-face back">
+                            <PageInPanel pageIndex={isWide ? targetPages.right : targetPages.right} side="right" />
                           </div>
                         </div>
                       </div>
@@ -700,7 +854,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
             </div>
           )}
 
-          {/* ── Arrow buttons ─────────────────────────────────────────── */}
           {!pdfLoading && !pdfError && (
             <>
               <button onClick={goPrev} disabled={showCover}
@@ -716,7 +869,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
             </>
           )}
 
-          {/* Swipe hint chevrons (mobile only) */}
           {!pdfLoading && !pdfError && !showCover && (
             <>
               <div className="sm:hidden absolute left-3 top-1/2 pointer-events-none text-ink/35"
@@ -733,7 +885,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           )}
         </div>
 
-        {/* ── Mobile bottom strip ───────────────────────────────────────── */}
         {totalPages > 0 && (
           <div className="md:hidden bg-cream border-t border-border-muted px-4 py-2 flex items-center justify-center gap-3 shrink-0">
             <BookOpen size={13} className="text-ink-muted" />
