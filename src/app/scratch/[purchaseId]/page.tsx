@@ -4,6 +4,7 @@ import { use, useEffect, useRef, useState, useCallback } from "react";
 import {
   ArrowLeft, RotateCcw, Download, Maximize, Minimize,
   ChevronLeft, ChevronRight, BookOpen, Sparkles, ZoomIn, ZoomOut,
+  Hand, Eraser as ScratchIcon,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
@@ -104,6 +105,14 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const [isAutoClearing, setIsAutoClearing] = useState(false);
   const [isFullscreen,   setIsFullscreen]   = useState(false);
   const [zoom,           setZoom]           = useState(1); // 0.5 = 50%, 1 = 100%, 2 = 200%
+  const [tool,           setTool]           = useState<"scratch" | "pan">("scratch");
+  const [isPanning,      setIsPanning]      = useState(false);
+
+  // Refs for pan
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const panStartRef = useRef<{ clientX: number; clientY: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const spaceHeld   = useRef(false);
+  const prevToolRef = useRef<"scratch" | "pan">("scratch");
   const [imgLoading,     setImgLoading]     = useState(true);
   const [imgError,       setImgError]       = useState<string | null>(null);
   const [totalPages,     setTotalPages]     = useState(0);
@@ -359,14 +368,35 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     }
   }, []);
 
-  // Arrow key navigation
+  // Arrow keys + Space (hold for temporary pan)
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.code === "ArrowRight") { e.preventDefault(); nextPage(); }
-      if (e.code === "ArrowLeft")  { e.preventDefault(); prevPage(); }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code === "ArrowRight") { e.preventDefault(); nextPage(); return; }
+      if (e.code === "ArrowLeft")  { e.preventDefault(); prevPage(); return; }
+      if (e.code === "Space" && !e.repeat && !spaceHeld.current) {
+        // Avoid hijacking Space when typing in an input
+        const t = e.target as HTMLElement | null;
+        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+        e.preventDefault();
+        spaceHeld.current = true;
+        setTool(curr => {
+          if (curr !== "pan") prevToolRef.current = curr;
+          return "pan";
+        });
+      }
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.code === "Space") {
+        spaceHeld.current = false;
+        setTool(prevToolRef.current);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup",   onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup",   onKeyUp);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, totalPages]);
 
@@ -476,9 +506,33 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   }
 
   // ── Pointer handlers ──────────────────────────────────────────────────────
+  function getClientXY(e: React.MouseEvent | React.TouchEvent) {
+    if ("touches" in e) {
+      const t = (e as React.TouchEvent).touches[0] || (e as React.TouchEvent).changedTouches[0];
+      return t ? { clientX: t.clientX, clientY: t.clientY } : null;
+    }
+    const me = e as React.MouseEvent;
+    return { clientX: me.clientX, clientY: me.clientY };
+  }
+
   const onPointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (isRevealed || isAutoClearing || imgLoading || !!imgError) return;
+    if (isAutoClearing || imgLoading || !!imgError) return;
     e.preventDefault();
+
+    // Pan tool: start dragging the viewport
+    if (tool === "pan") {
+      const xy = getClientXY(e);
+      const vp = viewportRef.current;
+      if (!xy || !vp) return;
+      panStartRef.current = {
+        clientX: xy.clientX, clientY: xy.clientY,
+        scrollLeft: vp.scrollLeft, scrollTop: vp.scrollTop,
+      };
+      setIsPanning(true);
+      return;
+    }
+
+    if (isRevealed) return;
     isDrawing.current = true;
     const pos = getPos(e.nativeEvent as MouseEvent | TouchEvent);
     if (!pos) return;
@@ -486,12 +540,24 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     lastPos.current = pos;
     navigator.vibrate?.(5);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRevealed, isAutoClearing, imgLoading, imgError, brushSize]);
+  }, [isRevealed, isAutoClearing, imgLoading, imgError, brushSize, tool]);
 
   const onPointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (isRevealed || isAutoClearing) return;
+    if (isAutoClearing) return;
     e.preventDefault();
 
+    // Pan: drag the viewport
+    if (tool === "pan" && panStartRef.current && viewportRef.current) {
+      const xy = getClientXY(e);
+      if (!xy) return;
+      const dx = xy.clientX - panStartRef.current.clientX;
+      const dy = xy.clientY - panStartRef.current.clientY;
+      viewportRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+      viewportRef.current.scrollTop  = panStartRef.current.scrollTop  - dy;
+      return;
+    }
+
+    if (isRevealed) return;
     // Update cursor ring position (mouse only)
     if (!("touches" in e) && cursorRef.current && scratchRef.current) {
       const rect = scratchRef.current.getBoundingClientRect();
@@ -506,29 +572,39 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (lastPos.current) scratchStroke(lastPos.current, pos, brushSize);
     lastPos.current = pos;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRevealed, isAutoClearing, brushSize]);
+  }, [isRevealed, isAutoClearing, brushSize, tool]);
 
   const onPointerEnter = useCallback(() => {
-    if (cursorRef.current) cursorRef.current.style.display = "block";
-  }, []);
+    if (tool === "scratch" && cursorRef.current) cursorRef.current.style.display = "block";
+  }, [tool]);
 
   const onPointerLeave = useCallback(() => {
     if (cursorRef.current) cursorRef.current.style.display = "none";
+    if (tool === "pan" || panStartRef.current) {
+      panStartRef.current = null;
+      setIsPanning(false);
+      return;
+    }
     if (isDrawing.current) {
       isDrawing.current = false; lastPos.current = null;
       checkPercent();
       saveScratchState();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRevealed, isAutoClearing]);
+  }, [isRevealed, isAutoClearing, tool]);
 
   const onPointerUp = useCallback(() => {
+    if (tool === "pan" || panStartRef.current) {
+      panStartRef.current = null;
+      setIsPanning(false);
+      return;
+    }
     if (!isDrawing.current) return;
     isDrawing.current = false; lastPos.current = null;
     checkPercent();
     saveScratchState();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRevealed, isAutoClearing]);
+  }, [isRevealed, isAutoClearing, tool]);
 
   // ── Reset current page ────────────────────────────────────────────────────
   async function reset() {
@@ -667,6 +743,25 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               </div>
             )}
 
+            {/* Tool — Scratch / Pan(Space) */}
+            <div>
+              <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Tool</p>
+              <div className="flex flex-col gap-1">
+                {([
+                  { id: "scratch" as const, Icon: ScratchIcon, label: "Scratch" },
+                  { id: "pan"     as const, Icon: Hand,        label: "Pan  (Space)" },
+                ]).map(({ id, Icon, label }) => (
+                  <button key={id}
+                    onClick={() => { prevToolRef.current = id !== "pan" ? id : prevToolRef.current; setTool(id); }}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left ${
+                      tool === id ? "bg-ink text-cream" : "text-ink hover:bg-[#EDEBE6]"
+                    }`}>
+                    <Icon size={14} />{label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
                 Zoom — {Math.round(zoom * 100)}%
@@ -742,7 +837,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             )}
 
             <div className="flex-1 relative overflow-hidden min-h-0">
-              <div className="absolute inset-0 overflow-auto" style={{ background: "#EDEBE6" }}>
+              <div ref={viewportRef} className="absolute inset-0 overflow-auto" style={{ background: "#EDEBE6" }}>
                 <div className="min-h-full min-w-full flex items-center justify-center p-2">
                 {/* Outer wrapper takes the SCALED size so flex centering
                     works correctly. Inner div uses transform-origin top-left
@@ -774,7 +869,10 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                   {/* Layer 2 — Scratch coating (B&W image) */}
                   <canvas ref={scratchRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full"
-                    style={{ cursor: isRevealed ? "default" : "none", touchAction: "none" }}
+                    style={{
+                      cursor: tool === "pan" ? (isPanning ? "grabbing" : "grab") : (isRevealed ? "default" : "none"),
+                      touchAction: "none",
+                    }}
                     onMouseDown={onPointerDown} onMouseMove={onPointerMove}
                     onMouseUp={onPointerUp}    onMouseLeave={onPointerLeave}
                     onMouseEnter={onPointerEnter}
@@ -786,7 +884,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     className="absolute inset-0 w-full h-full pointer-events-none" />
 
                   {/* Custom cursor ring */}
-                  {!isRevealed && !imgLoading && !imgError && (
+                  {!isRevealed && !imgLoading && !imgError && tool === "scratch" && (
                     <div ref={cursorRef}
                       className="absolute pointer-events-none rounded-full -translate-x-1/2 -translate-y-1/2"
                       style={{
@@ -851,6 +949,19 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
         {/* ── Mobile bottom toolbar ─────────────────────────────────────── */}
         <div className="md:hidden bg-cream border-t border-border-muted px-3 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
+          {/* Tool buttons (mobile) */}
+          {([
+            { id: "scratch" as const, Icon: ScratchIcon },
+            { id: "pan"     as const, Icon: Hand },
+          ]).map(({ id, Icon }) => (
+            <button key={id} onClick={() => setTool(id)}
+              className={`flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-colors ${
+                tool === id ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink"
+              }`}>
+              <Icon size={15} />
+            </button>
+          ))}
+          <div className="w-px h-6 bg-border-muted shrink-0 mx-0.5" />
           {/* Zoom pill (mobile) */}
           <div className="flex items-center gap-1 bg-[#EDEBE6] rounded-full px-1 py-1 shrink-0">
             <button onClick={zoomOut} disabled={zoom <= MIN_ZOOM}
