@@ -441,47 +441,25 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   return (
     <>
       <style>{`
-        /* ─── Page-wave flip animations ───────────────────────────────
-           Pages don't just rotate flat — they curve & lift off the
-           binding as they turn. Achieved with translateZ (lift),
-           scaleX (slight squash), and an animated drop-shadow.        */
-        @keyframes flipForwardWave {
-          0%   { transform: rotateY(0deg)    translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
-          15%  { transform: rotateY(-22deg)  translateZ(40px) scaleX(0.99); box-shadow: -14px 12px 24px rgba(0,0,0,0.20); }
-          35%  { transform: rotateY(-60deg)  translateZ(70px) scaleX(0.96); box-shadow: -28px 18px 40px rgba(0,0,0,0.28); }
-          50%  { transform: rotateY(-90deg)  translateZ(80px) scaleX(0.94); box-shadow: -34px 22px 50px rgba(0,0,0,0.32); }
-          65%  { transform: rotateY(-120deg) translateZ(70px) scaleX(0.96); box-shadow: -22px 18px 40px rgba(0,0,0,0.24); }
-          85%  { transform: rotateY(-158deg) translateZ(30px) scaleX(0.99); box-shadow: -10px 10px 22px rgba(0,0,0,0.15); }
-          100% { transform: rotateY(-180deg) translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
+        /* ─── Spread lift-and-slide animation (Heyzine-style) ──────────
+           The whole spread lifts off the underlying spread, tilts in
+           3D, slides toward the gutter, and fades — revealing the
+           target spread which was already drawn underneath.          */
+        @keyframes spreadLiftForward {
+          0%   { transform: translateZ(0px)  translateX(0)    rotateY(0deg)   rotate(0deg);    opacity: 1;  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.0));  }
+          25%  { transform: translateZ(60px) translateX(-3%)  rotateY(-6deg)  rotate(-1deg);   opacity: 1;  filter: drop-shadow(-12px 24px 32px rgba(0,0,0,0.22)); }
+          55%  { transform: translateZ(80px) translateX(-22%) rotateY(-14deg) rotate(-2deg);   opacity: 1;  filter: drop-shadow(-22px 30px 44px rgba(0,0,0,0.26)); }
+          100% { transform: translateZ(40px) translateX(-105%) rotateY(-22deg) rotate(-3deg);  opacity: 0;  filter: drop-shadow(-30px 30px 50px rgba(0,0,0,0));    }
         }
-        @keyframes flipBackwardWave {
-          0%   { transform: rotateY(0deg)   translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
-          15%  { transform: rotateY(22deg)  translateZ(40px) scaleX(0.99); box-shadow: 14px 12px 24px rgba(0,0,0,0.20); }
-          35%  { transform: rotateY(60deg)  translateZ(70px) scaleX(0.96); box-shadow: 28px 18px 40px rgba(0,0,0,0.28); }
-          50%  { transform: rotateY(90deg)  translateZ(80px) scaleX(0.94); box-shadow: 34px 22px 50px rgba(0,0,0,0.32); }
-          65%  { transform: rotateY(120deg) translateZ(70px) scaleX(0.96); box-shadow: 22px 18px 40px rgba(0,0,0,0.24); }
-          85%  { transform: rotateY(158deg) translateZ(30px) scaleX(0.99); box-shadow: 10px 10px 22px rgba(0,0,0,0.15); }
-          100% { transform: rotateY(180deg) translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
-        }
-        @keyframes coverOpenWave {
-          0%   { transform: rotateY(0deg)    translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
-          15%  { transform: rotateY(-20deg)  translateZ(35px) scaleX(0.99); box-shadow: -14px 14px 28px rgba(0,0,0,0.22); }
-          40%  { transform: rotateY(-65deg)  translateZ(75px) scaleX(0.95); box-shadow: -30px 22px 48px rgba(0,0,0,0.32); }
-          60%  { transform: rotateY(-100deg) translateZ(80px) scaleX(0.93); box-shadow: -36px 26px 56px rgba(0,0,0,0.34); }
-          85%  { transform: rotateY(-145deg) translateZ(30px) scaleX(0.98); box-shadow: -12px 14px 26px rgba(0,0,0,0.18); }
-          100% { transform: rotateY(-160deg) translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
-        }
-        @keyframes coverCloseWave {
-          0%   { transform: rotateY(-160deg) translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
-          15%  { transform: rotateY(-145deg) translateZ(30px) scaleX(0.98); box-shadow: -12px 14px 26px rgba(0,0,0,0.18); }
-          40%  { transform: rotateY(-100deg) translateZ(80px) scaleX(0.93); box-shadow: -36px 26px 56px rgba(0,0,0,0.34); }
-          60%  { transform: rotateY(-65deg)  translateZ(75px) scaleX(0.95); box-shadow: -30px 22px 48px rgba(0,0,0,0.32); }
-          85%  { transform: rotateY(-20deg)  translateZ(35px) scaleX(0.99); box-shadow: -14px 14px 28px rgba(0,0,0,0.22); }
-          100% { transform: rotateY(0deg)    translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
+        @keyframes spreadLiftBackward {
+          0%   { transform: translateZ(0px)  translateX(0)    rotateY(0deg)  rotate(0deg);   opacity: 1;  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.0));  }
+          25%  { transform: translateZ(60px) translateX(3%)   rotateY(6deg)  rotate(1deg);   opacity: 1;  filter: drop-shadow(12px 24px 32px rgba(0,0,0,0.22)); }
+          55%  { transform: translateZ(80px) translateX(22%)  rotateY(14deg) rotate(2deg);   opacity: 1;  filter: drop-shadow(22px 30px 44px rgba(0,0,0,0.26)); }
+          100% { transform: translateZ(40px) translateX(105%) rotateY(22deg) rotate(3deg);   opacity: 0;  filter: drop-shadow(30px 30px 50px rgba(0,0,0,0));    }
         }
         @keyframes fadeIn {
           0%   { opacity: 0; }
-          55%  { opacity: 0; }
+          30%  { opacity: 0; }
           100% { opacity: 1; }
         }
         .flip-face {
@@ -493,7 +471,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         .flip-face.back { transform: rotateY(180deg); }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
-        @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
       `}</style>
 
       {!isFullscreen && <Navbar />}
@@ -549,22 +526,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
         {/* ── Book stage ─────────────────────────────────────────────────── */}
         <div
-          className="flex-1 relative overflow-hidden min-h-0 flex items-center justify-center px-3 py-5"
+          className="flex-1 relative overflow-hidden min-h-0 flex items-center justify-center px-3 py-5 bg-cream"
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
-          style={{
-            perspective: "2200px",
-            background:
-              "radial-gradient(ellipse at center, #FFF1E0 0%, #FFD9C3 60%, #FFB89B 100%)",
-          }}
+          style={{ perspective: "2400px" }}
         >
-          {/* Soft floating clouds in the background */}
-          <div className="absolute top-6 left-6 opacity-70 pointer-events-none" style={{ animation: "floatY 5s ease-in-out infinite" }}>
-            <CloudShape size={70} />
-          </div>
-          <div className="absolute top-12 right-10 opacity-60 pointer-events-none" style={{ animation: "floatY 6s ease-in-out 0.5s infinite" }}>
-            <CloudShape size={55} />
-          </div>
 
           {pdfLoading && (
             <div className="text-center">
@@ -603,9 +569,10 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]"><Cover /></div>
               )}
 
-              {/* COVER OPENING */}
+              {/* COVER OPENING — cover lifts and slides off, spread underneath */}
               {flipMode === "cover-open" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
+                  {/* Underneath: target spread, fades in as cover slides */}
                   <div className="absolute inset-0" style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}>
                     {isWide ? (
                       <div className="flex h-full">
@@ -616,34 +583,44 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                       <PageInPanel pageIndex={targetPages.right} side="single" />
                     )}
                   </div>
-                  <div className="absolute inset-0"
+                  {/* On top: cover lifts and slides to the left */}
+                  <div
+                    className="absolute inset-0"
                     style={{
-                      transformOrigin: "left center",
                       transformStyle: "preserve-3d",
-                      animation: `coverOpenWave ${FLIP_DURATION}ms ease-in-out forwards`,
-                      willChange: "transform",
-                    }}>
-                    <div className="flip-face"><Cover /></div>
-                    <div className="flip-face back" style={{ background: "linear-gradient(180deg, #FFFAF0 0%, #FFE7C7 100%)" }} />
+                      animation: `spreadLiftForward ${FLIP_DURATION}ms cubic-bezier(0.55, 0, 0.45, 1) forwards`,
+                      willChange: "transform, opacity, filter",
+                    }}
+                  >
+                    <Cover />
                   </div>
                 </div>
               )}
 
-              {/* COVER CLOSING */}
+              {/* COVER CLOSING — first spread lifts and slides to the right, cover underneath */}
               {flipMode === "cover-close" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
+                  {/* Underneath: cover */}
                   <div className="absolute inset-0" style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}>
                     <Cover />
                   </div>
-                  <div className="absolute inset-0"
+                  {/* On top: current spread lifts and slides right */}
+                  <div
+                    className="absolute inset-0"
                     style={{
-                      transformOrigin: "left center",
                       transformStyle: "preserve-3d",
-                      animation: `coverCloseWave ${FLIP_DURATION}ms ease-in-out forwards`,
-                      willChange: "transform",
-                    }}>
-                    <div className="flip-face" style={{ background: "linear-gradient(180deg, #FFFAF0 0%, #FFE7C7 100%)" }} />
-                    <div className="flip-face back"><Cover /></div>
+                      animation: `spreadLiftBackward ${FLIP_DURATION}ms cubic-bezier(0.55, 0, 0.45, 1) forwards`,
+                      willChange: "transform, opacity, filter",
+                    }}
+                  >
+                    {isWide ? (
+                      <div className="flex h-full">
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
+                      </div>
+                    ) : (
+                      <PageInPanel pageIndex={currentPages.right} side="single" />
+                    )}
                   </div>
                 </div>
               )}
@@ -671,10 +648,10 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* INSIDE — flipping page with wave */}
+              {/* INSIDE — flipping a spread (lift-and-slide) */}
               {flipMode === "page" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: target spread */}
+                  {/* Underneath: TARGET spread, sitting fully visible */}
                   <div className="absolute inset-0">
                     {isWide ? (
                       <div className="flex h-full">
@@ -686,55 +663,24 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                     )}
                   </div>
 
-                  {flipDir === "next" ? (
-                    <>
-                      {isWide && (
-                        <div className="absolute top-0 left-0 bottom-0 w-1/2 h-full">
-                          <PageInPanel pageIndex={currentPages.left} side="left" />
-                        </div>
-                      )}
-                      <div className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}>
-                        <div className="absolute inset-0"
-                          style={{
-                            transformOrigin: "left center",
-                            transformStyle: "preserve-3d",
-                            animation: `flipForwardWave ${FLIP_DURATION}ms ease-in-out forwards`,
-                            willChange: "transform",
-                          }}>
-                          <div className="flip-face">
-                            <PageInPanel pageIndex={currentPages.right} side={isWide ? "right" : "single"} />
-                          </div>
-                          <div className="flip-face back">
-                            <PageInPanel pageIndex={isWide ? targetPages.left : targetPages.right} side="left" />
-                          </div>
-                        </div>
+                  {/* On top: CURRENT spread lifts off and slides toward the side */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      transformStyle: "preserve-3d",
+                      animation: `${flipDir === "next" ? "spreadLiftForward" : "spreadLiftBackward"} ${FLIP_DURATION}ms cubic-bezier(0.55, 0, 0.45, 1) forwards`,
+                      willChange: "transform, opacity, filter",
+                    }}
+                  >
+                    {isWide ? (
+                      <div className="flex h-full">
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      {isWide && (
-                        <div className="absolute top-0 right-0 bottom-0 w-1/2 h-full">
-                          <PageInPanel pageIndex={currentPages.right} side="right" />
-                        </div>
-                      )}
-                      <div className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}>
-                        <div className="absolute inset-0"
-                          style={{
-                            transformOrigin: "right center",
-                            transformStyle: "preserve-3d",
-                            animation: `flipBackwardWave ${FLIP_DURATION}ms ease-in-out forwards`,
-                            willChange: "transform",
-                          }}>
-                          <div className="flip-face">
-                            <PageInPanel pageIndex={isWide ? currentPages.left : currentPages.right} side={isWide ? "left" : "single"} />
-                          </div>
-                          <div className="flip-face back">
-                            <PageInPanel pageIndex={isWide ? targetPages.right : targetPages.right} side="right" />
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                    ) : (
+                      <PageInPanel pageIndex={currentPages.right} side="single" />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
