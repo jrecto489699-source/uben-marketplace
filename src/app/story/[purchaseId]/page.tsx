@@ -121,9 +121,13 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         }
         pdfDocRef.current = doc;
         setTotalPages(doc.numPages);
+        // Block on the first two pages — they appear immediately when the
+        // cover opens. Kick off the next four in the background so they
+        // are ready by the time the reader gets to them.
         await renderPage(0);
         if (doc.numPages > 1) await renderPage(1);
         setPdfLoading(false);
+        for (let i = 2; i < Math.min(8, doc.numPages); i++) renderPage(i);
       } catch (err) {
         console.error("[story] PDF load failed:", err);
         setPdfError(err instanceof Error ? err.message : "Failed to load storybook");
@@ -134,15 +138,15 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [purchase?.id]);
 
+  // Pre-render a wider window of spreads (current ±2) so rapid taps
+  // never reveal an unrendered page underneath the swiping page.
   useEffect(() => {
     if (pdfLoading || pdfError || showCover) return;
-    const current = pagesForSpread(spread);
-    const next    = pagesForSpread(spread + 1);
-    const prev    = pagesForSpread(spread - 1);
-    [current, next, prev].forEach(({ left, right }) => {
+    for (let offset = -2; offset <= 2; offset++) {
+      const { left, right } = pagesForSpread(spread + offset);
       if (left  !== null && left  >= 0 && left  < totalPages) renderPage(left);
       if (right !== null && right >= 0 && right < totalPages) renderPage(right);
-    });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spread, totalPages, showCover, pdfLoading, pdfError, isWide]);
 
@@ -168,6 +172,21 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   }, [pdfLoading]);
 
   function startFlip(direction: "next" | "prev", mode: "cover-open" | "cover-close" | "page", afterFlip: () => void) {
+    // Kick off rendering of the target spread's pages BEFORE the animation
+    // starts so they're ready (or rendering in parallel with the swipe)
+    // and the spread underneath is immediately visible.
+    const s = stateRef.current;
+    let targetSpread: number | null = null;
+    if (mode === "cover-open")      targetSpread = 0;
+    else if (mode === "cover-close")targetSpread = null; // closing reveals the cover, no PDF needed
+    else if (direction === "next")  targetSpread = s.spread + 1;
+    else                            targetSpread = s.spread - 1;
+    if (targetSpread !== null && targetSpread >= 0 && targetSpread < totalSpreads) {
+      const target = pagesForSpread(targetSpread);
+      if (target.left  !== null && target.left  >= 0 && target.left  < s.totalPages) renderPage(target.left);
+      if (target.right !== null && target.right >= 0 && target.right < s.totalPages) renderPage(target.right);
+    }
+
     setFlipDir(direction);
     setFlipMode(mode);
     setIsFlipping(true);
