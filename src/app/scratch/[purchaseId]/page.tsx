@@ -113,6 +113,8 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   // Refs for pan
   const viewportRef = useRef<HTMLDivElement>(null);
   const panStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
+  const panXRef     = useRef(0);
+  const panYRef     = useRef(0);
   const spaceHeld   = useRef(false);
   const prevToolRef = useRef<"scratch" | "pan">("scratch");
   const [imgLoading,     setImgLoading]     = useState(true);
@@ -126,6 +128,10 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const [guideUrl,       setGuideUrl]       = useState<string | null>(null);
 
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
+  // Keep pan refs in sync with state so async pointer-down closures
+  // always read the *current* pan position instead of a stale value.
+  useEffect(() => { panXRef.current = panX; }, [panX]);
+  useEffect(() => { panYRef.current = panY; }, [panY]);
 
   // Update guide preview URL when the page changes or pages load
   useEffect(() => {
@@ -525,14 +531,13 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     if (tool === "pan") {
       const xy = getClientXY(e);
       if (!xy) return;
+      // Read current pan from refs so we don't snap back to a stale
+      // value captured by an out-of-date closure.
       panStartRef.current = {
         clientX: xy.clientX, clientY: xy.clientY,
-        panX, panY,
+        panX: panXRef.current, panY: panYRef.current,
       };
       setIsPanning(true);
-      // On touch, also lock page scroll so the document doesn't pan
-      // along with the canvas — otherwise the canvas appears to move
-      // twice as fast as the finger.
       if ("touches" in e) lockBodyScroll();
       return;
     }
