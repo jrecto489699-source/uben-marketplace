@@ -442,29 +442,31 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     <>
       <style>{`
         /* ─── Page-bend flip — single page rotates and bends like
-           real paper. The bend is simulated by combining rotateY with
-           a small rotateX through the rotation, so the page tilts
-           forward (toward the viewer) in the first half and backward
-           in the second half — mimicking the natural curl of paper.
-           A live drop-shadow follows the page so it casts a shadow on
-           the spread beneath.                                         */
+           real paper, while staying *glued* to the binding.
+           No translateZ on the whole page (which would detach it
+           from the spine) — only rotateY (the actual page turn) and
+           a small rotateX through the rotation to simulate the
+           natural curl of paper bending under its own weight. The
+           transform-origin is the binding edge, so the binding stays
+           anchored to the spine throughout the flip. Live drop-shadow
+           follows the page so it casts a shadow on the spread below. */
         @keyframes pageBendForward {
-          0%   { transform: rotateY(0deg)    rotateX(0deg)  translateZ(0px)  scaleX(1);    filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
-          18%  { transform: rotateY(-26deg)  rotateX(4deg)  translateZ(28px) scaleX(0.98); filter: drop-shadow(-10px 14px 18px rgba(0,0,0,0.22)); }
-          38%  { transform: rotateY(-65deg)  rotateX(6deg)  translateZ(55px) scaleX(0.94); filter: drop-shadow(-22px 22px 32px rgba(0,0,0,0.30)); }
-          50%  { transform: rotateY(-90deg)  rotateX(0deg)  translateZ(60px) scaleX(0.92); filter: drop-shadow(0   28px 40px rgba(0,0,0,0.35)); }
-          62%  { transform: rotateY(-115deg) rotateX(-6deg) translateZ(55px) scaleX(0.94); filter: drop-shadow(22px 22px 32px rgba(0,0,0,0.30)); }
-          82%  { transform: rotateY(-154deg) rotateX(-4deg) translateZ(28px) scaleX(0.98); filter: drop-shadow(10px 14px 18px rgba(0,0,0,0.22)); }
-          100% { transform: rotateY(-180deg) rotateX(0deg)  translateZ(0px)  scaleX(1);    filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+          0%   { transform: rotateY(0deg)    rotateX(0deg);  filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+          22%  { transform: rotateY(-32deg)  rotateX(7deg);  filter: drop-shadow(-12px 16px 22px rgba(0,0,0,0.22)); }
+          45%  { transform: rotateY(-72deg)  rotateX(11deg); filter: drop-shadow(-20px 22px 32px rgba(0,0,0,0.30)); }
+          50%  { transform: rotateY(-90deg)  rotateX(0deg);  filter: drop-shadow(0   26px 36px rgba(0,0,0,0.34)); }
+          55%  { transform: rotateY(-108deg) rotateX(-11deg);filter: drop-shadow(20px 22px 32px rgba(0,0,0,0.30)); }
+          78%  { transform: rotateY(-148deg) rotateX(-7deg); filter: drop-shadow(12px 16px 22px rgba(0,0,0,0.22)); }
+          100% { transform: rotateY(-180deg) rotateX(0deg);  filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
         }
         @keyframes pageBendBackward {
-          0%   { transform: rotateY(0deg)   rotateX(0deg)  translateZ(0px)  scaleX(1);    filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
-          18%  { transform: rotateY(26deg)  rotateX(4deg)  translateZ(28px) scaleX(0.98); filter: drop-shadow(10px 14px 18px rgba(0,0,0,0.22)); }
-          38%  { transform: rotateY(65deg)  rotateX(6deg)  translateZ(55px) scaleX(0.94); filter: drop-shadow(22px 22px 32px rgba(0,0,0,0.30)); }
-          50%  { transform: rotateY(90deg)  rotateX(0deg)  translateZ(60px) scaleX(0.92); filter: drop-shadow(0   28px 40px rgba(0,0,0,0.35)); }
-          62%  { transform: rotateY(115deg) rotateX(-6deg) translateZ(55px) scaleX(0.94); filter: drop-shadow(-22px 22px 32px rgba(0,0,0,0.30)); }
-          82%  { transform: rotateY(154deg) rotateX(-4deg) translateZ(28px) scaleX(0.98); filter: drop-shadow(-10px 14px 18px rgba(0,0,0,0.22)); }
-          100% { transform: rotateY(180deg) rotateX(0deg)  translateZ(0px)  scaleX(1);    filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+          0%   { transform: rotateY(0deg)   rotateX(0deg);  filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+          22%  { transform: rotateY(32deg)  rotateX(7deg);  filter: drop-shadow(12px 16px 22px rgba(0,0,0,0.22)); }
+          45%  { transform: rotateY(72deg)  rotateX(11deg); filter: drop-shadow(20px 22px 32px rgba(0,0,0,0.30)); }
+          50%  { transform: rotateY(90deg)  rotateX(0deg);  filter: drop-shadow(0   26px 36px rgba(0,0,0,0.34)); }
+          55%  { transform: rotateY(108deg) rotateX(-11deg);filter: drop-shadow(-20px 22px 32px rgba(0,0,0,0.30)); }
+          78%  { transform: rotateY(148deg) rotateX(-7deg); filter: drop-shadow(-12px 16px 22px rgba(0,0,0,0.22)); }
+          100% { transform: rotateY(180deg) rotateX(0deg);  filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
         }
         @keyframes fadeIn {
           0%   { opacity: 0; }
