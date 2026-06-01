@@ -669,12 +669,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
             <div>
               <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-                Scratch Size — {brushSize}px
-              </p>
-              <input type="range" min={2} max={20} value={brushSize}
-                onChange={e => setBrushSize(Number(e.target.value))}
-                className="w-full cursor-pointer mb-3" style={{ accentColor: "#222" }} />
-              <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
                 Zoom — {Math.round(zoom * 100)}%
               </p>
               <div className="flex items-center gap-1 bg-[#EDEBE6] rounded-full px-1 py-1 mb-2">
