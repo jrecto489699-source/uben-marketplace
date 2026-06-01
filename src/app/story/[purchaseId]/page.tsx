@@ -20,193 +20,9 @@ async function getPdfJs() {
 }
 
 const PAGE_RENDER_SCALE = 1.5;
-const FLIP_DURATION    = 900;
+const FLIP_DURATION    = 1100; // a touch longer so the wave reads naturally
 const AUTO_PLAY_DELAY  = 5000;
 const SWIPE_THRESHOLD  = 45;
-
-// ── Palette ───────────────────────────────────────────────────────────────────
-const NAVY_DEEP  = "#0f1735";
-const NAVY_MID   = "#1e2a55";
-const NAVY_SOFT  = "#2a3970";
-const GOLD       = "#c8a44a";
-const GOLD_SOFT  = "#d8b85e";
-const GOLD_DEEP  = "#8a6a26";
-
-// ── Decorative SVG layer (navy book panel with gold ornaments) ───────────────
-// Renders the dark navy panel with stars, moon, castle, gold border, and the
-// gold arch that surrounds the page content. The arched area itself is
-// transparent so the PDF/title underneath shows through.
-function BookPanel({ side = "single", randSeed = 1 }: {
-  side?: "single" | "left" | "right";
-  randSeed?: number;
-}) {
-  // The right page mirrors moon position to the upper-LEFT corner so the
-  // castle stays on the right; the left page keeps moon top-right & castle
-  // bottom-left. The "single" cover keeps moon top-right & castle bottom-left.
-  const moonRight = side !== "right"; // moon on the right of the panel
-
-  // Deterministic random star positions
-  const rng = mulberry32(randSeed);
-  const stars = Array.from({ length: 28 }, (_, i) => ({
-    cx: 30 + rng() * 540,
-    cy: 30 + rng() * 350,
-    r:  i % 5 === 0 ? 2.4 : (i % 3 === 0 ? 1.6 : 1.1),
-  }));
-
-  return (
-    <svg
-      viewBox="0 0 600 800"
-      preserveAspectRatio="none"
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ background: `linear-gradient(180deg, ${NAVY_MID} 0%, ${NAVY_DEEP} 100%)` }}
-    >
-      <defs>
-        <linearGradient id={`navy-bg-${side}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"  stopColor={NAVY_MID} />
-          <stop offset="100%" stopColor={NAVY_DEEP} />
-        </linearGradient>
-        <radialGradient id={`mountain-fog-${side}`} cx="50%" cy="100%" r="80%">
-          <stop offset="0%"  stopColor="#e8d8a8" stopOpacity="0.35" />
-          <stop offset="40%" stopColor={NAVY_SOFT} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={NAVY_DEEP} stopOpacity="0" />
-        </radialGradient>
-      </defs>
-
-      {/* Background */}
-      <rect width="600" height="800" fill={`url(#navy-bg-${side})`} />
-
-      {/* Stars */}
-      {stars.map((s, i) => (
-        <circle key={i} cx={s.cx} cy={s.cy} r={s.r}
-          fill={GOLD_SOFT} opacity={0.55 + rng() * 0.4} />
-      ))}
-
-      {/* Crescent moon */}
-      <g transform={`translate(${moonRight ? 490 : 110}, 110)`}>
-        <circle r="28" fill={GOLD} />
-        <circle cx={moonRight ? -12 : 12} cy={-4} r="26" fill={NAVY_MID} />
-      </g>
-
-      {/* Distant mountain glow */}
-      <rect x="0" y="500" width="600" height="300" fill={`url(#mountain-fog-${side})`} />
-
-      {/* Mountain silhouettes (distant) */}
-      <path
-        d="M 0,650 L 80,580 L 160,620 L 240,560 L 330,610 L 420,560 L 510,605 L 600,560 L 600,800 L 0,800 Z"
-        fill={NAVY_SOFT} opacity="0.55"
-      />
-      {/* Mountain silhouettes (closer) */}
-      <path
-        d="M 0,720 L 90,640 L 180,690 L 290,620 L 400,690 L 500,640 L 600,710 L 600,800 L 0,800 Z"
-        fill={NAVY_DEEP}
-      />
-
-      {/* Pine trees on the right edge */}
-      <g fill={NAVY_DEEP} opacity="0.95">
-        <path d="M 540 720 L 555 660 L 570 720 Z" />
-        <path d="M 520 740 L 533 680 L 546 740 Z" />
-        <path d="M 565 745 L 578 695 L 592 745 Z" />
-      </g>
-
-      {/* Castle silhouette (bottom-left for cover & left page; bottom-right for right page) */}
-      <g
-        fill={NAVY_DEEP}
-        transform={side === "right" ? "translate(600, 0) scale(-1, 1)" : ""}
-      >
-        {/* Hill */}
-        <path d="M 40 700 Q 130 640 240 690 L 240 800 L 40 800 Z" />
-        {/* Castle body */}
-        <g>
-          <rect x="100" y="600" width="60" height="100" />
-          <rect x="115" y="585" width="30" height="20" />
-          {/* Towers */}
-          <rect x="85"  y="565" width="20" height="135" />
-          <rect x="155" y="555" width="20" height="145" />
-          <rect x="125" y="540" width="14" height="160" />
-          {/* Spires */}
-          <path d="M 85 565 L 95 545 L 105 565 Z" />
-          <path d="M 155 555 L 165 530 L 175 555 Z" />
-          <path d="M 125 540 L 132 515 L 139 540 Z" />
-          {/* Windows (warm glow) */}
-          <rect x="119" y="625" width="6" height="10" fill="#f0c66a" opacity="0.85" />
-          <rect x="135" y="625" width="6" height="10" fill="#f0c66a" opacity="0.85" />
-          <rect x="92"  y="610" width="6" height="9"  fill="#f0c66a" opacity="0.75" />
-          <rect x="160" y="600" width="6" height="9"  fill="#f0c66a" opacity="0.75" />
-        </g>
-      </g>
-
-      {/* Outer gold border */}
-      <rect x="22" y="22" width="556" height="756" fill="none" stroke={GOLD} strokeWidth="2.5" />
-      <rect x="30" y="30" width="540" height="740" fill="none" stroke={GOLD} strokeWidth="0.8" opacity="0.7" />
-
-      {/* Border diamond ornaments */}
-      {[
-        { x: 300, y: 30 }, { x: 300, y: 770 },
-        { x: 30,  y: 400 }, { x: 570, y: 400 },
-      ].map((p, i) => (
-        <g key={i} transform={`translate(${p.x}, ${p.y}) rotate(45)`}>
-          <rect x="-5" y="-5" width="10" height="10" fill={GOLD} />
-        </g>
-      ))}
-
-      {/* Corner flourishes — small ornate curves */}
-      {([
-        { x: 30,  y: 30,  flip: "" },
-        { x: 570, y: 30,  flip: "scale(-1, 1) translate(-1140, 0)" },
-        { x: 30,  y: 770, flip: "scale(1, -1) translate(0, -1540)" },
-        { x: 570, y: 770, flip: "scale(-1, -1) translate(-1140, -1540)" },
-      ]).map((c, i) => (
-        <g key={i} transform={c.flip} stroke={GOLD} strokeWidth="1.3" fill="none">
-          {/* L-shaped flourish near corner — curves */}
-          <path d={`M ${c.x + 10} ${c.y + 50} q 5 -25 30 -28 q -8 -10 0 -22 q 10 -3 18 7`} />
-          <path d={`M ${c.x + 14} ${c.y + 40} c 6 -6 14 -7 22 -3`} opacity="0.7" />
-          {/* Little dots */}
-          <circle cx={c.x + 42} cy={c.y + 22} r="1.6" fill={GOLD} />
-          <circle cx={c.x + 22} cy={c.y + 60} r="1.6" fill={GOLD} />
-        </g>
-      ))}
-
-      {/* The arched window — outlines the content area */}
-      <path
-        d="M 90 220 L 90 560 Q 90 605 135 605 L 465 605 Q 510 605 510 560 L 510 220 Q 510 90 300 90 Q 90 90 90 220 Z"
-        fill="none"
-        stroke={GOLD}
-        strokeWidth="2"
-      />
-      <path
-        d="M 96 220 L 96 558 Q 96 599 137 599 L 463 599 Q 504 599 504 558 L 504 220 Q 504 96 300 96 Q 96 96 96 220 Z"
-        fill="none"
-        stroke={GOLD_DEEP}
-        strokeWidth="0.6"
-        opacity="0.7"
-      />
-
-      {/* Small fleurs along the arch top */}
-      <g fill={GOLD}>
-        <circle cx="300" cy="92" r="4" />
-        <path d="M 300 78 L 305 88 L 300 98 L 295 88 Z" />
-      </g>
-
-      {/* Inner vine flourishes on either side of the arch */}
-      <g stroke={GOLD} strokeWidth="1.1" fill="none" opacity="0.85">
-        <path d="M 120 540 q 0 -40 25 -40 q -10 -16 5 -28 q 12 -2 14 12" />
-        <path d="M 480 540 q 0 -40 -25 -40 q 10 -16 -5 -28 q -12 -2 -14 12" />
-        <circle cx="155" cy="490" r="2" fill={GOLD} />
-        <circle cx="445" cy="490" r="2" fill={GOLD} />
-      </g>
-    </svg>
-  );
-}
-
-// Deterministic random
-function mulberry32(seed: number) {
-  return () => {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
 
 export default function StoryPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
@@ -279,6 +95,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     }
   }
 
+  // ── Load PDF ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!purchase?.id) return;
     async function load() {
@@ -461,95 +278,138 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     );
   }
 
-  // ── Page content placed INSIDE the arched panel area ─────────────────────
-  // The arched area in the SVG runs roughly (90,90) → (510,605) in a 600×800
-  // viewbox. We position the PDF page over that area using percentages.
-  function ArchedContent({ children }: { children: React.ReactNode }) {
+  // ── Cover — uses the product image as the actual book cover ─────────────
+  function Cover() {
     return (
-      <div
-        className="absolute"
-        style={{
-          // Match the SVG arch interior
-          top:    "11%",
-          left:   "15%",
-          right:  "15%",
-          bottom: "24%",
-          // Soft inner shadow to seat the content into the panel
-          boxShadow: "inset 0 0 20px rgba(0,0,0,0.4)",
-          overflow: "hidden",
-          // Clip the content roughly to the arch outline
-          borderRadius: "8px",
-          // Subtle paper backdrop where content lives
-          background: "#f6efe1",
-        }}
-      >
-        {children}
+      <div className="relative w-full h-full overflow-hidden rounded-[6px]"
+        style={{ background: "linear-gradient(135deg, #FFE7C4 0%, #FFC2A6 60%, #FF9DA8 100%)" }}>
+        {/* Soft sky gradient */}
+        <div className="absolute inset-0" style={{
+          background: "linear-gradient(180deg, #B8E6FF 0%, transparent 55%)",
+        }} />
+        {/* Sun */}
+        <div className="absolute top-6 right-6 w-16 h-16 rounded-full"
+          style={{
+            background: "radial-gradient(circle at 35% 35%, #FFE17A 0%, #FFB94A 70%, #FF9A2D 100%)",
+            boxShadow: "0 0 30px rgba(255, 200, 80, 0.55), 0 0 60px rgba(255, 180, 50, 0.3)",
+          }} />
+        {/* Clouds */}
+        <Clouds />
+        {/* Hero image area — actual PDF cover lives here */}
+        <div className="absolute" style={{
+          top: "12%", left: "10%", right: "10%", bottom: "26%",
+        }}>
+          <div className="relative w-full h-full rounded-2xl overflow-hidden"
+            style={{
+              background: "#fff",
+              boxShadow:
+                "0 12px 28px -10px rgba(0,0,0,0.28), 0 4px 10px -4px rgba(0,0,0,0.18), inset 0 0 0 4px #fff, inset 0 0 0 6px rgba(0,0,0,0.06)",
+            }}>
+            {pageImages[0] ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={pageImages[0]} alt={product!.title}
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false} />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={product!.image} alt={product!.title}
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false} />
+            )}
+          </div>
+        </div>
+        {/* Title strip */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-4 text-center">
+          <div className="inline-block px-4 py-2 rounded-full"
+            style={{ background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(4px)" }}>
+            <div className="text-[9px] sm:text-[10px] font-bold tracking-[0.3em] uppercase mb-0.5" style={{ color: "#D4734A" }}>
+              ✦ A Storybook ✦
+            </div>
+            <div className="text-[14px] sm:text-[16px] font-bold uppercase leading-tight" style={{ color: "#46322B", fontFamily: "Georgia, serif" }}>
+              {product!.title}
+            </div>
+            <div className="text-[9px] sm:text-[10px] mt-0.5 italic" style={{ color: "#8B6F62" }}>
+              by {product!.seller}
+            </div>
+          </div>
+        </div>
+        {/* Grass at the bottom */}
+        <svg className="absolute bottom-0 left-0 right-0" viewBox="0 0 600 60" preserveAspectRatio="none" style={{ height: "8%" }}>
+          <path d="M 0 40 Q 50 20 100 35 T 200 35 T 300 30 T 400 35 T 500 30 T 600 35 L 600 60 L 0 60 Z" fill="#8FBF6E" />
+          <path d="M 0 48 Q 50 35 100 45 T 200 45 T 300 42 T 400 45 T 500 42 T 600 45 L 600 60 L 0 60 Z" fill="#6FA84E" opacity="0.9" />
+        </svg>
+        {/* Tiny corner stars */}
+        <div className="absolute top-3 left-3" style={{ color: "#FFCB52" }}>
+          <StarShape size={14} />
+        </div>
+        <div className="absolute top-12 left-16" style={{ color: "#FFCB52" }}>
+          <StarShape size={9} />
+        </div>
       </div>
     );
   }
 
+  // ── Inside page — clean kid-friendly frame ───────────────────────────────
   function PageInPanel({ pageIndex, side }: { pageIndex: number | null; side: "left" | "right" | "single" }) {
     const url = pageIndex !== null ? pageImages[pageIndex] : null;
     const hasContent = pageIndex !== null && pageIndex >= 0 && pageIndex < totalPages;
-    const seed = side === "left" ? 7 : side === "right" ? 11 : 5;
     return (
-      <div className="relative w-full h-full overflow-hidden" style={{ background: NAVY_DEEP }}>
-        <BookPanel side={side === "single" ? "single" : side} randSeed={seed} />
-        <ArchedContent>
+      <div className="relative w-full h-full overflow-hidden"
+        style={{
+          background: "linear-gradient(180deg, #FFFAF0 0%, #FFF3DB 100%)",
+        }}>
+        {/* Subtle dotted texture */}
+        <div className="absolute inset-0 opacity-25 pointer-events-none"
+          style={{
+            backgroundImage: "radial-gradient(rgba(150,110,80,0.25) 1px, transparent 1px)",
+            backgroundSize: "16px 16px",
+          }} />
+        {/* Decorative corner accent */}
+        {side !== "right" && (
+          <div className="absolute top-3 left-3 opacity-60" style={{ color: "#F4A78A" }}>
+            <StarShape size={12} />
+          </div>
+        )}
+        {side !== "left" && (
+          <div className="absolute top-3 right-3 opacity-60" style={{ color: "#F4A78A" }}>
+            <HeartShape size={12} />
+          </div>
+        )}
+        {/* Inner page frame */}
+        <div className="absolute inset-3 sm:inset-4 rounded-xl overflow-hidden"
+          style={{
+            background: "#fff",
+            boxShadow: "inset 0 0 0 1px rgba(180,140,100,0.25), 0 2px 4px rgba(0,0,0,0.04)",
+          }}>
           {hasContent && url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={url} alt={`Page ${pageIndex + 1}`}
-              className="absolute inset-0 w-full h-full object-contain"
-              style={{ background: "#f6efe1" }}
+              className="absolute inset-0 w-full h-full object-contain bg-white"
               draggable={false} />
           ) : hasContent ? (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center bg-white">
               <div className="w-8 h-8 border-2 border-ink border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="absolute inset-0" style={{ background: "#f6efe1" }} />
+            <div className="absolute inset-0 bg-white" />
           )}
-        </ArchedContent>
+        </div>
+        {/* Inside-binding shadow */}
+        {side === "left" && (
+          <div className="absolute top-0 bottom-0 right-0 w-3 pointer-events-none"
+            style={{ background: "linear-gradient(to left, rgba(0,0,0,0.10), transparent)" }} />
+        )}
+        {side === "right" && (
+          <div className="absolute top-0 bottom-0 left-0 w-3 pointer-events-none"
+            style={{ background: "linear-gradient(to right, rgba(0,0,0,0.10), transparent)" }} />
+        )}
+        {/* Cute page number badge */}
         {hasContent && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] tabular-nums select-none"
-            style={{ color: GOLD_SOFT }}>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums select-none"
+            style={{ background: "#FFE2C2", color: "#A66B41" }}>
             {pageIndex + 1}
           </div>
         )}
-      </div>
-    );
-  }
-
-  // ── Cover content (title in the arch) ────────────────────────────────────
-  function Cover() {
-    return (
-      <div className="relative w-full h-full overflow-hidden" style={{ background: NAVY_DEEP }}>
-        <BookPanel side="single" randSeed={3} />
-        <ArchedContent>
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4"
-            style={{ background: "linear-gradient(180deg, #f6efe1 0%, #e9d9b3 100%)" }}>
-            <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.4em] mb-3" style={{ color: GOLD_DEEP }}>
-              A Storybook
-            </div>
-            <h1 className="font-serif uppercase font-bold leading-tight px-2 mb-4" style={{
-              color: NAVY_DEEP,
-              fontSize: "clamp(22px, 4.5vw, 38px)",
-              letterSpacing: "0.02em",
-            }}>
-              {product!.title}
-            </h1>
-            <div className="w-12 h-px mb-3" style={{ background: GOLD_DEEP }} />
-            <div className="text-[10px] sm:text-[11px] uppercase tracking-widest" style={{ color: GOLD_DEEP }}>
-              {product!.seller}
-            </div>
-          </div>
-        </ArchedContent>
-        {/* Cover lower decoration: title-style */}
-        <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
-          <div className="text-[10px] tracking-[0.45em]" style={{ color: GOLD }}>
-            ✦ &nbsp; READ &amp; ENJOY &nbsp; ✦
-          </div>
-        </div>
       </div>
     );
   }
@@ -581,29 +441,47 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   return (
     <>
       <style>{`
-        @keyframes flipForward {
-          0%   { transform: rotateY(0deg);    box-shadow: -2px 0 8px rgba(0,0,0,0); }
-          50%  {                              box-shadow: -10px 0 28px rgba(0,0,0,0.25); }
-          100% { transform: rotateY(-180deg); box-shadow: -2px 0 8px rgba(0,0,0,0); }
+        /* ─── Page-wave flip animations ───────────────────────────────
+           Pages don't just rotate flat — they curve & lift off the
+           binding as they turn. Achieved with translateZ (lift),
+           scaleX (slight squash), and an animated drop-shadow.        */
+        @keyframes flipForwardWave {
+          0%   { transform: rotateY(0deg)    translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
+          15%  { transform: rotateY(-22deg)  translateZ(40px) scaleX(0.99); box-shadow: -14px 12px 24px rgba(0,0,0,0.20); }
+          35%  { transform: rotateY(-60deg)  translateZ(70px) scaleX(0.96); box-shadow: -28px 18px 40px rgba(0,0,0,0.28); }
+          50%  { transform: rotateY(-90deg)  translateZ(80px) scaleX(0.94); box-shadow: -34px 22px 50px rgba(0,0,0,0.32); }
+          65%  { transform: rotateY(-120deg) translateZ(70px) scaleX(0.96); box-shadow: -22px 18px 40px rgba(0,0,0,0.24); }
+          85%  { transform: rotateY(-158deg) translateZ(30px) scaleX(0.99); box-shadow: -10px 10px 22px rgba(0,0,0,0.15); }
+          100% { transform: rotateY(-180deg) translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
         }
-        @keyframes flipBackward {
-          0%   { transform: rotateY(0deg);    box-shadow: 2px 0 8px rgba(0,0,0,0); }
-          50%  {                              box-shadow: 10px 0 28px rgba(0,0,0,0.25); }
-          100% { transform: rotateY(180deg);  box-shadow: 2px 0 8px rgba(0,0,0,0); }
+        @keyframes flipBackwardWave {
+          0%   { transform: rotateY(0deg)   translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
+          15%  { transform: rotateY(22deg)  translateZ(40px) scaleX(0.99); box-shadow: 14px 12px 24px rgba(0,0,0,0.20); }
+          35%  { transform: rotateY(60deg)  translateZ(70px) scaleX(0.96); box-shadow: 28px 18px 40px rgba(0,0,0,0.28); }
+          50%  { transform: rotateY(90deg)  translateZ(80px) scaleX(0.94); box-shadow: 34px 22px 50px rgba(0,0,0,0.32); }
+          65%  { transform: rotateY(120deg) translateZ(70px) scaleX(0.96); box-shadow: 22px 18px 40px rgba(0,0,0,0.24); }
+          85%  { transform: rotateY(158deg) translateZ(30px) scaleX(0.99); box-shadow: 10px 10px 22px rgba(0,0,0,0.15); }
+          100% { transform: rotateY(180deg) translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
         }
-        @keyframes coverOpen {
-          0%   { transform: rotateY(0deg);    box-shadow: -2px 0 12px rgba(0,0,0,0); }
-          40%  {                              box-shadow: -14px 0 36px rgba(0,0,0,0.3); }
-          100% { transform: rotateY(-160deg); box-shadow: -2px 0 12px rgba(0,0,0,0); }
+        @keyframes coverOpenWave {
+          0%   { transform: rotateY(0deg)    translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
+          15%  { transform: rotateY(-20deg)  translateZ(35px) scaleX(0.99); box-shadow: -14px 14px 28px rgba(0,0,0,0.22); }
+          40%  { transform: rotateY(-65deg)  translateZ(75px) scaleX(0.95); box-shadow: -30px 22px 48px rgba(0,0,0,0.32); }
+          60%  { transform: rotateY(-100deg) translateZ(80px) scaleX(0.93); box-shadow: -36px 26px 56px rgba(0,0,0,0.34); }
+          85%  { transform: rotateY(-145deg) translateZ(30px) scaleX(0.98); box-shadow: -12px 14px 26px rgba(0,0,0,0.18); }
+          100% { transform: rotateY(-160deg) translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
         }
-        @keyframes coverClose {
-          0%   { transform: rotateY(-160deg); box-shadow: -2px 0 12px rgba(0,0,0,0); }
-          60%  {                              box-shadow: -14px 0 36px rgba(0,0,0,0.3); }
-          100% { transform: rotateY(0deg);    box-shadow: -2px 0 12px rgba(0,0,0,0); }
+        @keyframes coverCloseWave {
+          0%   { transform: rotateY(-160deg) translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
+          15%  { transform: rotateY(-145deg) translateZ(30px) scaleX(0.98); box-shadow: -12px 14px 26px rgba(0,0,0,0.18); }
+          40%  { transform: rotateY(-100deg) translateZ(80px) scaleX(0.93); box-shadow: -36px 26px 56px rgba(0,0,0,0.34); }
+          60%  { transform: rotateY(-65deg)  translateZ(75px) scaleX(0.95); box-shadow: -30px 22px 48px rgba(0,0,0,0.32); }
+          85%  { transform: rotateY(-20deg)  translateZ(35px) scaleX(0.99); box-shadow: -14px 14px 28px rgba(0,0,0,0.22); }
+          100% { transform: rotateY(0deg)    translateZ(0px)  scaleX(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
         }
         @keyframes fadeIn {
           0%   { opacity: 0; }
-          50%  { opacity: 0; }
+          55%  { opacity: 0; }
           100% { opacity: 1; }
         }
         .flip-face {
@@ -615,6 +493,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         .flip-face.back { transform: rotateY(180deg); }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
+        @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
       `}</style>
 
       {!isFullscreen && <Navbar />}
@@ -674,10 +553,19 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
           style={{
-            perspective: "2600px",
-            background: "radial-gradient(ellipse at center, #EDEBE6 0%, #C8C2B5 100%)",
+            perspective: "2200px",
+            background:
+              "radial-gradient(ellipse at center, #FFF1E0 0%, #FFD9C3 60%, #FFB89B 100%)",
           }}
         >
+          {/* Soft floating clouds in the background */}
+          <div className="absolute top-6 left-6 opacity-70 pointer-events-none" style={{ animation: "floatY 5s ease-in-out infinite" }}>
+            <CloudShape size={70} />
+          </div>
+          <div className="absolute top-12 right-10 opacity-60 pointer-events-none" style={{ animation: "floatY 6s ease-in-out 0.5s infinite" }}>
+            <CloudShape size={55} />
+          </div>
+
           {pdfLoading && (
             <div className="text-center">
               <div className="w-10 h-10 border-2 border-ink border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -702,21 +590,22 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
               className="relative select-none"
               style={{
                 ...containerStyle,
-                boxShadow: "0 30px 80px -20px rgba(0,0,0,0.5), 0 12px 24px -10px rgba(0,0,0,0.25)",
-                borderRadius: 6,
-                background: NAVY_DEEP,
+                boxShadow:
+                  "0 30px 80px -20px rgba(0,0,0,0.4), 0 12px 24px -10px rgba(0,0,0,0.2)",
+                borderRadius: 8,
+                background: "#fff",
                 transformStyle: "preserve-3d",
-                transition: "width 0.45s ease-in-out, aspect-ratio 0.45s ease-in-out",
+                transition: "width 0.5s ease-in-out, aspect-ratio 0.5s ease-in-out",
               }}
             >
               {/* COVER closed */}
               {showCover && !isFlipping && (
-                <div className="absolute inset-0 overflow-hidden rounded-[6px]"><Cover /></div>
+                <div className="absolute inset-0 overflow-hidden rounded-[8px]"><Cover /></div>
               )}
 
               {/* COVER OPENING */}
               {flipMode === "cover-open" && (
-                <div className="absolute inset-0 overflow-hidden rounded-[6px]" style={{ transformStyle: "preserve-3d" }}>
+                <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
                   <div className="absolute inset-0" style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}>
                     {isWide ? (
                       <div className="flex h-full">
@@ -731,20 +620,18 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                     style={{
                       transformOrigin: "left center",
                       transformStyle: "preserve-3d",
-                      animation: `coverOpen ${FLIP_DURATION}ms ease-in-out forwards`,
+                      animation: `coverOpenWave ${FLIP_DURATION}ms ease-in-out forwards`,
                       willChange: "transform",
                     }}>
                     <div className="flip-face"><Cover /></div>
-                    <div className="flip-face back" style={{ background: NAVY_DEEP }}>
-                      <div className="w-full h-full" style={{ background: NAVY_DEEP }} />
-                    </div>
+                    <div className="flip-face back" style={{ background: "linear-gradient(180deg, #FFFAF0 0%, #FFE7C7 100%)" }} />
                   </div>
                 </div>
               )}
 
               {/* COVER CLOSING */}
               {flipMode === "cover-close" && (
-                <div className="absolute inset-0 overflow-hidden rounded-[6px]" style={{ transformStyle: "preserve-3d" }}>
+                <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
                   <div className="absolute inset-0" style={{ animation: `fadeIn ${FLIP_DURATION}ms ease-in-out forwards` }}>
                     <Cover />
                   </div>
@@ -752,10 +639,10 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                     style={{
                       transformOrigin: "left center",
                       transformStyle: "preserve-3d",
-                      animation: `coverClose ${FLIP_DURATION}ms ease-in-out forwards`,
+                      animation: `coverCloseWave ${FLIP_DURATION}ms ease-in-out forwards`,
                       willChange: "transform",
                     }}>
-                    <div className="flip-face" style={{ background: NAVY_DEEP }} />
+                    <div className="flip-face" style={{ background: "linear-gradient(180deg, #FFFAF0 0%, #FFE7C7 100%)" }} />
                     <div className="flip-face back"><Cover /></div>
                   </div>
                 </div>
@@ -763,19 +650,18 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
               {/* INSIDE — static */}
               {!showCover && !isFlipping && (
-                <div className="absolute inset-0 overflow-hidden rounded-[6px]">
+                <div className="absolute inset-0 overflow-hidden rounded-[8px]">
                   {isWide ? (
                     <>
                       <div className="flex h-full">
                         <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
                         <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
                       </div>
-                      {/* Center spine — gold double line on navy */}
+                      {/* Soft pastel binding */}
                       <div className="absolute top-0 bottom-0 pointer-events-none"
                         style={{
-                          left: "50%", width: 16, transform: "translateX(-50%)",
-                          background: `linear-gradient(to right, ${NAVY_MID} 0%, ${NAVY_DEEP} 50%, ${NAVY_MID} 100%)`,
-                          boxShadow: `inset 1px 0 0 ${GOLD}, inset -1px 0 0 ${GOLD}`,
+                          left: "50%", width: 12, transform: "translateX(-50%)",
+                          background: "linear-gradient(to right, rgba(180,140,100,0) 0%, rgba(180,140,100,0.18) 50%, rgba(180,140,100,0) 100%)",
                           zIndex: 3,
                         }} />
                     </>
@@ -785,9 +671,9 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* INSIDE — flipping page */}
+              {/* INSIDE — flipping page with wave */}
               {flipMode === "page" && (
-                <div className="absolute inset-0 overflow-hidden rounded-[6px]" style={{ transformStyle: "preserve-3d" }}>
+                <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
                   {/* Underneath: target spread */}
                   <div className="absolute inset-0">
                     {isWide ? (
@@ -812,7 +698,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                           style={{
                             transformOrigin: "left center",
                             transformStyle: "preserve-3d",
-                            animation: `flipForward ${FLIP_DURATION}ms ease-in-out forwards`,
+                            animation: `flipForwardWave ${FLIP_DURATION}ms ease-in-out forwards`,
                             willChange: "transform",
                           }}>
                           <div className="flip-face">
@@ -836,7 +722,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                           style={{
                             transformOrigin: "right center",
                             transformStyle: "preserve-3d",
-                            animation: `flipBackward ${FLIP_DURATION}ms ease-in-out forwards`,
+                            animation: `flipBackwardWave ${FLIP_DURATION}ms ease-in-out forwards`,
                             willChange: "transform",
                           }}>
                           <div className="flip-face">
@@ -857,12 +743,14 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           {!pdfLoading && !pdfError && (
             <>
               <button onClick={goPrev} disabled={showCover}
-                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-ink/85 hover:bg-ink text-cream flex items-center justify-center shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                style={{ background: "#FFB36B", color: "#fff" }}
                 aria-label="Previous page">
                 <ChevronLeft size={22} />
               </button>
               <button onClick={goNext} disabled={!showCover && spread >= totalSpreads - 1}
-                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-ink/85 hover:bg-ink text-cream flex items-center justify-center shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                style={{ background: "#FFB36B", color: "#fff" }}
                 aria-label="Next page">
                 <ChevronRight size={22} />
               </button>
@@ -871,13 +759,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
           {!pdfLoading && !pdfError && !showCover && (
             <>
-              <div className="sm:hidden absolute left-3 top-1/2 pointer-events-none text-ink/35"
-                style={{ animation: "hintPulseLeft 1.6s ease-in-out infinite" }} aria-hidden>
+              <div className="sm:hidden absolute left-3 top-1/2 pointer-events-none" style={{ color: "rgba(255,179,107,0.7)", animation: "hintPulseLeft 1.6s ease-in-out infinite" }} aria-hidden>
                 <ChevronLeft size={16} />
               </div>
               {spread < totalSpreads - 1 && (
-                <div className="sm:hidden absolute right-3 top-1/2 pointer-events-none text-ink/35"
-                  style={{ animation: "hintPulseRight 1.6s ease-in-out infinite" }} aria-hidden>
+                <div className="sm:hidden absolute right-3 top-1/2 pointer-events-none" style={{ color: "rgba(255,179,107,0.7)", animation: "hintPulseRight 1.6s ease-in-out infinite" }} aria-hidden>
                   <ChevronRight size={16} />
                 </div>
               )}
@@ -894,6 +780,40 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           </div>
         )}
       </main>
+    </>
+  );
+}
+
+// ── Decorative components ─────────────────────────────────────────────────────
+function StarShape({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2 L14.5 9 L22 9 L16 13.5 L18.5 21 L12 16.5 L5.5 21 L8 13.5 L2 9 L9.5 9 Z" />
+    </svg>
+  );
+}
+function HeartShape({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 21 C 4 14 1 10 4 6 C 7 2 11 4 12 7 C 13 4 17 2 20 6 C 23 10 20 14 12 21 Z" />
+    </svg>
+  );
+}
+function CloudShape({ size = 60 }: { size?: number }) {
+  return (
+    <svg width={size} height={size * 0.6} viewBox="0 0 100 60" fill="#fff">
+      <ellipse cx="25" cy="38" rx="22" ry="18" />
+      <ellipse cx="55" cy="32" rx="28" ry="22" />
+      <ellipse cx="80" cy="40" rx="18" ry="15" />
+    </svg>
+  );
+}
+function Clouds() {
+  return (
+    <>
+      <div className="absolute top-[6%] left-[10%] opacity-90"><CloudShape size={60} /></div>
+      <div className="absolute top-[14%] right-[20%] opacity-80"><CloudShape size={45} /></div>
+      <div className="absolute top-[2%] left-[60%] opacity-85"><CloudShape size={35} /></div>
     </>
   );
 }
