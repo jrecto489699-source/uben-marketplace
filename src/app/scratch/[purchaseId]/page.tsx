@@ -748,12 +748,16 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
             )}
 
             <div className="flex-1 relative overflow-hidden min-h-0">
-              <div className="absolute inset-0 overflow-auto flex items-center justify-center" style={{ background: "#EDEBE6" }}>
+              <div className="absolute inset-0 overflow-auto" style={{ background: "#EDEBE6" }}>
+                {/* min-h-full + min-w-full + flex centering keeps the
+                    canvas centered in the viewport at every zoom level —
+                    even when scaled-up content overflows, scrollbars
+                    appear and the start position is still centered. */}
+                <div className="min-h-full min-w-full flex items-center justify-center p-2">
                 <div style={{
                   transform: `scale(${zoom})`,
-                  transformOrigin: zoom > 1 ? "top center" : "center center",
+                  transformOrigin: "center center",
                   transition: "transform 0.12s ease-out",
-                  margin: zoom > 1 ? `${(zoom - 1) * 400}px auto` : "auto",
                 }}>
                 <div className="relative rounded-2xl overflow-hidden shadow-lg select-none"
                   style={{ width: 680, height: Math.round(680 * (CANVAS_H / CANVAS_W)) }}>
@@ -805,6 +809,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     </div>
                   )}
 
+                </div>
                 </div>
                 </div>
               </div>
