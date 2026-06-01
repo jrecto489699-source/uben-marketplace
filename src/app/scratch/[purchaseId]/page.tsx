@@ -3,7 +3,7 @@
 import { use, useEffect, useRef, useState, useCallback } from "react";
 import {
   ArrowLeft, RotateCcw, Download, Maximize, Minimize,
-  ChevronLeft, ChevronRight, BookOpen, Sparkles,
+  ChevronLeft, ChevronRight, BookOpen, Sparkles, ZoomIn, ZoomOut,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
@@ -103,6 +103,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
   const [isRevealed,     setIsRevealed]     = useState(false);
   const [isAutoClearing, setIsAutoClearing] = useState(false);
   const [isFullscreen,   setIsFullscreen]   = useState(false);
+  const [zoom,           setZoom]           = useState(1); // 0.5 = 50%, 1 = 100%, 2 = 200%
   const [imgLoading,     setImgLoading]     = useState(true);
   const [imgError,       setImgError]       = useState<string | null>(null);
   const [totalPages,     setTotalPages]     = useState(0);
@@ -340,6 +341,23 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
       return next;
     });
   }
+
+  // ── Zoom helpers ──────────────────────────────────────────────────────────
+  const MIN_ZOOM = 0.5;
+  const MAX_ZOOM = 2;
+  function zoomIn()    { setZoom(z => Math.min(MAX_ZOOM, parseFloat((z + 0.25).toFixed(2)))); }
+  function zoomOut()   { setZoom(z => Math.max(MIN_ZOOM, parseFloat((z - 0.25).toFixed(2)))); }
+  function zoomReset() { setZoom(1); }
+
+  // Auto-fit zoom on mobile so the whole scratch page fits the screen width
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vw = window.innerWidth;
+    if (vw < 680) {
+      const fit = Math.max(MIN_ZOOM, parseFloat(((vw - 32) / 680).toFixed(2)));
+      setZoom(fit);
+    }
+  }, []);
 
   // Arrow key navigation
   useEffect(() => {
@@ -656,12 +674,29 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
               <input type="range" min={2} max={20} value={brushSize}
                 onChange={e => setBrushSize(Number(e.target.value))}
                 className="w-full cursor-pointer mb-3" style={{ accentColor: "#222" }} />
+              <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+                Zoom — {Math.round(zoom * 100)}%
+              </p>
+              <div className="flex items-center gap-1 bg-[#EDEBE6] rounded-full px-1 py-1 mb-2">
+                <button onClick={zoomOut} disabled={zoom <= MIN_ZOOM}
+                  className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white transition-colors disabled:opacity-40">
+                  <ZoomOut size={13} />
+                </button>
+                <button onClick={zoomReset}
+                  className="flex-1 text-[11px] font-semibold text-ink text-center hover:text-ink-muted transition-colors tabular-nums">
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button onClick={zoomIn} disabled={zoom >= MAX_ZOOM}
+                  className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white transition-colors disabled:opacity-40">
+                  <ZoomIn size={13} />
+                </button>
+              </div>
               <div className="flex gap-2">
-                {[{ label: "Fine", size: 3 }, { label: "Med", size: 6 }, { label: "Wide", size: 12 }].map(b => (
-                  <button key={b.size} onClick={() => setBrushSize(b.size)}
+                {[{ label: "50%", val: 0.5 }, { label: "100%", val: 1 }].map(z => (
+                  <button key={z.val} onClick={() => setZoom(z.val)}
                     className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-                      brushSize === b.size ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
-                    }`}>{b.label}
+                      zoom === z.val ? "bg-ink text-cream" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
+                    }`}>{z.label}
                   </button>
                 ))}
               </div>
@@ -714,6 +749,12 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
 
             <div className="flex-1 relative overflow-hidden min-h-0">
               <div className="absolute inset-0 overflow-auto flex items-center justify-center" style={{ background: "#EDEBE6" }}>
+                <div style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: zoom > 1 ? "top center" : "center center",
+                  transition: "transform 0.12s ease-out",
+                  margin: zoom > 1 ? `${(zoom - 1) * 400}px auto` : "auto",
+                }}>
                 <div className="relative rounded-2xl overflow-hidden shadow-lg select-none"
                   style={{ width: 680, height: Math.round(680 * (CANVAS_H / CANVAS_W)) }}>
 
@@ -764,6 +805,7 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                     </div>
                   )}
 
+                </div>
                 </div>
               </div>
 
