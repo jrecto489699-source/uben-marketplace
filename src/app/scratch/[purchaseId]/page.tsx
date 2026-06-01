@@ -559,16 +559,13 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
     }
 
     if (isRevealed) return;
-    // Update cursor ring position (mouse only).
-    // The cursor div lives INSIDE the zoom-transformed wrapper, so its
-    // CSS position is multiplied by zoom when rendered. Divide the
-    // pointer-relative offset by zoom so the ring lands under the mouse
-    // at every zoom level.
-    if (!("touches" in e) && cursorRef.current && scratchRef.current) {
-      const rect = scratchRef.current.getBoundingClientRect();
+    // Update cursor ring position. The cursor is position: fixed outside
+    // the zoom-transformed wrapper, so clientX/clientY map directly to
+    // its screen position regardless of zoom or pan.
+    if (!("touches" in e) && cursorRef.current) {
       cursorRef.current.style.display = "block";
-      cursorRef.current.style.left = (e.clientX - rect.left) / zoom + "px";
-      cursorRef.current.style.top  = (e.clientY - rect.top)  / zoom + "px";
+      cursorRef.current.style.left = e.clientX + "px";
+      cursorRef.current.style.top  = e.clientY + "px";
     }
 
     if (!isDrawing.current) return;
@@ -897,24 +894,6 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
                   <canvas ref={confettiRef} width={CANVAS_W} height={CANVAS_H}
                     className="absolute inset-0 w-full h-full pointer-events-none" />
 
-                  {/* Custom cursor ring */}
-                  {!isRevealed && !imgLoading && !imgError && tool === "scratch" && (
-                    <div ref={cursorRef}
-                      className="absolute pointer-events-none rounded-full -translate-x-1/2 -translate-y-1/2"
-                      style={{
-                        // Brush radius is in canvas pixels (800-wide canvas).
-                        // The cursor lives inside the canvas wrapper which is
-                        // 680 CSS px wide → factor is 680/CANVAS_W. Scale
-                        // (zoom) is then applied automatically by the parent.
-                        width:  brushSize * 2 * (680 / CANVAS_W),
-                        height: brushSize * 2 * (680 / CANVAS_W),
-                        border: "1.5px solid rgba(255,255,255,0.85)",
-                        boxShadow: "0 0 0 1px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.5)",
-                        display: "none",
-                        zIndex: 5,
-                      }} />
-                  )}
-
                   {!imgLoading && !imgError && scratchPct === 0 && !isRevealed && (
                     <div className="absolute inset-0 flex items-end justify-center pb-6 pointer-events-none">
                       <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
@@ -1022,6 +1001,23 @@ export default function ScratchPage({ params }: { params: Promise<{ purchaseId: 
           </button>
         </div>
       </main>
+
+      {/* Brush cursor — fixed to the viewport so zoom doesn't affect its
+          screen position or size. Shown only when the brush tool is active. */}
+      {!isRevealed && !imgLoading && !imgError && tool === "scratch" && (
+        <div ref={cursorRef}
+          className="fixed pointer-events-none rounded-full -translate-x-1/2 -translate-y-1/2"
+          style={{
+            // visual diameter = brushSize × 2 × display-ratio × zoom
+            // display-ratio = displayed canvas width / canvas internal width = 680 / 800
+            width:  brushSize * 2 * (680 / CANVAS_W) * zoom,
+            height: brushSize * 2 * (680 / CANVAS_W) * zoom,
+            border: "1.5px solid rgba(255,255,255,0.9)",
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(0,0,0,0.6)",
+            display: "none",
+            zIndex: 100,
+          }} />
+      )}
     </>
   );
 }
