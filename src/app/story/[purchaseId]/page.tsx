@@ -1008,51 +1008,91 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                   continuous page turn, not two stacked rotations. */}
               {flipMode === "page" && (
                 <div className="absolute inset-0" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Single rotating element. On desktop / iPad the
-                      whole spread flips together; on mobile the single
-                      page does. Same keyframes either way — only the
-                      transform-origin differs (centre on wide, spine
-                      edge on narrow). Front face shows the current
-                      content, back face shows the target. Opacity
-                      step at 50% so the swap doesn't depend on the
-                      browser honouring backface-visibility, and so
-                      nothing peeks through during the rotation. */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      transformOrigin: isWide ? "center center" : (flipDir === "next" ? "left center" : "right center"),
-                      transformStyle: "preserve-3d",
-                      animation: `${flipDir === "next" ? "mobileFlipNext" : "mobileFlipPrev"} ${FLIP_DURATION}ms linear forwards`,
-                      willChange: "transform",
-                    }}
-                  >
-                    <div
-                      className="flip-face"
-                      style={{ animation: `mobileFlipFrontHide ${FLIP_DURATION}ms linear forwards` }}
-                    >
-                      {isWide ? (
-                        <div className="flex h-full">
-                          <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
-                          <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
+                  {isWide ? (
+                    flipDir === "next" ? (
+                      <>
+                        {/* Static left page stays put */}
+                        <div className="absolute top-0 left-0 bottom-0 w-1/2 h-full">
+                          <PageInPanel pageIndex={currentPages.left} side="left" />
                         </div>
-                      ) : (
+                        {/* OUT: current right page lifting up. */}
+                        <div
+                          className="absolute top-0 right-0 bottom-0 w-1/2 h-full"
+                          style={{
+                            transformOrigin: "left center",
+                            animation: `flipOutNext ${FLIP_DURATION}ms linear forwards`,
+                            willChange: "transform, opacity",
+                          }}
+                        >
+                          <PageInPanel pageIndex={currentPages.right} side="right" />
+                        </div>
+                        {/* IN: target left page landing in. */}
+                        <div
+                          className="absolute top-0 left-0 bottom-0 w-1/2 h-full"
+                          style={{
+                            transformOrigin: "right center",
+                            animation: `flipInNext ${FLIP_DURATION}ms linear forwards`,
+                            willChange: "transform, opacity",
+                          }}
+                        >
+                          <PageInPanel pageIndex={targetPages.left} side="left" />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Static right page stays put */}
+                        <div className="absolute top-0 right-0 bottom-0 w-1/2 h-full">
+                          <PageInPanel pageIndex={currentPages.right} side="right" />
+                        </div>
+                        {/* OUT: current left page lifting up. */}
+                        <div
+                          className="absolute top-0 left-0 bottom-0 w-1/2 h-full"
+                          style={{
+                            transformOrigin: "right center",
+                            animation: `flipOutPrev ${FLIP_DURATION}ms linear forwards`,
+                            willChange: "transform, opacity",
+                          }}
+                        >
+                          <PageInPanel pageIndex={currentPages.left} side="left" />
+                        </div>
+                        {/* IN: target right page landing in. */}
+                        <div
+                          className="absolute top-0 right-0 bottom-0 w-1/2 h-full"
+                          style={{
+                            transformOrigin: "left center",
+                            animation: `flipInPrev ${FLIP_DURATION}ms linear forwards`,
+                            willChange: "transform, opacity",
+                          }}
+                        >
+                          <PageInPanel pageIndex={targetPages.right} side="right" />
+                        </div>
+                      </>
+                    )
+                  ) : (
+                    /* Mobile — one element rotating, two faces. */
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        transformOrigin: flipDir === "next" ? "left center" : "right center",
+                        transformStyle: "preserve-3d",
+                        animation: `${flipDir === "next" ? "mobileFlipNext" : "mobileFlipPrev"} ${FLIP_DURATION}ms linear forwards`,
+                        willChange: "transform",
+                      }}
+                    >
+                      <div
+                        className="flip-face"
+                        style={{ animation: `mobileFlipFrontHide ${FLIP_DURATION}ms linear forwards` }}
+                      >
                         <PageInPanel pageIndex={currentPages.right} side="single" />
-                      )}
-                    </div>
-                    <div
-                      className="flip-face back"
-                      style={{ animation: `mobileFlipBackShow ${FLIP_DURATION}ms linear forwards` }}
-                    >
-                      {isWide ? (
-                        <div className="flex h-full">
-                          <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.left}  side="left"  /></div>
-                          <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.right} side="right" /></div>
-                        </div>
-                      ) : (
+                      </div>
+                      <div
+                        className="flip-face back"
+                        style={{ animation: `mobileFlipBackShow ${FLIP_DURATION}ms linear forwards` }}
+                      >
                         <PageInPanel pageIndex={targetPages.right} side="single" />
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
