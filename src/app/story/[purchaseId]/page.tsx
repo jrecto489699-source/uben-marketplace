@@ -811,7 +811,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                         </div>
                       )}
                       {/* Flipping page = current right; bends around its left edge */}
-                      <div className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}>
+                      <div className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`} style={{ transformStyle: "preserve-3d" }}>
                         <div
                           className="absolute inset-0"
                           style={{
@@ -839,7 +839,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                         </div>
                       )}
                       {/* Flipping page = current left; bends around its right edge */}
-                      <div className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}>
+                      <div className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`} style={{ transformStyle: "preserve-3d" }}>
                         <div
                           className="absolute inset-0"
                           style={{
