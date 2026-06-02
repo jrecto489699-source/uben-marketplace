@@ -506,12 +506,14 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     ? { width: `calc(${PAGE_W} * 2)`, aspectRatio: "3/2" }
     : pageUnitStyle;
 
-  // Container width: page width only when we're fully back on the
-  // cover (showCover and not animating). During cover-close the
-  // container stays at spread width — only the cover/page animations
-  // play, no reshape. After cover-close finishes and showCover flips
-  // on, the container then transitions back to page width.
-  const containerAtPageWidth = showCover && !isFlipping;
+  // Container width drives the open/close. Page width when we're
+  // on (or animating back to) the cover; spread width otherwise.
+  // The CSS transition on `width` synchronises the book's reshape
+  // with the cover fade — both finish at the same moment so the
+  // close reads as one smooth motion, not two.
+  const containerAtPageWidth =
+    (showCover && !isFlipping) ||
+    (isFlipping && flipMode === "cover-close");
   const containerStyle: React.CSSProperties = containerAtPageWidth
     ? pageUnitStyle
     : spreadStyle;
@@ -604,17 +606,18 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           75%  { transform: rotateY(-45deg); box-shadow: -12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
           100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
         }
-        /* Cover swings — single-element open/close with smooth
-           cubic-bezier easing, opacity fading near the edge-on end. */
-        @keyframes coverSwingOpen {
-          0%   { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
-          70%  { transform: rotateY(-63deg);  box-shadow: -16px 24px 36px rgba(0,0,0,0.30); opacity: 1; }
-          100% { transform: rotateY(-90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 0; }
+        /* Cover crossfades — no rotation, no 3D. The smoothness
+           comes from a single property animating with the container's
+           width transition: opacity. Both finish at the same time so
+           the book reshape and the cover/spread swap read as one
+           continuous motion. */
+        @keyframes coverFadeOut {
+          0%   { opacity: 1; }
+          100% { opacity: 0; }
         }
-        @keyframes coverSwingClose {
-          0%   { transform: rotateY(-90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 0; }
-          30%  { transform: rotateY(-63deg);  box-shadow: -16px 24px 36px rgba(0,0,0,0.30); opacity: 1; }
-          100% { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
+        @keyframes coverFadeIn {
+          0%   { opacity: 0; }
+          100% { opacity: 1; }
         }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
@@ -741,7 +744,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                       right: 0,
                       width: isWide ? PAGE_W : "100%",
                       transformOrigin: "left center",
-                      animation: `coverSwingOpen ${FLIP_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1) forwards`,
+                      animation: `coverFadeOut ${FLIP_DURATION}ms ease-in-out forwards`,
                       willChange: "transform, opacity",
                     }}
                   >
@@ -777,7 +780,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                       right: 0,
                       width: isWide ? PAGE_W : "100%",
                       transformOrigin: "left center",
-                      animation: `coverSwingClose ${FLIP_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1) forwards`,
+                      animation: `coverFadeIn ${FLIP_DURATION}ms ease-in-out forwards`,
                       willChange: "transform, opacity",
                     }}
                   >
