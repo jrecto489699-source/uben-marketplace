@@ -317,27 +317,10 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     });
   }
 
-  if (loading) {
-    return (
-      <><Navbar />
-        <div className="min-h-screen bg-cream flex items-center justify-center">
-          <p className="text-sm text-ink-muted">Loading…</p>
-        </div>
-      </>
-    );
-  }
-  if (!purchase || !product) {
-    return (
-      <><Navbar />
-        <div className="min-h-screen bg-cream flex items-center justify-center px-6 text-center">
-          <div>
-            <p className="font-serif text-2xl text-ink mb-2">Purchase not found</p>
-            <a href="/downloads" className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-medium">My Library</a>
-          </div>
-        </div>
-      </>
-    );
-  }
+  // NOTE: early returns are intentionally delayed until after every
+  // hook in this component has had a chance to register, so the hook
+  // order stays stable across renders (avoids React error #310 when
+  // `loading` flips from true → false).
 
   // ── Cover — uses the product image as the actual book cover ─────────────
   function Cover() {
@@ -574,6 +557,30 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     if (el) { el.pause(); el.currentTime = 0; }
     setAudioOn(false);
     setAudioPlaying(false);
+  }
+
+  // Early returns are placed AFTER every hook above so the hook order
+  // never changes between renders.
+  if (loading) {
+    return (
+      <><Navbar />
+        <div className="min-h-screen bg-cream flex items-center justify-center">
+          <p className="text-sm text-ink-muted">Loading…</p>
+        </div>
+      </>
+    );
+  }
+  if (!purchase || !product) {
+    return (
+      <><Navbar />
+        <div className="min-h-screen bg-cream flex items-center justify-center px-6 text-center">
+          <div>
+            <p className="font-serif text-2xl text-ink mb-2">Purchase not found</p>
+            <a href="/downloads" className="px-6 py-2.5 rounded-full bg-ink text-cream text-sm font-medium">My Library</a>
+          </div>
+        </div>
+      </>
+    );
   }
 
   // Sizing — the book grows from a single-page (3:4) into a two-page
