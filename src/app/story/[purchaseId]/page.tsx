@@ -514,11 +514,17 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     ? { width: `calc(${PAGE_W} * 2)`, height: PAGE_H }
     : pageUnitStyle;
 
-  // Container stays at one size — spread width on desktop, page
-  // width on mobile. Never reshapes between cover and spread views,
-  // so opening/closing the cover just rotates the cover element;
-  // the book itself doesn't change size.
-  const containerStyle: React.CSSProperties = spreadStyle;
+  // Container is page-width when the cover is shown by itself (or
+  // animating into/out of the cover view), spread-width otherwise.
+  // The width transition is synchronised with the cover swing so
+  // the book reshapes as the cover opens or closes — no empty
+  // left-half "extra page" sitting next to a closed cover.
+  const containerAtPageWidth =
+    (showCover && !isFlipping) ||
+    (isFlipping && flipMode === "cover-close");
+  const containerStyle: React.CSSProperties = containerAtPageWidth
+    ? pageUnitStyle
+    : spreadStyle;
 
   return (
     <>
@@ -685,17 +691,14 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 borderRadius: 8,
                 background: "#fff",
                 transformStyle: "preserve-3d",
-                transition: "none",
+                transition:
+                  `width ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), height ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1)`,
               }}
             >
-              {/* COVER closed — single-page width, anchored right
-                  on desktop (left half stays blank); fills container
-                  on mobile. */}
+              {/* COVER closed — container is at page width here so
+                  the cover fills it. No extra empty area beside it. */}
               {showCover && !isFlipping && (
-                <div
-                  className="absolute top-0 bottom-0 overflow-hidden rounded-[8px]"
-                  style={{ right: 0, width: isWide ? PAGE_W : "100%" }}
-                >
+                <div className="absolute inset-0 overflow-hidden rounded-[8px]">
                   <Cover />
                 </div>
               )}
