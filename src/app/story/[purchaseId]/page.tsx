@@ -614,19 +614,20 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           75%  { transform: rotateY(-45deg); box-shadow: -12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
           100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
         }
-        /* Cover crossfades. The fade is concentrated at the FAR
-           end of each transition so the slide-from-container-growth
-           is clearly visible — the user sees the cover ride the
-           right edge of the widening (or narrowing) book, then
-           crossfade to/from the underlying page only at the very
-           end (open) or very start (close). */
-        @keyframes coverFadeOut {
-          0%, 70% { opacity: 1; }
-          100%    { opacity: 0; }
-        }
-        @keyframes coverFadeIn {
-          0%       { opacity: 0; }
-          30%, 100%{ opacity: 1; }
+        /* Mirror of pageBendForward, used for cover-close — the cover
+           starts laid flat to the left (rotated -180° around the
+           spine, back showing) and swings back down to rest, front
+           up. Visually identical to cover-open played in reverse. */
+        @keyframes coverCloseRotate {
+          0%   { transform: rotateY(-180deg); box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
+          3%   { transform: rotateY(-178deg); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
+          8%   { transform: rotateY(-184deg); box-shadow: 0 4px 10px rgba(0,0,0,0.14); }
+          18%  { transform: rotateY(-150deg); box-shadow: 8px 14px 22px rgba(0,0,0,0.20); }
+          40%  { transform: rotateY(-110deg); box-shadow: 18px 26px 36px rgba(0,0,0,0.28); }
+          50%  { transform: rotateY(-90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); }
+          60%  { transform: rotateY(-70deg);  box-shadow: -18px 26px 36px rgba(0,0,0,0.28); }
+          82%  { transform: rotateY(-30deg);  box-shadow: -8px 14px 22px rgba(0,0,0,0.20); }
+          100% { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
@@ -729,14 +730,16 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]"><Cover /></div>
               )}
 
-              {/* COVER OPENING — single cover element rotates open.
-                  Cover sits anchored right at single-page width and
-                  rotates around its left edge (the spine) from 0° to
-                  -90°, fading out near the end. Rotation never
-                  exceeds 90° → no mirroring possible. The spread
-                  underneath is visible the whole time. */}
+              {/* COVER OPENING — Heyzine-style: the container is already
+                  growing from single-page to spread width (CSS transition
+                  on width), and the cover stays at its single-page size
+                  anchored to the right side. The cover rotates around its
+                  left edge — that left edge is at the centre of the
+                  eventual spread, which acts as the book's spine.
+                  Transparent back face so the spread shows through. */}
               {flipMode === "cover-open" && (
-                <div className="absolute inset-0">
+                <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
+                  {/* Underneath: target spread, fully visible from frame 1 */}
                   <div className="absolute inset-0">
                     {isWide ? (
                       <div className="flex h-full">
@@ -747,32 +750,38 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                       <PageInPanel pageIndex={targetPages.right} side="single" />
                     )}
                   </div>
+                  {/* Top: cover anchored to the right with a fixed single-page
+                      width; rotates around its left edge (the spine). */}
                   <div
                     className="absolute top-0 bottom-0"
                     style={{
                       right: 0,
                       width: isWide ? PAGE_W : "100%",
                       transformOrigin: "left center",
-                      animation: `coverFadeOut ${FLIP_DURATION}ms ease-in-out forwards`,
-                      willChange: "transform, opacity",
+                      transformStyle: "preserve-3d",
+                      animation: `pageBendForward ${FLIP_DURATION}ms linear forwards`,
+                      willChange: "transform",
                     }}
                   >
-                    <Cover />
+                    <div className="flip-face"><Cover /></div>
+                    {/* Transparent back face so the spread shows through */}
+                    <div className="flip-face back" />
                   </div>
                 </div>
               )}
 
-              {/* COVER CLOSING — single cover element rotates closed.
-                  Cover starts edge-on (rotateY -90°) at the spine,
-                  rotates back to 0° around its left edge, fading in
-                  during the first slice of the animation so it
-                  doesn't appear as an edge-on sliver. Spread sits
-                  underneath, gets covered as the cover lands. Book
-                  stays at spread width — no reshape during the
-                  animation; the container narrows afterwards via the
-                  CSS transition once showCover flips on. */}
+              {/* COVER CLOSING — exact mirror of cover-open.
+                  The container is shrinking from spread back to single
+                  page (CSS width transition). Underneath we render the
+                  current spread, so as the container narrows the right
+                  half stays visible. The cover element is anchored to
+                  the right with single-page width and rotates from
+                  -180° back to 0° around its left edge (the spine) —
+                  played in reverse of cover-open. */}
               {flipMode === "cover-close" && (
-                <div className="absolute inset-0">
+                <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
+                  {/* Underneath: the current spread, visible until the
+                      cover lands over it. */}
                   <div className="absolute inset-0">
                     {isWide ? (
                       <div className="flex h-full">
@@ -783,17 +792,20 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                       <PageInPanel pageIndex={currentPages.right} side="single" />
                     )}
                   </div>
+                  {/* Top: cover anchored right, rotating from -180° to 0°. */}
                   <div
                     className="absolute top-0 bottom-0"
                     style={{
                       right: 0,
                       width: isWide ? PAGE_W : "100%",
                       transformOrigin: "left center",
-                      animation: `coverFadeIn ${FLIP_DURATION}ms ease-in-out forwards`,
-                      willChange: "transform, opacity",
+                      transformStyle: "preserve-3d",
+                      animation: `coverCloseRotate ${FLIP_DURATION}ms linear forwards`,
+                      willChange: "transform",
                     }}
                   >
-                    <Cover />
+                    <div className="flip-face"><Cover /></div>
+                    <div className="flip-face back" />
                   </div>
                 </div>
               )}
