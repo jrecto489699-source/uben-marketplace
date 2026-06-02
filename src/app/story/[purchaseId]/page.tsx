@@ -496,12 +496,22 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     : pageUnitStyle;
 
   // The container starts at single-page size when the book is closed,
-  // then expands to spread size the moment a flip begins — including
-  // cover-open. The width transition (defined on the container's
-  // style below) animates that growth smoothly.
-  const containerStyle = showCover && !isFlipping
-    ? pageUnitStyle
-    : spreadStyle;
+  // then expands to spread size the moment a flip begins.
+  // On wide screens, the open container also gets a translateX(-W/2)
+  // so its RIGHT edge stays exactly where the closed cover's right
+  // edge was — the book "grows to the left" instead of blooming out
+  // from the centre. That keeps the cover visually anchored: the user
+  // doesn't see it slide to the right as the book widens.
+  const isOpen = !(showCover && !isFlipping);
+  const containerStyle: React.CSSProperties = isOpen
+    ? {
+        ...spreadStyle,
+        transform: isWide ? `translateX(calc(${PAGE_W} / -2))` : "translateX(0)",
+      }
+    : {
+        ...pageUnitStyle,
+        transform: "translateX(0)",
+      };
 
   return (
     <>
@@ -639,7 +649,8 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 borderRadius: 8,
                 background: "#fff",
                 transformStyle: "preserve-3d",
-                transition: "width 0.5s ease-in-out, aspect-ratio 0.5s ease-in-out",
+                transition:
+                  "width 0.6s ease-in-out, aspect-ratio 0.6s ease-in-out, transform 0.6s ease-in-out",
               }}
             >
               {/* COVER closed */}
