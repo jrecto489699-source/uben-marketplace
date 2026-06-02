@@ -68,6 +68,21 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   const [audioPlaying,       setAudioPlaying]   = useState(false);
   const [audioQueue,         setAudioQueue]     = useState<string[]>([]);
   const [audioQueueIndex,    setAudioQueueIndex]= useState(0);
+  // Page-flip sound effect. Lazy-loaded once on mount; played on
+  // every page/cover flip. If the file is missing, play() silently
+  // rejects — no error.
+  const flipSoundRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    const a = new Audio("/sounds/page-flip.mp3");
+    a.preload = "auto";
+    a.volume  = 0.6;
+    flipSoundRef.current = a;
+  }, []);
+  function playFlipSound() {
+    const a = flipSoundRef.current;
+    if (!a) return;
+    try { a.currentTime = 0; a.play().catch(() => {}); } catch {}
+  }
 
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
@@ -207,6 +222,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     setFlipDir(direction);
     setFlipMode(mode);
     setIsFlipping(true);
+    playFlipSound();
     if (flipTimer.current) clearTimeout(flipTimer.current);
     flipTimer.current = setTimeout(() => {
       afterFlip();
