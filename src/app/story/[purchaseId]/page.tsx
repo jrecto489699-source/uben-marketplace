@@ -574,7 +574,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           position: absolute; inset: 0;
           backface-visibility: hidden;
           -webkit-backface-visibility: hidden;
-          overflow: hidden;
         }
         .flip-face.back { transform: rotateY(180deg); }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
@@ -801,7 +800,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                   (the side that stays put during the flip, showing OLD
                   content) and the flipping element itself. */}
               {flipMode === "page" && (
-                <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
+                <div className="absolute inset-0" style={{ transformStyle: "preserve-3d" }}>
                   {flipDir === "next" ? (
                     <>
                       {/* On desktop, the static left page (current) stays put during the flip */}
