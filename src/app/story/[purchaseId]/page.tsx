@@ -62,6 +62,10 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // ── UI ─────────────────────────────────────────────────────────────────────
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAutoPlay,   setIsAutoPlay]   = useState(false);
+  // When set, suppresses the container's width/height transition for
+  // a frame — used when we want to jump straight to the cover view
+  // without animating the reshape (spread → page on instant close).
+  const [instantClose, setInstantClose] = useState(false);
 
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
@@ -225,7 +229,12 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     if (s.isFlipping) return;
     if (s.showCover) return;
     if (s.spread === 0) {
-      startFlip("prev", "cover-close", () => setShowCover(true));
+      // Jump straight to the cover — no flip animation, no reshape.
+      setInstantClose(true);
+      setShowCover(true);
+      // Re-enable the transition after the cover is on screen so
+      // the next cover-open still animates normally.
+      setTimeout(() => setInstantClose(false), 60);
       return;
     }
     startFlip("prev", "page", () => setSpread(s.spread - 1));
@@ -251,10 +260,12 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
       // Reached the end — close the book and stop auto-play
       const timer = setTimeout(() => {
         setIsAutoPlay(false);
-        startFlip("prev", "cover-close", () => {
-          setShowCover(true);
-          setSpread(0);
-        });
+        // Match the manual close — jump straight to the cover, no
+        // reshape animation, no flip.
+        setInstantClose(true);
+        setShowCover(true);
+        setSpread(0);
+        setTimeout(() => setInstantClose(false), 60);
       }, AUTO_PLAY_DELAY);
       return () => clearTimeout(timer);
     }
@@ -701,8 +712,9 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 borderRadius: 8,
                 background: "#fff",
                 transformStyle: "preserve-3d",
-                transition:
-                  `width ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), height ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), transform ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1)`,
+                transition: instantClose
+                  ? "none"
+                  : `width ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), height ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), transform ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1)`,
               }}
             >
               {/* COVER closed */}
