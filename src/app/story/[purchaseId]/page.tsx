@@ -697,11 +697,17 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           49.9%{ transform: rotateY(-89deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 1; }
           50%, 100% { transform: rotateY(-90deg); opacity: 0; }
         }
+        /* IN keyframes hold the incoming page edge-on and invisible
+           until 85% of the flip duration, then snap it flat at 0°
+           and fade it in. Keeps the new page from appearing as a
+           tilted "preview" mid-rotation, which on a smaller spread
+           (iPad portrait) read as a visible third page on screen.
+           The OUT element still rotates normally — only the IN has
+           changed. */
         @keyframes flipInNext {
-          0%, 49.9% { transform: rotateY(90deg);  opacity: 0; }
-          50%  { transform: rotateY(90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 1; }
-          75%  { transform: rotateY(45deg);  box-shadow: 12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
-          100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
+          0%, 84.9% { transform: rotateY(90deg); opacity: 0; }
+          85%       { transform: rotateY(0deg);  opacity: 0; }
+          100%      { transform: rotateY(0deg);  opacity: 1; box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
         @keyframes flipOutPrev {
           0%   { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
@@ -710,10 +716,9 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           50%, 100% { transform: rotateY(90deg);  opacity: 0; }
         }
         @keyframes flipInPrev {
-          0%, 49.9% { transform: rotateY(-90deg); opacity: 0; }
-          50%  { transform: rotateY(-90deg); box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 1; }
-          75%  { transform: rotateY(-45deg); box-shadow: -12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
-          100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
+          0%, 84.9% { transform: rotateY(-90deg); opacity: 0; }
+          85%       { transform: rotateY(0deg);   opacity: 0; }
+          100%      { transform: rotateY(0deg);   opacity: 1; box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
         /* Mobile page flip — single rotating element, the front
            shows the current page and the back shows the target.
