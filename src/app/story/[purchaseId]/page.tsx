@@ -558,20 +558,15 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           97%  { transform: rotateY(178deg);  box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
           100% { transform: rotateY(180deg);  box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
-        /* Mirror of pageBendForward, used for cover-close — the cover
-           starts laid flat to the left (rotated -180° around the
-           spine, back showing) and swings back down to rest, front
-           up. Visually identical to cover-open played in reverse. */
-        @keyframes coverCloseRotate {
-          0%   { transform: rotateY(-180deg); box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
-          3%   { transform: rotateY(-178deg); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
-          8%   { transform: rotateY(-184deg); box-shadow: 0 4px 10px rgba(0,0,0,0.14); }
-          18%  { transform: rotateY(-150deg); box-shadow: 8px 14px 22px rgba(0,0,0,0.20); }
-          40%  { transform: rotateY(-110deg); box-shadow: 18px 26px 36px rgba(0,0,0,0.28); }
-          50%  { transform: rotateY(-90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); }
-          60%  { transform: rotateY(-70deg);  box-shadow: -18px 26px 36px rgba(0,0,0,0.28); }
-          82%  { transform: rotateY(-30deg);  box-shadow: -8px 14px 22px rgba(0,0,0,0.20); }
-          100% { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
+        /* Cover-close — pure 2D fade + drop so it can't mirror or
+           stutter. Cover fades in within the first 30% of the
+           duration (no perceived delay) and drops a tiny amount
+           into place, then rides the narrowing container's right
+           edge leftward as the book closes. */
+        @keyframes coverDropClose {
+          0%   { opacity: 0; transform: translateY(-24px); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+          30%  { opacity: 1; transform: translateY(-6px);  box-shadow: 0 6px 18px rgba(0,0,0,0.16); }
+          100% { opacity: 1; transform: translateY(0);     box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
         @keyframes fadeIn {
           0%   { opacity: 0; }
@@ -613,21 +608,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           50%  { transform: rotateY(-90deg); box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 1; }
           75%  { transform: rotateY(-45deg); box-shadow: -12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
           100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
-        }
-        /* Mirror of pageBendForward, used for cover-close — the cover
-           starts laid flat to the left (rotated -180° around the
-           spine, back showing) and swings back down to rest, front
-           up. Visually identical to cover-open played in reverse. */
-        @keyframes coverCloseRotate {
-          0%   { transform: rotateY(-180deg); box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
-          3%   { transform: rotateY(-178deg); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
-          8%   { transform: rotateY(-184deg); box-shadow: 0 4px 10px rgba(0,0,0,0.14); }
-          18%  { transform: rotateY(-150deg); box-shadow: 8px 14px 22px rgba(0,0,0,0.20); }
-          40%  { transform: rotateY(-110deg); box-shadow: 18px 26px 36px rgba(0,0,0,0.28); }
-          50%  { transform: rotateY(-90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); }
-          60%  { transform: rotateY(-70deg);  box-shadow: -18px 26px 36px rgba(0,0,0,0.28); }
-          82%  { transform: rotateY(-30deg);  box-shadow: -8px 14px 22px rgba(0,0,0,0.20); }
-          100% { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
@@ -770,18 +750,19 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* COVER CLOSING — exact mirror of cover-open.
-                  The container is shrinking from spread back to single
-                  page (CSS width transition). Underneath we render the
-                  current spread, so as the container narrows the right
-                  half stays visible. The cover element is anchored to
-                  the right with single-page width and rotates from
-                  -180° back to 0° around its left edge (the spine) —
-                  played in reverse of cover-open. */}
+              {/* COVER CLOSING — bug-proof 2D animation.
+                  Cover element (anchored to the right of the container
+                  with single-page width) fades in quickly while
+                  dropping a few px into place — no rotation, no 3D,
+                  no backface-visibility. The container's width is
+                  narrowing from spread to page-width via the CSS
+                  transition above, so as the right edge slides left
+                  the cover slides left with it. End state: cover
+                  visible at single-page width, spread fully hidden. */}
               {flipMode === "cover-close" && (
-                <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: the current spread, visible until the
-                      cover lands over it. */}
+                <div className="absolute inset-0">
+                  {/* Spread underneath — gets covered/clipped as the
+                      cover fades in and the container narrows. */}
                   <div className="absolute inset-0">
                     {isWide ? (
                       <div className="flex h-full">
@@ -792,20 +773,19 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                       <PageInPanel pageIndex={currentPages.right} side="single" />
                     )}
                   </div>
-                  {/* Top: cover anchored right, rotating from -180° to 0°. */}
+                  {/* Cover — fades in (under 30% of duration), drops
+                      into place, then rides the container's right
+                      edge as it narrows. */}
                   <div
                     className="absolute top-0 bottom-0"
                     style={{
                       right: 0,
                       width: isWide ? PAGE_W : "100%",
-                      transformOrigin: "left center",
-                      transformStyle: "preserve-3d",
-                      animation: `coverCloseRotate ${FLIP_DURATION}ms linear forwards`,
-                      willChange: "transform",
+                      animation: `coverDropClose ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1) forwards`,
+                      willChange: "transform, opacity",
                     }}
                   >
-                    <div className="flip-face"><Cover /></div>
-                    <div className="flip-face back" />
+                    <Cover />
                   </div>
                 </div>
               )}
