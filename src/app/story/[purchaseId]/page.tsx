@@ -676,6 +676,15 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           30%  { opacity: 0; }
           100% { opacity: 1; }
         }
+        /* OLD page overlay during a flip — stays at full opacity for
+           80% of the duration, then crossfades out so the new page
+           underneath only shows once the flip is almost complete.
+           Prevents the "advance page peeks through during rotation"
+           effect on desktop / iPad. */
+        @keyframes holdThenFade {
+          0%, 80% { opacity: 1; }
+          100%    { opacity: 0; }
+        }
         .flip-face {
           position: absolute; inset: 0;
           backface-visibility: hidden;
@@ -973,14 +982,43 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
               {!showCover && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]">
                   {(() => {
-                    const showTarget = isFlipping && flipMode === "page";
-                    const left  = showTarget ? targetPages.left  : currentPages.left;
-                    const right = showTarget ? targetPages.right : currentPages.right;
+                    const isPageFlip = isFlipping && flipMode === "page";
+                    const left  = isPageFlip ? targetPages.left  : currentPages.left;
+                    const right = isPageFlip ? targetPages.right : currentPages.right;
+                    // On a "next" flip the RIGHT half is the transitioning
+                    // side; on a "prev" flip the LEFT half is. We render an
+                    // OLD-page overlay on that half that stays visible for
+                    // 80% of the flip, then crossfades to reveal the
+                    // pre-mounted new page underneath. The pre-mount of
+                    // the new page keeps the image decoded so there is no
+                    // post-flip flash.
+                    const overlayLeft  = isPageFlip && flipDir === "prev";
+                    const overlayRight = isPageFlip && flipDir === "next";
                     return isWide ? (
                       <>
                         <div className="flex h-full">
-                          <div className="w-1/2 h-full"><PageInPanel pageIndex={left}  side="left"  /></div>
-                          <div className="w-1/2 h-full"><PageInPanel pageIndex={right} side="right" /></div>
+                          <div className="relative w-1/2 h-full">
+                            <PageInPanel pageIndex={left} side="left" />
+                            {overlayLeft && currentPages.left !== left && (
+                              <div
+                                className="absolute inset-0"
+                                style={{ animation: `holdThenFade ${FLIP_DURATION}ms linear forwards` }}
+                              >
+                                <PageInPanel pageIndex={currentPages.left} side="left" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="relative w-1/2 h-full">
+                            <PageInPanel pageIndex={right} side="right" />
+                            {overlayRight && currentPages.right !== right && (
+                              <div
+                                className="absolute inset-0"
+                                style={{ animation: `holdThenFade ${FLIP_DURATION}ms linear forwards` }}
+                              >
+                                <PageInPanel pageIndex={currentPages.right} side="right" />
+                              </div>
+                            )}
+                          </div>
                         </div>
                         {/* Soft pastel binding */}
                         <div className="absolute top-0 bottom-0 pointer-events-none"
