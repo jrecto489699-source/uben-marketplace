@@ -754,44 +754,50 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* INSIDE — static */}
-              {!showCover && !isFlipping && (
+              {/* INSIDE — persistent base layer.
+                  Rendered any time we're past the cover. During a page
+                  flip it shows the TARGET spread underneath; during the
+                  static state it shows the current spread. Since
+                  targetPages === currentPages once the flip finishes,
+                  these PageInPanel components keep the SAME pageIndex
+                  across the flip→static transition — React doesn't
+                  unmount them, so the browser never has to re-decode
+                  the page images. That's what eliminates the half-
+                  second "old page lingers" flash after a swipe. */}
+              {!showCover && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]">
-                  {isWide ? (
-                    <>
-                      <div className="flex h-full">
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
-                      </div>
-                      {/* Soft pastel binding */}
-                      <div className="absolute top-0 bottom-0 pointer-events-none"
-                        style={{
-                          left: "50%", width: 12, transform: "translateX(-50%)",
-                          background: "linear-gradient(to right, rgba(180,140,100,0) 0%, rgba(180,140,100,0.18) 50%, rgba(180,140,100,0) 100%)",
-                          zIndex: 3,
-                        }} />
-                    </>
-                  ) : (
-                    <PageInPanel pageIndex={currentPages.right} side="single" />
-                  )}
+                  {(() => {
+                    const showTarget = isFlipping && flipMode === "page";
+                    const left  = showTarget ? targetPages.left  : currentPages.left;
+                    const right = showTarget ? targetPages.right : currentPages.right;
+                    return isWide ? (
+                      <>
+                        <div className="flex h-full">
+                          <div className="w-1/2 h-full"><PageInPanel pageIndex={left}  side="left"  /></div>
+                          <div className="w-1/2 h-full"><PageInPanel pageIndex={right} side="right" /></div>
+                        </div>
+                        {/* Soft pastel binding */}
+                        <div className="absolute top-0 bottom-0 pointer-events-none"
+                          style={{
+                            left: "50%", width: 12, transform: "translateX(-50%)",
+                            background: "linear-gradient(to right, rgba(180,140,100,0) 0%, rgba(180,140,100,0.18) 50%, rgba(180,140,100,0) 100%)",
+                            zIndex: 3,
+                          }} />
+                      </>
+                    ) : (
+                      <PageInPanel pageIndex={right} side="single" />
+                    );
+                  })()}
                 </div>
               )}
 
-              {/* INSIDE — single page bends around the binding */}
+              {/* INSIDE — single page bends around the binding.
+                  The base layer above already renders the target spread
+                  underneath, so this block only renders the overlay
+                  (the side that stays put during the flip, showing OLD
+                  content) and the flipping element itself. */}
               {flipMode === "page" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: TARGET spread, fully visible */}
-                  <div className="absolute inset-0">
-                    {isWide ? (
-                      <div className="flex h-full">
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.left}  side="left"  /></div>
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={targetPages.right} side="right" /></div>
-                      </div>
-                    ) : (
-                      <PageInPanel pageIndex={targetPages.right} side="single" />
-                    )}
-                  </div>
-
                   {flipDir === "next" ? (
                     <>
                       {/* On desktop, the static left page (current) stays put during the flip */}
