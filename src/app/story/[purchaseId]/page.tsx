@@ -836,7 +836,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
           {!pdfLoading && !pdfError && (
             <div
-              className="relative select-none"
+              className="relative select-none overflow-hidden"
               style={{
                 ...containerStyle,
                 boxShadow:
