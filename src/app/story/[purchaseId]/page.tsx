@@ -514,17 +514,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     ? { width: `calc(${PAGE_W} * 2)`, height: PAGE_H }
     : pageUnitStyle;
 
-  // Container width drives the open/close. Page width when we're
-  // on (or animating back to) the cover; spread width otherwise.
-  // The CSS transition on `width` synchronises the book's reshape
-  // with the cover fade — both finish at the same moment so the
-  // close reads as one smooth motion, not two.
-  const containerAtPageWidth =
-    (showCover && !isFlipping) ||
-    (isFlipping && flipMode === "cover-close");
-  const containerStyle: React.CSSProperties = containerAtPageWidth
-    ? pageUnitStyle
-    : spreadStyle;
+  // Container stays at one size — spread width on desktop, page
+  // width on mobile. Never reshapes between cover and spread views,
+  // so opening/closing the cover just rotates the cover element;
+  // the book itself doesn't change size.
+  const containerStyle: React.CSSProperties = spreadStyle;
 
   return (
     <>
@@ -691,13 +685,19 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 borderRadius: 8,
                 background: "#fff",
                 transformStyle: "preserve-3d",
-                transition:
-                  `width ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), height ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), transform ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1)`,
+                transition: "none",
               }}
             >
-              {/* COVER closed */}
+              {/* COVER closed — single-page width, anchored right
+                  on desktop (left half stays blank); fills container
+                  on mobile. */}
               {showCover && !isFlipping && (
-                <div className="absolute inset-0 overflow-hidden rounded-[8px]"><Cover /></div>
+                <div
+                  className="absolute top-0 bottom-0 overflow-hidden rounded-[8px]"
+                  style={{ right: 0, width: isWide ? PAGE_W : "100%" }}
+                >
+                  <Cover />
+                </div>
               )}
 
               {/* COVER OPENING — Heyzine-style: the container is already
