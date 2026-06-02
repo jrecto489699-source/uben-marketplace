@@ -489,29 +489,30 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // also uses this --pw value so it stays anchored to its single-page
   // size as the container widens around it — the classic Heyzine
   // "book grows open" effect.
-  const PAGE_W = "min(46vw, 560px, calc(82dvh * 0.75))";
+  // Book sizing. On wide screens the single page is capped so the
+  // spread (2 × PAGE_W) fits comfortably. On narrow screens we
+  // let the page take up most of the viewport — the book was too
+  // small on phones before. Both states have the same height because
+  // 3:4 of W equals 3:2 of 2W.
+  const PAGE_W = isWide
+    ? "min(46vw, 560px, calc(82dvh * 0.75))"
+    : "min(92vw, 460px, calc(74dvh * 0.75))";
   const pageUnitStyle = { width: PAGE_W, aspectRatio: "3/4" };
   const spreadStyle   = isWide
     ? { width: `calc(${PAGE_W} * 2)`, aspectRatio: "3/2" }
     : pageUnitStyle;
 
-  // The container starts at single-page size when the book is closed,
-  // then expands to spread size the moment a flip begins.
-  // On wide screens, the open container also gets a translateX(-W/2)
-  // so its RIGHT edge stays exactly where the closed cover's right
-  // edge was — the book "grows to the left" instead of blooming out
-  // from the centre. That keeps the cover visually anchored: the user
-  // doesn't see it slide to the right as the book widens.
-  const isOpen = !(showCover && !isFlipping);
-  const containerStyle: React.CSSProperties = isOpen
-    ? {
-        ...spreadStyle,
-        transform: isWide ? `translateX(calc(${PAGE_W} / -2))` : "translateX(0)",
-      }
-    : {
-        ...pageUnitStyle,
-        transform: "translateX(0)",
-      };
+  // Container width drives the open/close transition. Page width
+  // when we're showing the cover OR animating back to the cover;
+  // spread width otherwise. The CSS transition on `width` makes the
+  // book grow open (or shrink closed) smoothly around its centre —
+  // the book stays horizontally centred throughout.
+  const containerAtPageWidth =
+    (showCover && !isFlipping) ||
+    (isFlipping && flipMode === "cover-close");
+  const containerStyle: React.CSSProperties = containerAtPageWidth
+    ? pageUnitStyle
+    : spreadStyle;
 
   return (
     <>
@@ -544,6 +545,21 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           92%  { transform: rotateY(184deg);  box-shadow: 0 4px 10px rgba(0,0,0,0.14); }
           97%  { transform: rotateY(178deg);  box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
           100% { transform: rotateY(180deg);  box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
+        }
+        /* Mirror of pageBendForward, used for cover-close — the cover
+           starts laid flat to the left (rotated -180° around the
+           spine, back showing) and swings back down to rest, front
+           up. Visually identical to cover-open played in reverse. */
+        @keyframes coverCloseRotate {
+          0%   { transform: rotateY(-180deg); box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
+          3%   { transform: rotateY(-178deg); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
+          8%   { transform: rotateY(-184deg); box-shadow: 0 4px 10px rgba(0,0,0,0.14); }
+          18%  { transform: rotateY(-150deg); box-shadow: 8px 14px 22px rgba(0,0,0,0.20); }
+          40%  { transform: rotateY(-110deg); box-shadow: 18px 26px 36px rgba(0,0,0,0.28); }
+          50%  { transform: rotateY(-90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); }
+          60%  { transform: rotateY(-70deg);  box-shadow: -18px 26px 36px rgba(0,0,0,0.28); }
+          82%  { transform: rotateY(-30deg);  box-shadow: -8px 14px 22px rgba(0,0,0,0.20); }
+          100% { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); }
         }
         @keyframes fadeIn {
           0%   { opacity: 0; }
@@ -698,62 +714,43 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* COVER CLOSING — mirror of cover-open. The container will
-                  narrow from spread back to single-page after the flip,
-                  and the flipping page is anchored to the LEFT half (the
-                  back-of-front-cover position) rotating around its right
-                  edge (the spine). The right page of the current spread
-                  stays put on the right and is replaced by the cover
-                  as the container narrows back. */}
+              {/* COVER CLOSING — exact mirror of cover-open.
+                  The container is shrinking from spread back to single
+                  page (CSS width transition). Underneath we render the
+                  current spread, so as the container narrows the right
+                  half stays visible. The cover element is anchored to
+                  the right with single-page width and rotates from
+                  -180° back to 0° around its left edge (the spine) —
+                  played in reverse of cover-open. */}
               {flipMode === "cover-close" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: cover */}
-                  <div className="absolute inset-0"><Cover /></div>
-                  {/* Mobile: simpler — just flip the single page */}
-                  {!isWide && (
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        transformOrigin: "right center",
-                        transformStyle: "preserve-3d",
-                        animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
-                        willChange: "transform",
-                      }}
-                    >
-                      <div className="flip-face">
-                        <PageInPanel pageIndex={currentPages.right} side="single" />
+                  {/* Underneath: the current spread, visible until the
+                      cover lands over it. */}
+                  <div className="absolute inset-0">
+                    {isWide ? (
+                      <div className="flex h-full">
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
+                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
                       </div>
-                      <div className="flip-face back" />
-                    </div>
-                  )}
-                  {/* Desktop: the right page of the spread stays put, the
-                      left page (or here, the cover-back-equivalent) bends
-                      right to reveal the cover behind. */}
-                  {isWide && (
-                    <>
-                      {/* Right page stays visible during the flip */}
-                      <div className="absolute top-0 bottom-0" style={{ right: 0, width: PAGE_W }}>
-                        <PageInPanel pageIndex={currentPages.right} side="right" />
-                      </div>
-                      {/* Left page bends to the right around its right edge */}
-                      <div
-                        className="absolute top-0 bottom-0"
-                        style={{
-                          left: 0,
-                          width: PAGE_W,
-                          transformOrigin: "right center",
-                          transformStyle: "preserve-3d",
-                          animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
-                          willChange: "transform",
-                        }}
-                      >
-                        <div className="flip-face">
-                          <PageInPanel pageIndex={currentPages.left} side="left" />
-                        </div>
-                        <div className="flip-face back" />
-                      </div>
-                    </>
-                  )}
+                    ) : (
+                      <PageInPanel pageIndex={currentPages.right} side="single" />
+                    )}
+                  </div>
+                  {/* Top: cover anchored right, rotating from -180° to 0°. */}
+                  <div
+                    className="absolute top-0 bottom-0"
+                    style={{
+                      right: 0,
+                      width: isWide ? PAGE_W : "100%",
+                      transformOrigin: "left center",
+                      transformStyle: "preserve-3d",
+                      animation: `coverCloseRotate ${FLIP_DURATION}ms linear forwards`,
+                      willChange: "transform",
+                    }}
+                  >
+                    <div className="flip-face"><Cover /></div>
+                    <div className="flip-face back" />
+                  </div>
                 </div>
               )}
 
