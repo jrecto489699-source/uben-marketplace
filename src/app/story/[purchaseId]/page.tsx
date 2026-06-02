@@ -740,44 +740,36 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* COVER CLOSING — exact reverse of cover-open.
-                  Same JSX structure, same `pageBendForward` keyframe,
-                  but played with `animation-direction: reverse` so
-                  the cover starts laid flat to the left (rotated to
-                  -180°) and swings back to rest at 0°. The container
-                  narrows from spread to single-page in parallel via
-                  the CSS transition, exactly mirroring the open's
-                  page-to-spread growth. */}
+              {/* COVER CLOSING — current spread closes back into cover.
+                  Same trick: underneath shows the cover, and the front face
+                  of the flipping page is the spread content (so the user
+                  sees what they were reading flipping away). */}
               {flipMode === "cover-close" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: current spread, visible until the
-                      cover lands over it. */}
-                  <div className="absolute inset-0">
-                    {isWide ? (
-                      <div className="flex h-full">
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
-                        <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
-                      </div>
-                    ) : (
-                      <PageInPanel pageIndex={currentPages.right} side="single" />
-                    )}
-                  </div>
-                  {/* Cover anchored to the right with single-page width;
-                      rotates around its left edge (the spine). Same
-                      animation as cover-open but played in reverse. */}
+                  {/* Underneath: cover */}
+                  <div className="absolute inset-0"><Cover /></div>
+                  {/* Top: spread content flips back to the right */}
                   <div
-                    className="absolute top-0 bottom-0"
+                    className="absolute inset-0"
                     style={{
-                      right: 0,
-                      width: isWide ? PAGE_W : "100%",
-                      transformOrigin: "left center",
+                      transformOrigin: "right center",
                       transformStyle: "preserve-3d",
-                      animation: `pageBendForward ${FLIP_DURATION}ms linear reverse forwards`,
+                      animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
                       willChange: "transform",
                     }}
                   >
-                    <div className="flip-face"><Cover /></div>
-                    {/* Transparent back face so the spread shows through */}
+                    {/* Front face: the spread the reader was looking at */}
+                    <div className="flip-face">
+                      {isWide ? (
+                        <div className="flex h-full">
+                          <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
+                          <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
+                        </div>
+                      ) : (
+                        <PageInPanel pageIndex={currentPages.right} side="single" />
+                      )}
+                    </div>
+                    {/* Transparent back so the cover shows through past 90° */}
                     <div className="flip-face back" />
                   </div>
                 </div>
