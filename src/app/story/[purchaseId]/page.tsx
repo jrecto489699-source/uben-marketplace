@@ -576,17 +576,35 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           -webkit-backface-visibility: hidden;
         }
         .flip-face.back { transform: rotateY(180deg); }
-        /* Explicit visibility swap so we don't have to trust the
-           browser's backface-visibility — at 50% of the rotation the
-           front fades out and the back fades in. Sharp step at the
-           midpoint (49.9%→50%) so it looks instant. */
-        @keyframes pageFrontHide {
-          0%, 49.9% { opacity: 1; }
-          50%, 100% { opacity: 0; }
+        /* Heyzine-style two-element page flip — no shared rotating
+           parent, no backface-visibility dependency. Each face has
+           its own animation that never rotates past 90° (so it can
+           never appear mirrored). The front fades out exactly when
+           the back fades in, at the 50% midpoint where both are
+           edge-on. */
+        @keyframes flipOutNext {
+          0%   { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
+          25%  { transform: rotateY(-45deg);  box-shadow: -12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
+          49.9%{ transform: rotateY(-89deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 1; }
+          50%, 100% { transform: rotateY(-90deg); opacity: 0; }
         }
-        @keyframes pageBackShow {
-          0%, 49.9% { opacity: 0; }
-          50%, 100% { opacity: 1; }
+        @keyframes flipInNext {
+          0%, 49.9% { transform: rotateY(90deg);  opacity: 0; }
+          50%  { transform: rotateY(90deg);  box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 1; }
+          75%  { transform: rotateY(45deg);  box-shadow: 12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
+          100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
+        }
+        @keyframes flipOutPrev {
+          0%   { transform: rotateY(0deg);    box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
+          25%  { transform: rotateY(45deg);   box-shadow: 12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
+          49.9%{ transform: rotateY(89deg);   box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 1; }
+          50%, 100% { transform: rotateY(90deg);  opacity: 0; }
+        }
+        @keyframes flipInPrev {
+          0%, 49.9% { transform: rotateY(-90deg); opacity: 0; }
+          50%  { transform: rotateY(-90deg); box-shadow: 0 30px 48px rgba(0,0,0,0.34); opacity: 1; }
+          75%  { transform: rotateY(-45deg); box-shadow: -12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
+          100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
         }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
@@ -806,67 +824,96 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* INSIDE — single page bends around the binding.
-                  The base layer above already renders the target spread
-                  underneath, so this block only renders the overlay
-                  (the side that stays put during the flip, showing OLD
-                  content) and the flipping element itself. */}
+              {/* INSIDE — Heyzine-style two-element page flip.
+                  Each "face" is its own absolutely-positioned element
+                  with its own rotation (never exceeding 90° so it
+                  can never appear mirrored). They cross over at the
+                  50% mark via sharp opacity step. No shared rotating
+                  parent, no reliance on backface-visibility — Chrome
+                  can't flatten what doesn't depend on 3D. */}
               {flipMode === "page" && (
-                <div className="absolute inset-0" style={{ transformStyle: "preserve-3d" }}>
+                <div className="absolute inset-0">
                   {flipDir === "next" ? (
                     <>
-                      {/* On desktop, the static left page (current) stays put during the flip */}
+                      {/* Static left page stays put (desktop) */}
                       {isWide && (
                         <div className="absolute top-0 left-0 bottom-0 w-1/2 h-full">
                           <PageInPanel pageIndex={currentPages.left} side="left" />
                         </div>
                       )}
-                      {/* Flipping page = current right; bends around its left edge */}
-                      <div className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`} style={{ transformStyle: "preserve-3d" }}>
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            transformOrigin: "left center",
-                            transformStyle: "preserve-3d",
-                            animation: `pageBendForward ${FLIP_DURATION}ms linear forwards`,
-                            willChange: "transform, filter",
-                          }}
-                        >
-                          <div className="flip-face" style={{ animation: `pageFrontHide ${FLIP_DURATION}ms linear forwards` }}>
-                            <PageInPanel pageIndex={currentPages.right} side={isWide ? "right" : "single"} />
-                          </div>
-                          <div className="flip-face back" style={{ animation: `pageBackShow ${FLIP_DURATION}ms linear forwards` }}>
-                            <PageInPanel pageIndex={isWide ? targetPages.left : targetPages.right} side="left" />
-                          </div>
-                        </div>
+                      {/* OUT: current right page lifting up.
+                          Sits on the right half (or full width on
+                          mobile), rotates around its LEFT edge from
+                          0° to -90°, then fades out. */}
+                      <div
+                        className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}
+                        style={{
+                          transformOrigin: "left center",
+                          animation: `flipOutNext ${FLIP_DURATION}ms linear forwards`,
+                          willChange: "transform, opacity",
+                        }}
+                      >
+                        <PageInPanel pageIndex={currentPages.right} side={isWide ? "right" : "single"} />
+                      </div>
+                      {/* IN: target left page landing in.
+                          Sits on the left half (or full width on
+                          mobile), rotates around its RIGHT edge from
+                          +90° to 0°, faded in after the 50% mark. */}
+                      <div
+                        className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}
+                        style={{
+                          transformOrigin: "right center",
+                          animation: `flipInNext ${FLIP_DURATION}ms linear forwards`,
+                          willChange: "transform, opacity",
+                        }}
+                      >
+                        <PageInPanel
+                          pageIndex={isWide ? targetPages.left : targetPages.right}
+                          side={isWide ? "left" : "single"}
+                        />
                       </div>
                     </>
                   ) : (
                     <>
-                      {/* Static right page stays put */}
+                      {/* Static right page stays put (desktop) */}
                       {isWide && (
                         <div className="absolute top-0 right-0 bottom-0 w-1/2 h-full">
                           <PageInPanel pageIndex={currentPages.right} side="right" />
                         </div>
                       )}
-                      {/* Flipping page = current left; bends around its right edge */}
-                      <div className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`} style={{ transformStyle: "preserve-3d" }}>
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            transformOrigin: "right center",
-                            transformStyle: "preserve-3d",
-                            animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
-                            willChange: "transform, filter",
-                          }}
-                        >
-                          <div className="flip-face" style={{ animation: `pageFrontHide ${FLIP_DURATION}ms linear forwards` }}>
-                            <PageInPanel pageIndex={isWide ? currentPages.left : currentPages.right} side={isWide ? "left" : "single"} />
-                          </div>
-                          <div className="flip-face back" style={{ animation: `pageBackShow ${FLIP_DURATION}ms linear forwards` }}>
-                            <PageInPanel pageIndex={targetPages.right} side="right" />
-                          </div>
-                        </div>
+                      {/* OUT: current left page lifting up.
+                          Sits on the left half (or full width on
+                          mobile), rotates around its RIGHT edge from
+                          0° to +90°, then fades out. */}
+                      <div
+                        className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}
+                        style={{
+                          transformOrigin: "right center",
+                          animation: `flipOutPrev ${FLIP_DURATION}ms linear forwards`,
+                          willChange: "transform, opacity",
+                        }}
+                      >
+                        <PageInPanel
+                          pageIndex={isWide ? currentPages.left : currentPages.right}
+                          side={isWide ? "left" : "single"}
+                        />
+                      </div>
+                      {/* IN: target right page (desktop) or target
+                          page (mobile) landing in. Sits on the right
+                          half (or full width), rotates around its
+                          LEFT edge from -90° to 0°. */}
+                      <div
+                        className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}
+                        style={{
+                          transformOrigin: "left center",
+                          animation: `flipInPrev ${FLIP_DURATION}ms linear forwards`,
+                          willChange: "transform, opacity",
+                        }}
+                      >
+                        <PageInPanel
+                          pageIndex={targetPages.right}
+                          side={isWide ? "right" : "single"}
+                        />
                       </div>
                     </>
                   )}
