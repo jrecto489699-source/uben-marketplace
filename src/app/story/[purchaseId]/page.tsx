@@ -718,10 +718,17 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                   `width ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), height ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1)`,
               }}
             >
-              {/* COVER closed — container is at page width here so
-                  the cover fills it. No extra empty area beside it. */}
+              {/* COVER closed — cover is locked at PAGE_W and
+                  centered, so when the container is resizing from
+                  spread → page width right after a cover-close, the
+                  cover doesn't horizontally squish along with the
+                  container. It stays its real size and the book
+                  "settles" around it. */}
               {showCover && !isFlipping && (
-                <div className="absolute inset-0 overflow-hidden rounded-[8px]">
+                <div
+                  className="absolute top-0 bottom-0 overflow-hidden rounded-[8px]"
+                  style={{ left: "50%", transform: "translateX(-50%)", width: PAGE_W }}
+                >
                   <Cover />
                 </div>
               )}
@@ -779,8 +786,17 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
                   {isWide ? (
                     <>
-                      {/* Underneath: cover at full size */}
-                      <div className="absolute inset-0"><Cover /></div>
+                      {/* Underneath: cover at the same locked
+                          PAGE_W centered position as the closed
+                          state, so when the flip finishes and the
+                          container shrinks, the cover doesn't move
+                          or squish — it's already where it'll be. */}
+                      <div
+                        className="absolute top-0 bottom-0 overflow-hidden rounded-[8px]"
+                        style={{ left: "50%", transform: "translateX(-50%)", width: PAGE_W }}
+                      >
+                        <Cover />
+                      </div>
                       {/* Top: spread content flips to the right */}
                       <div
                         className="absolute inset-0"
