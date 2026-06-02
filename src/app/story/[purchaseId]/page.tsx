@@ -766,38 +766,67 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 </div>
               )}
 
-              {/* COVER CLOSING — current spread closes back into cover.
-                  Same trick: underneath shows the cover, and the front face
-                  of the flipping page is the spread content (so the user
-                  sees what they were reading flipping away). */}
+              {/* COVER CLOSING.
+                  Desktop: spread content flips away on a full-size
+                  element with a transparent back, revealing the cover
+                  underneath at inset:0.
+                  Mobile: same pattern as a normal page flip — single
+                  rotating element with the current page on the front
+                  and the cover on the back, opacity-stepped at 50%.
+                  Reads as the page itself becoming the cover, which
+                  is what "closing the book" looks like. */}
               {flipMode === "cover-close" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
-                  {/* Underneath: cover */}
-                  <div className="absolute inset-0"><Cover /></div>
-                  {/* Top: spread content flips back to the right */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      transformOrigin: "right center",
-                      transformStyle: "preserve-3d",
-                      animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
-                      willChange: "transform",
-                    }}
-                  >
-                    {/* Front face: the spread the reader was looking at */}
-                    <div className="flip-face">
-                      {isWide ? (
-                        <div className="flex h-full">
-                          <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
-                          <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
+                  {isWide ? (
+                    <>
+                      {/* Underneath: cover at full size */}
+                      <div className="absolute inset-0"><Cover /></div>
+                      {/* Top: spread content flips to the right */}
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          transformOrigin: "right center",
+                          transformStyle: "preserve-3d",
+                          animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
+                          willChange: "transform",
+                        }}
+                      >
+                        <div className="flip-face">
+                          <div className="flex h-full">
+                            <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
+                            <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
+                          </div>
                         </div>
-                      ) : (
+                        <div className="flip-face back" />
+                      </div>
+                    </>
+                  ) : (
+                    /* Mobile — same single-element flip as the page
+                       turn, with the cover on the back face. The book
+                       physically closes. */
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        transformOrigin: "right center",
+                        transformStyle: "preserve-3d",
+                        animation: `mobileFlipPrev ${FLIP_DURATION}ms linear forwards`,
+                        willChange: "transform",
+                      }}
+                    >
+                      <div
+                        className="flip-face"
+                        style={{ animation: `mobileFlipFrontHide ${FLIP_DURATION}ms linear forwards` }}
+                      >
                         <PageInPanel pageIndex={currentPages.right} side="single" />
-                      )}
+                      </div>
+                      <div
+                        className="flip-face back"
+                        style={{ animation: `mobileFlipBackShow ${FLIP_DURATION}ms linear forwards` }}
+                      >
+                        <Cover />
+                      </div>
                     </div>
-                    {/* Transparent back so the cover shows through past 90° */}
-                    <div className="flip-face back" />
-                  </div>
+                  )}
                 </div>
               )}
 
