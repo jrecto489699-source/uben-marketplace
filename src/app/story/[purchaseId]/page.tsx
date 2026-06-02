@@ -506,14 +506,12 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     ? { width: `calc(${PAGE_W} * 2)`, aspectRatio: "3/2" }
     : pageUnitStyle;
 
-  // Container width drives the open/close transition. Page width
-  // when we're showing the cover OR animating back to the cover;
-  // spread width otherwise. The CSS transition on `width` makes the
-  // book grow open (or shrink closed) smoothly around its centre —
-  // the book stays horizontally centred throughout.
-  const containerAtPageWidth =
-    (showCover && !isFlipping) ||
-    (isFlipping && flipMode === "cover-close");
+  // Container width: page width only when we're fully back on the
+  // cover (showCover and not animating). During cover-close the
+  // container stays at spread width — only the cover/page animations
+  // play, no reshape. After cover-close finishes and showCover flips
+  // on, the container then transitions back to page width.
+  const containerAtPageWidth = showCover && !isFlipping;
   const containerStyle: React.CSSProperties = containerAtPageWidth
     ? pageUnitStyle
     : spreadStyle;
