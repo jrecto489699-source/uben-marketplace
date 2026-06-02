@@ -43,9 +43,12 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   const renderingRef = useRef(new Set<number>());
 
   // ── Layout ────────────────────────────────────────────────────────────────
+  // 700px catches every iPad (mini portrait is 744px) so they all
+  // get the desktop spread + two-element flip animation, instead of
+  // falling back to the single-page mobile flip.
   const [isWide, setIsWide] = useState(false);
   useEffect(() => {
-    const check = () => setIsWide(window.innerWidth >= 768);
+    const check = () => setIsWide(window.innerWidth >= 700);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
