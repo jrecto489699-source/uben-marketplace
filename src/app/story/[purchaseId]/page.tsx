@@ -576,6 +576,18 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           -webkit-backface-visibility: hidden;
         }
         .flip-face.back { transform: rotateY(180deg); }
+        /* Explicit visibility swap so we don't have to trust the
+           browser's backface-visibility — at 50% of the rotation the
+           front fades out and the back fades in. Sharp step at the
+           midpoint (49.9%→50%) so it looks instant. */
+        @keyframes pageFrontHide {
+          0%, 49.9% { opacity: 1; }
+          50%, 100% { opacity: 0; }
+        }
+        @keyframes pageBackShow {
+          0%, 49.9% { opacity: 0; }
+          50%, 100% { opacity: 1; }
+        }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
       `}</style>
@@ -820,10 +832,10 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                             willChange: "transform, filter",
                           }}
                         >
-                          <div className="flip-face">
+                          <div className="flip-face" style={{ animation: `pageFrontHide ${FLIP_DURATION}ms linear forwards` }}>
                             <PageInPanel pageIndex={currentPages.right} side={isWide ? "right" : "single"} />
                           </div>
-                          <div className="flip-face back">
+                          <div className="flip-face back" style={{ animation: `pageBackShow ${FLIP_DURATION}ms linear forwards` }}>
                             <PageInPanel pageIndex={isWide ? targetPages.left : targetPages.right} side="left" />
                           </div>
                         </div>
@@ -848,11 +860,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                             willChange: "transform, filter",
                           }}
                         >
-                          <div className="flip-face">
+                          <div className="flip-face" style={{ animation: `pageFrontHide ${FLIP_DURATION}ms linear forwards` }}>
                             <PageInPanel pageIndex={isWide ? currentPages.left : currentPages.right} side={isWide ? "left" : "single"} />
                           </div>
-                          <div className="flip-face back">
-                            <PageInPanel pageIndex={isWide ? targetPages.right : targetPages.right} side="right" />
+                          <div className="flip-face back" style={{ animation: `pageBackShow ${FLIP_DURATION}ms linear forwards` }}>
+                            <PageInPanel pageIndex={targetPages.right} side="right" />
                           </div>
                         </div>
                       </div>
