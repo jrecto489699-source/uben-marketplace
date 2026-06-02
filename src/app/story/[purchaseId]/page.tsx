@@ -70,12 +70,16 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     stateRef.current = { showCover, spread, isFlipping, totalPages, isWide };
   }, [showCover, spread, isFlipping, totalPages, isWide]);
 
+  // PDF page 0 IS the cover — it's only used by <Cover />, never as
+  // a content page. Inside spreads start at PDF page 1, so there's
+  // one less content page than total PDF pages.
   const pagesPerSpread = isWide ? 2 : 1;
-  const totalSpreads   = Math.ceil(totalPages / pagesPerSpread);
+  const contentPages   = Math.max(0, totalPages - 1);
+  const totalSpreads   = Math.ceil(contentPages / pagesPerSpread);
 
   function pagesForSpread(s: number): { left: number | null; right: number | null } {
-    if (isWide) return { left: s * 2, right: s * 2 + 1 };
-    return { left: null, right: s };
+    if (isWide) return { left: s * 2 + 1, right: s * 2 + 2 };
+    return { left: null, right: s + 1 };
   }
 
   useEffect(() => { getPdfJs(); }, []);
@@ -458,7 +462,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         {hasContent && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums select-none"
             style={{ background: "#FFE2C2", color: "#A66B41" }}>
-            {pageIndex + 1}
+            {pageIndex}
           </div>
         )}
       </div>
@@ -603,9 +607,9 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
               <BookOpen size={13} className="text-ink-muted" />
               <span className="text-xs text-ink-muted tabular-nums">
                 {isWide
-                  ? `Pages ${currentPages.left !== null && currentPages.left < totalPages ? currentPages.left + 1 : "—"}–${currentPages.right !== null && currentPages.right < totalPages ? currentPages.right + 1 : "—"}`
-                  : `Page ${(currentPages.right ?? 0) + 1}`}
-                <span className="text-ink-muted/70"> of {totalPages}</span>
+                  ? `Pages ${currentPages.left !== null && currentPages.left < totalPages ? currentPages.left : "—"}–${currentPages.right !== null && currentPages.right < totalPages ? currentPages.right : "—"}`
+                  : `Page ${currentPages.right ?? 0}`}
+                <span className="text-ink-muted/70"> of {contentPages}</span>
               </span>
             </div>
           )}
@@ -895,7 +899,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           <div className="md:hidden bg-cream border-t border-border-muted px-4 py-2 flex items-center justify-center gap-3 shrink-0">
             <BookOpen size={13} className="text-ink-muted" />
             <span className="text-xs text-ink-muted tabular-nums">
-              {showCover ? "Cover" : `Page ${(currentPages.right ?? 0) + 1} of ${totalPages}`}
+              {showCover ? "Cover" : `Page ${currentPages.right ?? 0} of ${contentPages}`}
             </span>
           </div>
         )}
