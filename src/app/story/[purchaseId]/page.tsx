@@ -679,13 +679,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           30%  { opacity: 0; }
           100% { opacity: 1; }
         }
-        /* OLD page overlay during a flip — holds at full opacity for
-           80% of the duration, then crossfades so the new page
-           underneath only shows once the flip is almost complete. */
-        @keyframes holdThenFade {
-          0%, 80% { opacity: 1; }
-          100%    { opacity: 0; }
-        }
         .flip-face {
           position: absolute; inset: 0;
           backface-visibility: hidden;
@@ -983,42 +976,14 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
               {!showCover && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]">
                   {(() => {
-                    const isPageFlip = isFlipping && flipMode === "page";
-                    const left  = isPageFlip ? targetPages.left  : currentPages.left;
-                    const right = isPageFlip ? targetPages.right : currentPages.right;
-                    // The transitioning half (right on next, left on
-                    // prev) gets an OLD-page overlay on top of the
-                    // pre-mounted target. The overlay holds visible
-                    // for 80% of the flip duration, then fades —
-                    // prevents the next-spread's page from peeking
-                    // through as the OUT element rotates off.
-                    const overlayLeft  = isPageFlip && flipDir === "prev";
-                    const overlayRight = isPageFlip && flipDir === "next";
+                    const showTarget = isFlipping && flipMode === "page";
+                    const left  = showTarget ? targetPages.left  : currentPages.left;
+                    const right = showTarget ? targetPages.right : currentPages.right;
                     return isWide ? (
                       <>
                         <div className="flex h-full">
-                          <div className="relative w-1/2 h-full">
-                            <PageInPanel pageIndex={left} side="left" />
-                            {overlayLeft && currentPages.left !== left && (
-                              <div
-                                className="absolute inset-0"
-                                style={{ animation: `holdThenFade ${FLIP_DURATION}ms linear forwards` }}
-                              >
-                                <PageInPanel pageIndex={currentPages.left} side="left" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="relative w-1/2 h-full">
-                            <PageInPanel pageIndex={right} side="right" />
-                            {overlayRight && currentPages.right !== right && (
-                              <div
-                                className="absolute inset-0"
-                                style={{ animation: `holdThenFade ${FLIP_DURATION}ms linear forwards` }}
-                              >
-                                <PageInPanel pageIndex={currentPages.right} side="right" />
-                              </div>
-                            )}
-                          </div>
+                          <div className="w-1/2 h-full"><PageInPanel pageIndex={left}  side="left"  /></div>
+                          <div className="w-1/2 h-full"><PageInPanel pageIndex={right} side="right" /></div>
                         </div>
                         {/* Soft pastel binding */}
                         <div className="absolute top-0 bottom-0 pointer-events-none"
