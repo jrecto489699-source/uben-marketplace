@@ -3,7 +3,7 @@
 import { use, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Maximize, Minimize,
-  Play, Pause, BookOpen,
+  Play, Pause, BookOpen, Volume2, VolumeX,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
@@ -62,6 +62,12 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // ── UI ─────────────────────────────────────────────────────────────────────
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAutoPlay,   setIsAutoPlay]   = useState(false);
+  // Narrator audio
+  const audioRef                                = useRef<HTMLAudioElement | null>(null);
+  const [audioOn,            setAudioOn]        = useState(false);
+  const [audioPlaying,       setAudioPlaying]   = useState(false);
+  const [audioQueue,         setAudioQueue]     = useState<string[]>([]);
+  const [audioQueueIndex,    setAudioQueueIndex]= useState(0);
 
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
@@ -484,6 +490,92 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     }
   })();
 
+  // ── Narrator: build the audio queue for the current view ─────────────────
+  // Cover view  → ["cover"]
+  // Desktop spread → [left, right] (in reading order)
+  // Mobile  → [right] (single visible page)
+  // We only rebuild when the flip settles, so page-turn audio doesn't
+  // start mid-rotation.
+  useEffect(() => {
+    if (pdfLoading || pdfError) return;
+    if (isFlipping) return;
+    if (showCover) {
+      setAudioQueue(["cover"]);
+    } else {
+      const ids: string[] = [];
+      if (isWide && currentPages.left !== null) ids.push(String(currentPages.left));
+      if (currentPages.right !== null)          ids.push(String(currentPages.right));
+      setAudioQueue(ids);
+    }
+    setAudioQueueIndex(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCover, currentPages.left, currentPages.right, isWide, isFlipping, pdfLoading, pdfError]);
+
+  // Whenever the queue item changes, fetch its signed URL and (optionally)
+  // start playback. If the page has no audio file, the route returns
+  // `url: null`; we silently skip to the next queue item.
+  useEffect(() => {
+    if (!audioOn) return;
+    const item = audioQueue[audioQueueIndex];
+    if (!item) { setAudioPlaying(false); return; }
+    let cancelled = false;
+    fetch(`/api/story-audio/${purchaseId}/${item}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : { url: null })
+      .then((data: { url: string | null }) => {
+        if (cancelled) return;
+        const el = audioRef.current;
+        if (!el) return;
+        if (!data.url) {
+          // Skip silent pages within a spread; if the whole spread is
+          // silent, just stop.
+          if (audioQueueIndex < audioQueue.length - 1) {
+            setAudioQueueIndex(audioQueueIndex + 1);
+          } else {
+            setAudioPlaying(false);
+          }
+          return;
+        }
+        el.src = data.url;
+        el.play().then(() => setAudioPlaying(true)).catch(() => setAudioPlaying(false));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [audioQueue, audioQueueIndex, audioOn, purchaseId]);
+
+  function onAudioEnded() {
+    if (audioQueueIndex < audioQueue.length - 1) {
+      setAudioQueueIndex(audioQueueIndex + 1);
+    } else {
+      setAudioPlaying(false);
+    }
+  }
+
+  function toggleAudio() {
+    const el = audioRef.current;
+    if (!audioOn) {
+      // First-time turn-on: start playback from the current queue item.
+      setAudioOn(true);
+      return;
+    }
+    if (!el) return;
+    if (audioPlaying) {
+      el.pause();
+      setAudioPlaying(false);
+    } else if (el.src) {
+      el.play().then(() => setAudioPlaying(true)).catch(() => {});
+    } else {
+      // Re-kick the fetch effect.
+      setAudioQueueIndex(i => i);
+    }
+  }
+
+  function stopAudio() {
+    const el = audioRef.current;
+    if (el) { el.pause(); el.currentTime = 0; }
+    setAudioOn(false);
+    setAudioPlaying(false);
+  }
+
   // Sizing — the book grows from a single-page (3:4) into a two-page
   // spread (3:2) during the cover-open animation.
   //
@@ -660,14 +752,26 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           )}
 
           {!pdfError && !pdfLoading && (
-            <button onClick={() => setIsAutoPlay(v => !v)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
-                isAutoPlay ? "bg-ink text-cream hover:bg-[#3a3a3a]" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
-              }`}
-              title={isAutoPlay ? "Stop auto-flip" : "Auto-flip pages"}>
-              {isAutoPlay ? <Pause size={12} /> : <Play size={12} />}
-              {isAutoPlay ? "Stop" : "Auto"}
-            </button>
+            <>
+              <button
+                onClick={audioOn ? stopAudio : toggleAudio}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
+                  audioOn ? "bg-ink text-cream hover:bg-[#3a3a3a]" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
+                }`}
+                title={audioOn ? "Stop narration" : "Play narration"}
+              >
+                {audioOn ? <VolumeX size={12} /> : <Volume2 size={12} />}
+                <span className="hidden sm:inline">{audioOn ? "Stop" : "Read"}</span>
+              </button>
+              <button onClick={() => setIsAutoPlay(v => !v)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
+                  isAutoPlay ? "bg-ink text-cream hover:bg-[#3a3a3a]" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
+                }`}
+                title={isAutoPlay ? "Stop auto-flip" : "Auto-flip pages"}>
+                {isAutoPlay ? <Pause size={12} /> : <Play size={12} />}
+                <span className="hidden sm:inline">{isAutoPlay ? "Stop" : "Auto"}</span>
+              </button>
+            </>
           )}
 
           <button onClick={toggleFullscreen}
@@ -1007,6 +1111,17 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
             </span>
           </div>
         )}
+        {/* Narrator — hidden HTML5 audio element. Source is set by the
+            queue/fetch effect; auto-advances through the queue on `ended`
+            and stops when audioOn is toggled off. */}
+        <audio
+          ref={audioRef}
+          onEnded={onAudioEnded}
+          onPause={() => setAudioPlaying(false)}
+          onPlay={() => setAudioPlaying(true)}
+          preload="auto"
+          style={{ display: "none" }}
+        />
       </main>
     </>
   );
