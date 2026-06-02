@@ -501,9 +501,17 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   const PAGE_W = isWide
     ? "min(46vw, 560px, calc(82dvh * 0.75))"
     : "min(92vw, 460px, calc(74dvh * 0.75))";
-  const pageUnitStyle = { width: PAGE_W, aspectRatio: "3/4" };
+  // Fixed height across both states — for any PAGE_W, height is
+  // PAGE_W × 4/3. Since spread is 2×PAGE_W with a 3:2 ratio, it
+  // works out to the SAME height as the single-page (3:4) state.
+  // Setting `height` explicitly instead of letting the browser
+  // interpolate `aspect-ratio` removes a major source of jitter
+  // during the width transition — aspect-ratio changes were causing
+  // the container height to jump around as width animated.
+  const PAGE_H = `calc((${PAGE_W}) * 4 / 3)`;
+  const pageUnitStyle = { width: PAGE_W, height: PAGE_H };
   const spreadStyle   = isWide
-    ? { width: `calc(${PAGE_W} * 2)`, aspectRatio: "3/2" }
+    ? { width: `calc(${PAGE_W} * 2)`, height: PAGE_H }
     : pageUnitStyle;
 
   // Container width drives the open/close. Page width when we're
@@ -606,18 +614,19 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           75%  { transform: rotateY(-45deg); box-shadow: -12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
           100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
         }
-        /* Cover crossfades — no rotation, no 3D. The smoothness
-           comes from a single property animating with the container's
-           width transition: opacity. Both finish at the same time so
-           the book reshape and the cover/spread swap read as one
-           continuous motion. */
+        /* Cover crossfades. The fade is concentrated at the FAR
+           end of each transition so the slide-from-container-growth
+           is clearly visible — the user sees the cover ride the
+           right edge of the widening (or narrowing) book, then
+           crossfade to/from the underlying page only at the very
+           end (open) or very start (close). */
         @keyframes coverFadeOut {
-          0%   { opacity: 1; }
-          100% { opacity: 0; }
+          0%, 70% { opacity: 1; }
+          100%    { opacity: 0; }
         }
         @keyframes coverFadeIn {
-          0%   { opacity: 0; }
-          100% { opacity: 1; }
+          0%       { opacity: 0; }
+          30%, 100%{ opacity: 1; }
         }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
@@ -712,7 +721,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 background: "#fff",
                 transformStyle: "preserve-3d",
                 transition:
-                  `width ${FLIP_DURATION}ms ease-in-out, aspect-ratio ${FLIP_DURATION}ms ease-in-out, transform ${FLIP_DURATION}ms ease-in-out`,
+                  `width ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), height ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), transform ${FLIP_DURATION}ms cubic-bezier(0.32, 0.72, 0, 1)`,
               }}
             >
               {/* COVER closed */}
