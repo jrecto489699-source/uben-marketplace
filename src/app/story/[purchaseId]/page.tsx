@@ -514,14 +514,12 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     ? { width: `calc(${PAGE_W} * 2)`, height: PAGE_H }
     : pageUnitStyle;
 
-  // Container is page-width when the cover is shown by itself (or
-  // animating into/out of the cover view), spread-width otherwise.
-  // The width transition is synchronised with the cover swing so
-  // the book reshapes as the cover opens or closes — no empty
-  // left-half "extra page" sitting next to a closed cover.
-  const containerAtPageWidth =
-    (showCover && !isFlipping) ||
-    (isFlipping && flipMode === "cover-close");
+  // Container is page-width only when the cover is shown by
+  // itself. During cover-close it stays at spread width — matches
+  // yesterday's behavior where the spread content rotates away on
+  // the full-size flipping element and the container snaps to
+  // page width after the close completes.
+  const containerAtPageWidth = showCover && !isFlipping;
   const containerStyle: React.CSSProperties = containerAtPageWidth
     ? pageUnitStyle
     : spreadStyle;
