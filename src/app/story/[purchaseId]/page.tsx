@@ -597,6 +597,14 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           75%  { transform: rotateY(-45deg); box-shadow: -12px 20px 30px rgba(0,0,0,0.25); opacity: 1; }
           100% { transform: rotateY(0deg);   box-shadow: 0 3px 8px rgba(0,0,0,0.10); opacity: 1; }
         }
+        /* Mobile slide — single page slides off one side and the
+           next slides in from the other. No rotation, so there's
+           no "double flip" feel from the desktop two-element
+           rotation overlapping on a single-page layout. */
+        @keyframes mobileSlideOutLeft  { 0% { transform: translateX(0); }     100% { transform: translateX(-100%); } }
+        @keyframes mobileSlideInRight  { 0% { transform: translateX(100%); }  100% { transform: translateX(0); } }
+        @keyframes mobileSlideOutRight { 0% { transform: translateX(0); }     100% { transform: translateX(100%); } }
+        @keyframes mobileSlideInLeft   { 0% { transform: translateX(-100%); } 100% { transform: translateX(0); } }
         @keyframes hintPulseLeft  { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(-5px); opacity: 1; } }
         @keyframes hintPulseRight { 0%,100% { transform: translateY(-50%) translateX(0); opacity: 0.6; } 50% { transform: translateY(-50%) translateX(5px);  opacity: 1; } }
       `}</style>
@@ -838,7 +846,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                         className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}
                         style={{
                           transformOrigin: "left center",
-                          animation: `flipOutNext ${FLIP_DURATION}ms linear forwards`,
+                          animation: `${isWide ? "flipOutNext" : "mobileSlideOutLeft"} ${FLIP_DURATION}ms linear forwards`,
                           willChange: "transform, opacity",
                         }}
                       >
@@ -852,7 +860,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                         className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}
                         style={{
                           transformOrigin: "right center",
-                          animation: `flipInNext ${FLIP_DURATION}ms linear forwards`,
+                          animation: `${isWide ? "flipInNext" : "mobileSlideInRight"} ${FLIP_DURATION}ms linear forwards`,
                           willChange: "transform, opacity",
                         }}
                       >
@@ -878,7 +886,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                         className={`absolute top-0 ${isWide ? "left-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}
                         style={{
                           transformOrigin: "right center",
-                          animation: `flipOutPrev ${FLIP_DURATION}ms linear forwards`,
+                          animation: `${isWide ? "flipOutPrev" : "mobileSlideOutRight"} ${FLIP_DURATION}ms linear forwards`,
                           willChange: "transform, opacity",
                         }}
                       >
@@ -895,7 +903,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                         className={`absolute top-0 ${isWide ? "right-0 w-1/2" : "inset-x-0 w-full"} bottom-0 h-full`}
                         style={{
                           transformOrigin: "left center",
-                          animation: `flipInPrev ${FLIP_DURATION}ms linear forwards`,
+                          animation: `${isWide ? "flipInPrev" : "mobileSlideInLeft"} ${FLIP_DURATION}ms linear forwards`,
                           willChange: "transform, opacity",
                         }}
                       >
