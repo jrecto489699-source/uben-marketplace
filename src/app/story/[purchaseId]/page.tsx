@@ -91,6 +91,31 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     try { a.currentTime = 0; a.play().catch(() => {}); } catch {}
   }
 
+  // iOS Safari requires every HTMLAudioElement to receive at least one
+  // play() call from inside a user-gesture handler before it can be
+  // played programmatically from a timer or event later. A muted
+  // play-then-pause inside the gesture satisfies the requirement
+  // without any audible artifact, and is a no-op on permissive
+  // browsers (desktop Chrome, Firefox, Android Chrome). The element
+  // stays unlocked for the rest of the session.
+  function unlockAudioElement(el: HTMLAudioElement | null) {
+    if (!el) return;
+    const prevMuted = el.muted;
+    try {
+      el.muted = true;
+      const p = el.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => {
+          el.pause();
+          el.currentTime = 0;
+          el.muted = prevMuted;
+        }).catch(() => { el.muted = prevMuted; });
+      }
+    } catch {
+      el.muted = prevMuted;
+    }
+  }
+
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
   const stateRef = useRef({ showCover, spread, isFlipping, totalPages, isWide });
@@ -773,6 +798,12 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                   stopAudio();
                   setIsAutoPlay(false);
                 } else {
+                  // Synchronous in-gesture unlock so iOS Safari will
+                  // let the flip sound and the narrator play later
+                  // from setTimeout / 'ended' callbacks. Must happen
+                  // before any await/Promise boundary.
+                  unlockAudioElement(flipSoundRef.current);
+                  unlockAudioElement(audioRef.current);
                   setAudioOn(true);
                   setIsAutoPlay(true);
                 }
