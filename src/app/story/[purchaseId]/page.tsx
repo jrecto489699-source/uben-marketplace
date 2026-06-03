@@ -22,6 +22,10 @@ async function getPdfJs() {
 const PAGE_RENDER_SCALE = 1.2; // 1.5 was overkill — pages display at ~480px wide
 const FLIP_DURATION    = 1100;
 const AUTO_PLAY_DELAY  = 5000;
+// Pause between the narrator finishing a spread and the next page
+// auto-turning — long enough for the listener to absorb the last
+// line, short enough that the story keeps moving.
+const POST_AUDIO_DWELL = 1500;
 const SWIPE_THRESHOLD  = 45;
 
 export default function StoryPage({ params }: { params: Promise<{ purchaseId: string }> }) {
@@ -263,17 +267,19 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   //     delay.
   //  3. On the LAST spread → after the delay, animate the book closed
   //     and turn auto-play off.
+  // If the narrator is on AND has audio playing for the current view,
+  // the fixed timer is suppressed — `onAudioEnded` triggers the next
+  // advance instead, so page-turns are paced by the narration.
   useEffect(() => {
     if (!isAutoPlay || isFlipping || pdfLoading || pdfError) return;
+    if (audioOn && audioPlaying) return;
 
     if (showCover) {
-      // Auto-open from the cover with a short pause first
       const timer = setTimeout(() => goNext(), AUTO_PLAY_DELAY * 0.6);
       return () => clearTimeout(timer);
     }
 
     if (totalSpreads > 0 && spread >= totalSpreads - 1) {
-      // Reached the end — close the book and stop auto-play
       const timer = setTimeout(() => {
         setIsAutoPlay(false);
         startFlip("prev", "cover-close", () => {
@@ -287,7 +293,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     const timer = setTimeout(() => goNext(), AUTO_PLAY_DELAY);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAutoPlay, spread, showCover, isFlipping, pdfLoading, pdfError, totalSpreads]);
+  }, [isAutoPlay, spread, showCover, isFlipping, pdfLoading, pdfError, totalSpreads, audioOn, audioPlaying]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -494,9 +500,27 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   function onAudioEnded() {
     if (audioQueueIndex < audioQueue.length - 1) {
       setAudioQueueIndex(audioQueueIndex + 1);
-    } else {
-      setAudioPlaying(false);
+      return;
     }
+    setAudioPlaying(false);
+    // Queue done. If auto-play is also on, let the narration drive
+    // the next page-turn after a short dwell.
+    if (!isAutoPlay) return;
+    setTimeout(() => {
+      const s = stateRef.current;
+      const spreads = Math.ceil(Math.max(0, s.totalPages - 1) / (s.isWide ? 2 : 1));
+      if (s.showCover) {
+        goNext();
+      } else if (spreads > 0 && s.spread >= spreads - 1) {
+        setIsAutoPlay(false);
+        startFlip("prev", "cover-close", () => {
+          setShowCover(true);
+          setSpread(0);
+        });
+      } else {
+        goNext();
+      }
+    }, POST_AUDIO_DWELL);
   }
 
   function toggleAudio() {
