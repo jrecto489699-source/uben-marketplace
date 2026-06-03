@@ -272,7 +272,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // advance instead, so page-turns are paced by the narration.
   useEffect(() => {
     if (!isAutoPlay || isFlipping || pdfLoading || pdfError) return;
-    if (audioOn && audioPlaying) return;
+    // When the narrator is on, the audio system drives every advance
+    // (onAudioEnded for narrated pages, the URL-null branch for
+    // silent ones). Suppress the fixed timer entirely so we don't
+    // race against a slow audio load on mobile.
+    if (audioOn) return;
 
     if (showCover) {
       const timer = setTimeout(() => goNext(), AUTO_PLAY_DELAY * 0.6);
@@ -482,11 +486,14 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         if (!el) return;
         if (!data.url) {
           // Skip silent pages within a spread; if the whole spread is
-          // silent, just stop.
+          // silent and auto-play is on, hand off to scheduleAdvance
+          // so the page still turns at the same dwell as a narrated
+          // one (instead of stalling forever).
           if (audioQueueIndex < audioQueue.length - 1) {
             setAudioQueueIndex(audioQueueIndex + 1);
           } else {
             setAudioPlaying(false);
+            scheduleAdvance();
           }
           return;
         }
@@ -497,16 +504,15 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     return () => { cancelled = true; };
   }, [audioQueue, audioQueueIndex, audioOn, purchaseId]);
 
-  function onAudioEnded() {
-    if (audioQueueIndex < audioQueue.length - 1) {
-      setAudioQueueIndex(audioQueueIndex + 1);
-      return;
-    }
-    setAudioPlaying(false);
-    // Queue done. If auto-play is also on, let the narration drive
-    // the next page-turn after a short dwell.
+  // Schedule the next page-turn after POST_AUDIO_DWELL. Used by the
+  // audio system whenever it finishes a spread — narrated or silent.
+  // Tracks the timer so a quick state change can cancel it.
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function scheduleAdvance() {
     if (!isAutoPlay) return;
-    setTimeout(() => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    advanceTimerRef.current = setTimeout(() => {
+      advanceTimerRef.current = null;
       const s = stateRef.current;
       const spreads = Math.ceil(Math.max(0, s.totalPages - 1) / (s.isWide ? 2 : 1));
       if (s.showCover) {
@@ -521,6 +527,15 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         goNext();
       }
     }, POST_AUDIO_DWELL);
+  }
+
+  function onAudioEnded() {
+    if (audioQueueIndex < audioQueue.length - 1) {
+      setAudioQueueIndex(audioQueueIndex + 1);
+      return;
+    }
+    setAudioPlaying(false);
+    scheduleAdvance();
   }
 
   function toggleAudio() {
