@@ -750,6 +750,27 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
           {!pdfError && !pdfLoading && (
             <>
+              {/* Combined Read-Aloud: turns narrator AND auto-flip
+                  on/off in one tap. Pressed-state when BOTH are on. */}
+              <button
+                onClick={() => {
+                  const bothOn = audioOn && isAutoPlay;
+                  if (bothOn) {
+                    stopAudio();
+                    setIsAutoPlay(false);
+                  } else {
+                    setAudioOn(true);
+                    setIsAutoPlay(true);
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
+                  audioOn && isAutoPlay ? "bg-ink text-cream hover:bg-[#3a3a3a]" : "bg-[#EDEBE6] text-ink hover:bg-card-hover"
+                }`}
+                title={audioOn && isAutoPlay ? "Stop read-aloud" : "Start read-aloud (narrator + auto-flip)"}
+              >
+                {audioOn && isAutoPlay ? <Pause size={12} /> : <Play size={12} />}
+                <span className="hidden sm:inline">{audioOn && isAutoPlay ? "Stop" : "Read-Aloud"}</span>
+              </button>
               <button
                 onClick={audioOn ? stopAudio : toggleAudio}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
