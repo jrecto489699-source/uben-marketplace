@@ -343,71 +343,18 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
   // ── Cover — uses the product image as the actual book cover ─────────────
   function Cover() {
+    const src = pageImages[0] ?? product!.image;
     return (
-      <div className="relative w-full h-full overflow-hidden rounded-[6px]"
-        style={{ background: "linear-gradient(135deg, #FFE7C4 0%, #FFC2A6 60%, #FF9DA8 100%)" }}>
-        {/* Soft sky gradient */}
-        <div className="absolute inset-0" style={{
-          background: "linear-gradient(180deg, #B8E6FF 0%, transparent 55%)",
-        }} />
-        {/* Sun */}
-        <div className="absolute top-6 right-6 w-16 h-16 rounded-full"
-          style={{
-            background: "radial-gradient(circle at 35% 35%, #FFE17A 0%, #FFB94A 70%, #FF9A2D 100%)",
-            boxShadow: "0 0 30px rgba(255, 200, 80, 0.55), 0 0 60px rgba(255, 180, 50, 0.3)",
-          }} />
-        {/* Clouds */}
-        <Clouds />
-        {/* Hero image area — actual PDF cover lives here */}
-        <div className="absolute" style={{
-          top: "12%", left: "10%", right: "10%", bottom: "26%",
-        }}>
-          <div className="relative w-full h-full rounded-2xl overflow-hidden"
-            style={{
-              background: "#fff",
-              boxShadow:
-                "0 12px 28px -10px rgba(0,0,0,0.28), 0 4px 10px -4px rgba(0,0,0,0.18), inset 0 0 0 4px #fff, inset 0 0 0 6px rgba(0,0,0,0.06)",
-            }}>
-            {pageImages[0] ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={pageImages[0]} alt={product!.title}
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false} />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={product!.image} alt={product!.title}
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false} />
-            )}
-          </div>
-        </div>
-        {/* Title strip */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-4 text-center">
-          <div className="inline-block px-4 py-2 rounded-full"
-            style={{ background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(4px)" }}>
-            <div className="text-[9px] sm:text-[10px] font-bold tracking-[0.3em] uppercase mb-0.5" style={{ color: "#D4734A" }}>
-              ✦ A Storybook ✦
-            </div>
-            <div className="text-[14px] sm:text-[16px] font-bold uppercase leading-tight" style={{ color: "#46322B", fontFamily: "Georgia, serif" }}>
-              {product!.title}
-            </div>
-            <div className="text-[9px] sm:text-[10px] mt-0.5 italic" style={{ color: "#8B6F62" }}>
-              by {product!.seller}
-            </div>
-          </div>
-        </div>
-        {/* Grass at the bottom */}
-        <svg className="absolute bottom-0 left-0 right-0" viewBox="0 0 600 60" preserveAspectRatio="none" style={{ height: "8%" }}>
-          <path d="M 0 40 Q 50 20 100 35 T 200 35 T 300 30 T 400 35 T 500 30 T 600 35 L 600 60 L 0 60 Z" fill="#8FBF6E" />
-          <path d="M 0 48 Q 50 35 100 45 T 200 45 T 300 42 T 400 45 T 500 42 T 600 45 L 600 60 L 0 60 Z" fill="#6FA84E" opacity="0.9" />
-        </svg>
-        {/* Tiny corner stars */}
-        <div className="absolute top-3 left-3" style={{ color: "#FFCB52" }}>
-          <StarShape size={14} />
-        </div>
-        <div className="absolute top-12 left-16" style={{ color: "#FFCB52" }}>
-          <StarShape size={9} />
-        </div>
+      <div className="relative w-full h-full overflow-hidden rounded-[6px] bg-white">
+        {/* The PDF's first page IS the designed cover — display it
+            edge-to-edge with no decorations on top. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={product!.title}
+          className="absolute inset-0 w-full h-full object-cover"
+          draggable={false}
+        />
       </div>
     );
   }
