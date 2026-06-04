@@ -98,21 +98,38 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // without any audible artifact, and is a no-op on permissive
   // browsers (desktop Chrome, Firefox, Android Chrome). The element
   // stays unlocked for the rest of the session.
+  //
+  // If the element has no `src` yet (the narrator element on the very
+  // first Read-Aloud tap, before any fetch has run), play() rejects
+  // and iOS does NOT register the unlock — the next programmatic
+  // play() in the fetch effect is blocked. To avoid that, swap in a
+  // tiny silent WAV data URI just for the unlock, then clear it so
+  // the real fetch can take over.
+  const SILENT_SRC = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA=";
   function unlockAudioElement(el: HTMLAudioElement | null) {
     if (!el) return;
     const prevMuted = el.muted;
+    const hadSrc = !!el.getAttribute("src") || !!el.src;
     try {
       el.muted = true;
+      if (!hadSrc) el.src = SILENT_SRC;
       const p = el.play();
       if (p && typeof p.then === "function") {
         p.then(() => {
           el.pause();
           el.currentTime = 0;
           el.muted = prevMuted;
-        }).catch(() => { el.muted = prevMuted; });
+          if (!hadSrc) el.removeAttribute("src");
+        }).catch(() => {
+          el.muted = prevMuted;
+          if (!hadSrc) el.removeAttribute("src");
+        });
       }
     } catch {
       el.muted = prevMuted;
+      if (!hadSrc) {
+        try { el.removeAttribute("src"); } catch {}
+      }
     }
   }
 
