@@ -874,7 +874,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 boxShadow:
                   "0 30px 80px -20px rgba(0,0,0,0.4), 0 12px 24px -10px rgba(0,0,0,0.2)",
                 borderRadius: 8,
-                background: "#fff",
+                // Transparent: pages and cover bring their own
+                // backgrounds, so any uncovered area of the container
+                // (e.g. the left half during the cover-close
+                // narrow-down) doesn't flash white.
+                background: "transparent",
                 transformStyle: "preserve-3d",
                 transition:
                   "width 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms, height 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms",
