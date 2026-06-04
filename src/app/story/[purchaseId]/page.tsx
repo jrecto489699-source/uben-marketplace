@@ -888,8 +888,16 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 // narrow-down) doesn't flash white.
                 background: "transparent",
                 transformStyle: "preserve-3d",
-                transition:
-                  "width 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms, height 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms",
+                // Directional transition: smooth 450ms (with 80ms
+                // beat) when leaving the cover view — gives the
+                // cover-open its growth-into-spread feel. INSTANT
+                // when entering the cover view, so the moment the
+                // cover-close flip lands the container snaps to
+                // PAGE_W and there's no 530ms blank-page area next
+                // to the cover.
+                transition: (showCover && !isFlipping)
+                  ? "none"
+                  : "width 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms, height 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms",
               }}
             >
               {/* COVER closed — anchored to the right at PAGE_W so it
