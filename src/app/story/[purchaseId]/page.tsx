@@ -1015,16 +1015,19 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
               )}
 
               {/* INSIDE — persistent base layer.
-                  Rendered any time we're past the cover. During a page
-                  flip it shows the TARGET spread underneath; during the
-                  static state it shows the current spread. Since
-                  targetPages === currentPages once the flip finishes,
-                  these PageInPanel components keep the SAME pageIndex
-                  across the flip→static transition — React doesn't
-                  unmount them, so the browser never has to re-decode
-                  the page images. That's what eliminates the half-
-                  second "old page lingers" flash after a swipe. */}
-              {!showCover && (
+                  Rendered any time we're past the cover EXCEPT during
+                  a cover-close (the close has its own self-contained
+                  static right page + flipping element; if this layer
+                  rendered on top of it, it would cover the rotating
+                  element and make the close visually instant).
+                  During a page flip it shows the TARGET spread
+                  underneath; during the static state it shows the
+                  current spread. Since targetPages === currentPages
+                  once the flip finishes, these PageInPanel components
+                  keep the SAME pageIndex across the flip→static
+                  transition — React doesn't unmount them, so the
+                  browser never has to re-decode the page images. */}
+              {!showCover && flipMode !== "cover-close" && (
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]">
                   {(() => {
                     const showTarget = isFlipping && flipMode === "page";
