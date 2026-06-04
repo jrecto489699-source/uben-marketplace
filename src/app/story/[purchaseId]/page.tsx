@@ -866,9 +866,16 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                   "width 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms, height 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms",
               }}
             >
-              {/* COVER closed */}
+              {/* COVER closed — anchored to the right at PAGE_W so it
+                  stays at its natural size as the container narrows
+                  from spread (right after a cover-close flip) down to
+                  page width. When the container has reached PAGE_W
+                  it perfectly fills the frame. */}
               {showCover && !isFlipping && (
-                <div className="absolute inset-0 overflow-hidden rounded-[8px]">
+                <div
+                  className="absolute top-0 bottom-0 overflow-hidden rounded-[8px]"
+                  style={{ right: 0, width: PAGE_W }}
+                >
                   <Cover />
                 </div>
               )}
@@ -926,35 +933,47 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 <div className="absolute inset-0 overflow-hidden rounded-[8px]" style={{ transformStyle: "preserve-3d" }}>
                   {isWide ? (
                     <>
-                      {/* Underneath: cover fills the (still spread-wide)
-                          container — looks like the book is being
-                          closed onto its own back. The container will
-                          snap narrower in the next beat, after the
-                          flip finishes. */}
-                      <div className="absolute inset-0"><Cover /></div>
-                      {/* Top: spread content flips to the right */}
+                      {/* Static right page (page 2) stays in place at
+                          its natural PAGE_W width on the right of the
+                          spread. The flipping element below will
+                          land on top of it. */}
+                      <div className="absolute top-0 bottom-0" style={{ right: 0, width: PAGE_W }}>
+                        <PageInPanel pageIndex={currentPages.right} side="right" />
+                      </div>
+                      {/* Single-element flip on the LEFT half — page 1
+                          rotates right around the spine, with the cover
+                          on its back face. Same pattern as a normal
+                          page-turn, just with the cover as the target,
+                          so the close reads as a continuous book-page
+                          motion rather than a separate animation. */}
                       <div
-                        className="absolute inset-0"
+                        className="absolute top-0 bottom-0"
                         style={{
+                          left: 0,
+                          width: PAGE_W,
                           transformOrigin: "right center",
                           transformStyle: "preserve-3d",
-                          animation: `pageBendBackward ${FLIP_DURATION}ms linear forwards`,
+                          animation: `mobileFlipPrev ${FLIP_DURATION}ms linear forwards`,
                           willChange: "transform",
                         }}
                       >
-                        <div className="flip-face">
-                          <div className="flex h-full">
-                            <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.left}  side="left"  /></div>
-                            <div className="w-1/2 h-full"><PageInPanel pageIndex={currentPages.right} side="right" /></div>
-                          </div>
+                        <div
+                          className="flip-face"
+                          style={{ animation: `mobileFlipFrontHide ${FLIP_DURATION}ms linear forwards` }}
+                        >
+                          <PageInPanel pageIndex={currentPages.left} side="left" />
                         </div>
-                        <div className="flip-face back" />
+                        <div
+                          className="flip-face back"
+                          style={{ animation: `mobileFlipBackShow ${FLIP_DURATION}ms linear forwards` }}
+                        >
+                          <Cover />
+                        </div>
                       </div>
                     </>
                   ) : (
-                    /* Mobile — same single-element flip as the page
-                       turn, with the cover on the back face. The book
-                       physically closes. */
+                    /* Mobile — single-element flip with cover on the
+                       back face. Unchanged. */
                     <div
                       className="absolute inset-0"
                       style={{
