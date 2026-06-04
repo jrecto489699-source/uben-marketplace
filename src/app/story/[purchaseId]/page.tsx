@@ -274,6 +274,20 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     startFlip("next", "page", () => setSpread(s.spread + 1));
   }
 
+  // User-initiated navigation (swipe, arrow keys, chevron buttons).
+  // Any of these interrupt Read-Aloud — the narrator pauses and
+  // auto-flip stops, so the listener has taken back control. The
+  // audio system won't re-fetch on the next spread because audioOn
+  // is now false.
+  function userGoNext() {
+    if (audioOn || isAutoPlay) { stopAudio(); setIsAutoPlay(false); }
+    goNext();
+  }
+  function userGoPrev() {
+    if (audioOn || isAutoPlay) { stopAudio(); setIsAutoPlay(false); }
+    goPrev();
+  }
+
   function goPrev() {
     const s = stateRef.current;
     if (s.isFlipping) return;
@@ -328,8 +342,8 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
-      if (e.code === "ArrowRight" || e.code === "Space") { e.preventDefault(); goNext(); }
-      else if (e.code === "ArrowLeft") { e.preventDefault(); goPrev(); }
+      if (e.code === "ArrowRight" || e.code === "Space") { e.preventDefault(); userGoNext(); }
+      else if (e.code === "ArrowLeft") { e.preventDefault(); userGoPrev(); }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -349,7 +363,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     const dt = Date.now() - start.t;
     if (dt > 700) return;
     if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-    if (dx < 0) goNext(); else goPrev();
+    if (dx < 0) userGoNext(); else userGoPrev();
   }
 
   useEffect(() => {
@@ -1137,13 +1151,13 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
 
           {!pdfLoading && !pdfError && (
             <>
-              <button onClick={goPrev} disabled={showCover}
+              <button onClick={userGoPrev} disabled={showCover}
                 className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
                 style={{ background: "#FFB36B", color: "#fff" }}
                 aria-label="Previous page">
                 <ChevronLeft size={22} />
               </button>
-              <button onClick={goNext} disabled={!showCover && spread >= totalSpreads - 1}
+              <button onClick={userGoNext} disabled={!showCover && spread >= totalSpreads - 1}
                 className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
                 style={{ background: "#FFB36B", color: "#fff" }}
                 aria-label="Next page">
