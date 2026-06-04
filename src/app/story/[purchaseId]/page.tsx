@@ -880,8 +880,17 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 // narrow-down) doesn't flash white.
                 background: "transparent",
                 transformStyle: "preserve-3d",
-                transition:
-                  "width 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms, height 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms",
+                // No transition on width/height. With the transition,
+                // the container took 530ms to narrow from spread back
+                // to page width after a cover-close, and during that
+                // window the cover sat anchored on the right at
+                // PAGE_W while the LEFT half of the still-wider
+                // container showed through as a visible blank page.
+                // Snapping the size instantly when state changes
+                // removes that blank-page artifact. The cover-open /
+                // cover-close animations themselves remain timed —
+                // only the container's outer shape is instant.
+                transition: "none",
               }}
             >
               {/* COVER closed — anchored to the right at PAGE_W so it
