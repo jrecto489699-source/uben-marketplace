@@ -871,8 +871,16 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
               className="relative select-none overflow-hidden"
               style={{
                 ...containerStyle,
-                boxShadow:
-                  "0 30px 80px -20px rgba(0,0,0,0.4), 0 12px 24px -10px rgba(0,0,0,0.2)",
+                // While we're showing (or animating to) the closed
+                // cover, the container is narrower than its current
+                // CSS width during the 530ms reshape — the rounded
+                // shape + shadow would still draw a "blank page" next
+                // to the cover. Move the shadow onto the cover
+                // element itself in that state so it only ever traces
+                // the actual cover.
+                boxShadow: showCover
+                  ? "none"
+                  : "0 30px 80px -20px rgba(0,0,0,0.4), 0 12px 24px -10px rgba(0,0,0,0.2)",
                 borderRadius: 8,
                 // Transparent: pages and cover bring their own
                 // backgrounds, so any uncovered area of the container
@@ -888,11 +896,19 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                   stays at its natural size as the container narrows
                   from spread (right after a cover-close flip) down to
                   page width. When the container has reached PAGE_W
-                  it perfectly fills the frame. */}
+                  it perfectly fills the frame. Carries its own book-
+                  card shadow because the container's shadow is
+                  suppressed while showCover is true (so the empty
+                  left half during the 530ms reshape doesn't render
+                  as a visible blank page next to the cover). */}
               {showCover && !isFlipping && (
                 <div
                   className="absolute top-0 bottom-0 overflow-hidden rounded-[8px]"
-                  style={{ right: 0, width: PAGE_W }}
+                  style={{
+                    right: 0,
+                    width: PAGE_W,
+                    boxShadow: "0 30px 80px -20px rgba(0,0,0,0.4), 0 12px 24px -10px rgba(0,0,0,0.2)",
+                  }}
                 >
                   <Cover />
                 </div>
