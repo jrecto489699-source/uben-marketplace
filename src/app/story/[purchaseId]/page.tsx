@@ -871,16 +871,8 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
               className="relative select-none overflow-hidden"
               style={{
                 ...containerStyle,
-                // While we're showing (or animating to) the closed
-                // cover, the container is narrower than its current
-                // CSS width during the 530ms reshape — the rounded
-                // shape + shadow would still draw a "blank page" next
-                // to the cover. Move the shadow onto the cover
-                // element itself in that state so it only ever traces
-                // the actual cover.
-                boxShadow: showCover
-                  ? "none"
-                  : "0 30px 80px -20px rgba(0,0,0,0.4), 0 12px 24px -10px rgba(0,0,0,0.2)",
+                boxShadow:
+                  "0 30px 80px -20px rgba(0,0,0,0.4), 0 12px 24px -10px rgba(0,0,0,0.2)",
                 borderRadius: 8,
                 // Transparent: pages and cover bring their own
                 // backgrounds, so any uncovered area of the container
@@ -888,35 +880,41 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
                 // narrow-down) doesn't flash white.
                 background: "transparent",
                 transformStyle: "preserve-3d",
-                // Directional transition: smooth 450ms (with 80ms
-                // beat) when leaving the cover view — gives the
-                // cover-open its growth-into-spread feel. INSTANT
-                // when entering the cover view, so the moment the
-                // cover-close flip lands the container snaps to
-                // PAGE_W and there's no 530ms blank-page area next
-                // to the cover.
-                transition: (showCover && !isFlipping)
-                  ? "none"
-                  : "width 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms, height 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms",
+                transition:
+                  "width 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms, height 450ms cubic-bezier(0.32, 0.72, 0, 1) 80ms",
               }}
             >
+              {/* GHOST PAGE — transparent rectangle on the LEFT during
+                  the cover view, outlined with a thin border so the
+                  area reads as a defined "page slot" rather than a
+                  blank-white page sitting next to the cover. Sized
+                  to fill the gap between the container's left edge
+                  and the cover (right:PAGE_W). As the container
+                  narrows from spread → page width over the 450ms
+                  reshape, this gap shrinks to zero, so the ghost
+                  page implicitly fades out without its own opacity
+                  animation. */}
+              {showCover && !isFlipping && (
+                <div
+                  className="absolute top-0 bottom-0 rounded-[8px] pointer-events-none"
+                  style={{
+                    left: 0,
+                    right: PAGE_W,
+                    border: "1px solid rgba(180, 140, 100, 0.28)",
+                    background: "transparent",
+                  }}
+                />
+              )}
+
               {/* COVER closed — anchored to the right at PAGE_W so it
                   stays at its natural size as the container narrows
                   from spread (right after a cover-close flip) down to
                   page width. When the container has reached PAGE_W
-                  it perfectly fills the frame. Carries its own book-
-                  card shadow because the container's shadow is
-                  suppressed while showCover is true (so the empty
-                  left half during the 530ms reshape doesn't render
-                  as a visible blank page next to the cover). */}
+                  it perfectly fills the frame. */}
               {showCover && !isFlipping && (
                 <div
                   className="absolute top-0 bottom-0 overflow-hidden rounded-[8px]"
-                  style={{
-                    right: 0,
-                    width: PAGE_W,
-                    boxShadow: "0 30px 80px -20px rgba(0,0,0,0.4), 0 12px 24px -10px rgba(0,0,0,0.2)",
-                  }}
+                  style={{ right: 0, width: PAGE_W }}
                 >
                   <Cover />
                 </div>
