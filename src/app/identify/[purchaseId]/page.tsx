@@ -52,49 +52,71 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
   const spots: Spot[] = product ? (LAYOUTS_BY_PRODUCT[product.id] ?? []) : [];
 
   const [activeName, setActiveName]   = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  // Cached audio URLs per animal, fetched lazily on first tap.
-  const urlCacheRef = useRef<Map<string, string>>(new Map());
+  // One preloaded HTMLAudioElement per animal — keyed by spot.name.
+  // Built on mount: we fetch every signed URL in parallel and stand
+  // up an Audio object for each with preload="auto", so by the time
+  // the user taps anything the browser already has the bytes (or is
+  // most of the way through fetching them). Taps then just call
+  // play() synchronously inside the gesture — no fetch on the
+  // critical path, no decode-on-tap delay.
+  const audioMapRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   useEffect(() => {
-    audioRef.current = new Audio();
-    audioRef.current.preload = "auto";
-    const a = audioRef.current;
-    return () => { try { a.pause(); } catch {} };
-  }, []);
+    if (!purchase?.id || !product) return;
+    const layout = LAYOUTS_BY_PRODUCT[product.id] ?? [];
+    if (!layout.length) return;
+    let cancelled = false;
 
-  async function playAnimal(spot: Spot) {
-    const el = audioRef.current;
-    if (!el || !purchase) return;
-    let url = urlCacheRef.current.get(spot.name);
-    if (!url) {
-      try {
-        const r = await fetch(
-          `/api/identify/${purchase.id}/asset?animal=${encodeURIComponent(spot.name)}&type=audio`,
-          { credentials: "include", cache: "no-store" }
-        );
-        const d = (await r.json()) as { url: string | null };
-        if (d.url) {
-          url = d.url;
-          urlCacheRef.current.set(spot.name, url);
-        }
-      } catch {}
-    }
-    if (!url) {
-      // No sound uploaded yet — flash the active state so the tap
-      // feels acknowledged, but stay silent.
+    Promise.all(
+      layout.map((s) =>
+        fetch(`/api/identify/${purchase.id}/asset?animal=${encodeURIComponent(s.name)}&type=audio`, {
+          credentials: "include", cache: "no-store",
+        })
+          .then((r) => (r.ok ? r.json() : { url: null }))
+          .then((d: { url: string | null }) => ({ name: s.name, url: d.url }))
+          .catch(() => ({ name: s.name, url: null }))
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      results.forEach(({ name, url }) => {
+        if (!url) return;
+        const a = new Audio();
+        a.preload = "auto";
+        a.src = url;
+        audioMapRef.current.set(name, a);
+      });
+    });
+
+    const cleanupMap = audioMapRef.current;
+    return () => {
+      cancelled = true;
+      cleanupMap.forEach((a) => { try { a.pause(); } catch {} });
+      cleanupMap.clear();
+    };
+  }, [purchase?.id, product]);
+
+  function playAnimal(spot: Spot) {
+    const audio = audioMapRef.current.get(spot.name);
+    if (!audio) {
+      // No sound uploaded for this animal — flash the active state so
+      // the tap feels acknowledged, but stay silent.
       setActiveName(spot.name);
       setTimeout(() => setActiveName((n) => (n === spot.name ? null : n)), 400);
       return;
     }
+    // Stop any other animal that's currently mid-play so the new tap
+    // takes over cleanly.
+    audioMapRef.current.forEach((other, otherName) => {
+      if (otherName !== spot.name) {
+        try { other.pause(); other.currentTime = 0; } catch {}
+      }
+    });
     try {
-      el.pause();
-      el.currentTime = 0;
-      el.src = url;
+      audio.currentTime = 0;
       setActiveName(spot.name);
-      const p = el.play();
+      const p = audio.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
-      el.onended = () => setActiveName((n) => (n === spot.name ? null : n));
+      audio.onended = () => setActiveName((n) => (n === spot.name ? null : n));
     } catch {}
   }
 
