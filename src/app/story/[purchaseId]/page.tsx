@@ -116,6 +116,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   function unlockAudioElement(el: HTMLAudioElement | null) {
     if (!el) return;
     const prevMuted = el.muted;
+    const prevVolume = el.volume;
     const hadSrc = !!el.getAttribute("src") || !!el.src;
     const isNarrator = el === audioRef.current;
     if (isNarrator) isUnlockingRef.current = true;
@@ -132,8 +133,18 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         el.pause();
         el.currentTime = 0;
         el.removeAttribute("src");
+      } else {
+        // For the flip-sound element (no placeholder swap; we just
+        // played its own short MP3 silently), pause it so the rest
+        // of the file doesn't keep playing in the background and
+        // reset to start so the next real flip plays from frame 0.
+        try {
+          el.pause();
+          el.currentTime = 0;
+        } catch {}
       }
       el.muted = prevMuted;
+      el.volume = prevVolume;
       // Hold the unlocking flag for a short tail. The placeholder's
       // synthetic "ended" event can arrive on a slightly later tick
       // than the play() Promise's resolution — if we cleared the
@@ -146,6 +157,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     };
     try {
       el.muted = true;
+      el.volume = 0;
       if (!hadSrc) el.src = SILENT_SRC;
       const p = el.play();
       if (p && typeof p.then === "function") {
