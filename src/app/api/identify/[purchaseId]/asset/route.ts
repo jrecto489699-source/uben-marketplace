@@ -43,17 +43,24 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const filename = type === "image" ? `${animal}.png` : `${animal}.mp3`;
-  const path = `${purchase.product_id}/${filename}`;
+  // Supabase Storage is case-sensitive, so panda.mp3 and panda.MP3
+  // are different files. Windows often won't let you change just
+  // the case of an extension. Try common variants in turn — the
+  // first one that yields a signed URL wins.
+  const extensions = type === "image"
+    ? ["png", "PNG", "Png"]
+    : ["mp3", "MP3", "Mp3"];
 
-  const { data: signed, error: signedError } = await svc.storage
-    .from("identification-assets")
-    .createSignedUrl(path, SIGNED_URL_TTL);
-
-  if (signedError || !signed?.signedUrl) {
-    // Treat missing as silent / placeholder — the UI handles a null URL.
-    return NextResponse.json({ url: null }, { status: 200 });
+  for (const ext of extensions) {
+    const path = `${purchase.product_id}/${animal}.${ext}`;
+    const { data: signed } = await svc.storage
+      .from("identification-assets")
+      .createSignedUrl(path, SIGNED_URL_TTL);
+    if (signed?.signedUrl) {
+      return NextResponse.json({ url: signed.signedUrl });
+    }
   }
 
-  return NextResponse.json({ url: signed.signedUrl });
+  // Treat missing as silent / placeholder — the UI handles a null URL.
+  return NextResponse.json({ url: null }, { status: 200 });
 }
