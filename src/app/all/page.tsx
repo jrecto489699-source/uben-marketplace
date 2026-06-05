@@ -11,6 +11,7 @@ import {
   allProducts, printableProducts, classroomProducts,
   worksheetProducts, coloringProducts, storybookProducts,
   activityProducts, flashcardProducts, partyKitProducts, scratchArtProducts, puzzleProducts,
+  identificationProducts,
   type Product,
 } from "@/data/products";
 
@@ -25,6 +26,7 @@ const CATEGORY_SETS: Record<string, Product[]> = {
   "party-kits":  partyKitProducts,
   "scratch-art": scratchArtProducts,
   puzzle:        puzzleProducts,
+  identification: identificationProducts,
   classroom:     classroomProducts,
 };
 
@@ -89,6 +91,7 @@ function ProductGrid() {
     "party-kits":  "Party Kits",
     "scratch-art": "Scratch Art",
     puzzle:        "Puzzles",
+    identification: "Identification",
     classroom:     "Top Classroom Picks",
   };
   const pageTitle = searchQuery
