@@ -134,7 +134,15 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         el.removeAttribute("src");
       }
       el.muted = prevMuted;
-      if (isNarrator) isUnlockingRef.current = false;
+      // Hold the unlocking flag for a short tail. The placeholder's
+      // synthetic "ended" event can arrive on a slightly later tick
+      // than the play() Promise's resolution — if we cleared the
+      // flag synchronously here, that event would slip through to
+      // onAudioEnded → scheduleAdvance → goNext, turning the page
+      // before the real Cover.mp3 had a chance to play.
+      if (isNarrator) {
+        setTimeout(() => { isUnlockingRef.current = false; }, 250);
+      }
     };
     try {
       el.muted = true;
