@@ -6,39 +6,39 @@ import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
 import { allProducts } from "@/data/products";
 
-// Per-product tap-region layouts. Each region is in percent of the
-// product image's intrinsic dimensions, so the buttons scale with
-// the image regardless of viewport.
+// Per-product tap-point layouts. Each Spot is in percent of the
+// product image (x and y are the BUTTON CENTER, so it scales with
+// the image regardless of viewport). Position the spot just below
+// the animal's face / on the body so the button doesn't obscure
+// the artwork.
 //
 // Naming: the `name` field is the MP3 base name. Upload
-// identification-assets/{productId}/{name}.mp3 and that region
+// identification-assets/{productId}/{name}.mp3 and that spot
 // will play it on tap.
-interface Region {
+interface Spot {
   name: string;
   label: string;
-  left: number;   // %
-  top: number;    // %
-  width: number;  // %
-  height: number; // %
+  x: number; // % — button center horizontal
+  y: number; // % — button center vertical
 }
 
-// Product 41 — Animal Identification. 3x3 grid laid out as:
-//   Lion / Elephant / Giraffe
-//   Panda / Zebra / Deer
-//   Fox / Rabbit / Koala
-const LAYOUT_41: Region[] = [
-  { name: "lion",     label: "Lion",     left: 0,    top: 0,    width: 33.34, height: 33.34 },
-  { name: "elephant", label: "Elephant", left: 33.33, top: 0,    width: 33.34, height: 33.34 },
-  { name: "giraffe",  label: "Giraffe",  left: 66.66, top: 0,    width: 33.34, height: 33.34 },
-  { name: "panda",    label: "Panda",    left: 0,    top: 33.33, width: 33.34, height: 33.34 },
-  { name: "zebra",    label: "Zebra",    left: 33.33, top: 33.33, width: 33.34, height: 33.34 },
-  { name: "deer",     label: "Deer",     left: 66.66, top: 33.33, width: 33.34, height: 33.34 },
-  { name: "fox",      label: "Fox",      left: 0,    top: 66.66, width: 33.34, height: 33.34 },
-  { name: "rabbit",   label: "Rabbit",   left: 33.33, top: 66.66, width: 33.34, height: 33.34 },
-  { name: "koala",    label: "Koala",    left: 66.66, top: 66.66, width: 33.34, height: 33.34 },
+// Product 41 — Animal Identification. 3x3 grid of nine animals.
+// Lion / Elephant / Giraffe across the top, Panda / Zebra / Deer
+// across the middle, Fox / Rabbit / Koala across the bottom. Each
+// spot sits roughly on the animal's body, below its face.
+const LAYOUT_41: Spot[] = [
+  { name: "lion",     label: "Lion",     x: 17, y: 30 },
+  { name: "elephant", label: "Elephant", x: 50, y: 30 },
+  { name: "giraffe",  label: "Giraffe",  x: 83, y: 30 },
+  { name: "panda",    label: "Panda",    x: 17, y: 60 },
+  { name: "zebra",    label: "Zebra",    x: 50, y: 60 },
+  { name: "deer",     label: "Deer",     x: 83, y: 60 },
+  { name: "fox",      label: "Fox",      x: 17, y: 90 },
+  { name: "rabbit",   label: "Rabbit",   x: 50, y: 90 },
+  { name: "koala",    label: "Koala",    x: 83, y: 90 },
 ];
 
-const LAYOUTS_BY_PRODUCT: Record<number, Region[]> = {
+const LAYOUTS_BY_PRODUCT: Record<number, Spot[]> = {
   41: LAYOUT_41,
 };
 
@@ -49,7 +49,7 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
   const purchase = purchases.find((p) => p.id === purchaseId);
   const product  = purchase ? allProducts.find((p) => p.id === purchase.product_id) : null;
 
-  const regions: Region[] = product ? (LAYOUTS_BY_PRODUCT[product.id] ?? []) : [];
+  const spots: Spot[] = product ? (LAYOUTS_BY_PRODUCT[product.id] ?? []) : [];
 
   const [activeName, setActiveName]   = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -63,38 +63,38 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
     return () => { try { a.pause(); } catch {} };
   }, []);
 
-  async function playAnimal(region: Region) {
+  async function playAnimal(spot: Spot) {
     const el = audioRef.current;
     if (!el || !purchase) return;
-    let url = urlCacheRef.current.get(region.name);
+    let url = urlCacheRef.current.get(spot.name);
     if (!url) {
       try {
         const r = await fetch(
-          `/api/identify/${purchase.id}/asset?animal=${encodeURIComponent(region.name)}&type=audio`,
+          `/api/identify/${purchase.id}/asset?animal=${encodeURIComponent(spot.name)}&type=audio`,
           { credentials: "include", cache: "no-store" }
         );
         const d = (await r.json()) as { url: string | null };
         if (d.url) {
           url = d.url;
-          urlCacheRef.current.set(region.name, url);
+          urlCacheRef.current.set(spot.name, url);
         }
       } catch {}
     }
     if (!url) {
-      // No sound uploaded yet for this animal — flash the active
-      // state briefly so the tap feels acknowledged, but stay silent.
-      setActiveName(region.name);
-      setTimeout(() => setActiveName((n) => (n === region.name ? null : n)), 400);
+      // No sound uploaded yet — flash the active state so the tap
+      // feels acknowledged, but stay silent.
+      setActiveName(spot.name);
+      setTimeout(() => setActiveName((n) => (n === spot.name ? null : n)), 400);
       return;
     }
     try {
       el.pause();
       el.currentTime = 0;
       el.src = url;
-      setActiveName(region.name);
+      setActiveName(spot.name);
       const p = el.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
-      el.onended = () => setActiveName((n) => (n === region.name ? null : n));
+      el.onended = () => setActiveName((n) => (n === spot.name ? null : n));
     } catch {}
   }
 
@@ -143,7 +143,7 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
             Each animal plays its own sound.
           </p>
 
-          {regions.length === 0 ? (
+          {spots.length === 0 ? (
             <div className="bg-white rounded-2xl border border-border-muted p-8 text-center">
               <p className="text-sm text-ink-muted">
                 This pack&apos;s tap layout isn&apos;t set up yet.
@@ -158,56 +158,51 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
                 className="block w-full h-auto select-none pointer-events-none"
                 draggable={false}
               />
-              {/* Tap regions */}
-              {regions.map((r) => {
-                const isActive = activeName === r.name;
+              {/* Small circular speaker buttons placed over each animal */}
+              {spots.map((s) => {
+                const isActive = activeName === s.name;
                 return (
                   <button
-                    key={r.name}
-                    onClick={() => playAnimal(r)}
-                    className={`absolute rounded-2xl transition-all duration-200 focus:outline-none ${
+                    key={s.name}
+                    onClick={() => playAnimal(s)}
+                    className={`absolute flex items-center justify-center rounded-full shadow-lg ring-2 transition-all duration-200 focus:outline-none focus:ring-4 ${
                       isActive
-                        ? "bg-[#0F766E]/15 ring-4 ring-[#0F766E]/60 scale-[1.02]"
-                        : "bg-transparent hover:bg-white/15 focus:ring-4 focus:ring-[#0F766E]/40"
+                        ? "bg-[#0F766E] text-white ring-white scale-110 focus:ring-[#0F766E]/40"
+                        : "bg-white text-[#0F766E] ring-[#0F766E]/30 hover:bg-[#0F766E] hover:text-white hover:scale-110 active:scale-95 focus:ring-[#0F766E]/30"
                     }`}
                     style={{
-                      left:   `${r.left}%`,
-                      top:    `${r.top}%`,
-                      width:  `${r.width}%`,
-                      height: `${r.height}%`,
+                      left: `${s.x}%`,
+                      top:  `${s.y}%`,
+                      width: 44,
+                      height: 44,
+                      transform: "translate(-50%, -50%)",
                     }}
-                    aria-label={`Play ${r.label} sound`}
+                    aria-label={`Play ${s.label} sound`}
                   >
-                    <span className="sr-only">{r.label}</span>
-                    {isActive && (
-                      <span
-                        className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#0F766E] text-white text-[10px] font-semibold"
-                      >
-                        <Volume2 size={10} className="animate-pulse" />
-                        {r.label}
-                      </span>
-                    )}
+                    <Volume2 size={20} className={isActive ? "animate-pulse" : ""} />
+                    <span className="sr-only">{s.label}</span>
                   </button>
                 );
               })}
             </div>
           )}
 
-          {/* Fallback list of buttons under the image — accessible row
-              of named buttons, useful on small screens or if the
-              picture overlay regions are hard to tap precisely. */}
-          {regions.length > 0 && (
+          {/* Backup row of named pills under the picture — useful as
+              a visible inventory of what's in the pack and as a fall-
+              back on tiny screens where the circle buttons sit on top
+              of each other. */}
+          {spots.length > 0 && (
             <div className="mt-6 sm:mt-8">
               <p className="text-xs text-ink-muted uppercase tracking-wider font-semibold mb-3 text-center">
                 Or pick one
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-3">
-                {regions.map((r) => {
-                  const isActive = activeName === r.name;
+                {spots.map((s) => {
+                  const isActive = activeName === s.name;
                   return (
                     <button
-                      key={r.name}
-                      onClick={() => playAnimal(r)}
+                      key={s.name}
+                      onClick={() => playAnimal(s)}
                       className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors ${
                         isActive
                           ? "bg-[#0F766E] text-white"
@@ -215,7 +210,7 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
                       }`}
                     >
                       <Volume2 size={12} className={isActive ? "animate-pulse" : ""} />
-                      {r.label}
+                      {s.label}
                     </button>
                   );
                 })}
