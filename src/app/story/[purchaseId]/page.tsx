@@ -110,26 +110,35 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     if (!el) return;
     const prevMuted = el.muted;
     const hadSrc = !!el.getAttribute("src") || !!el.src;
+    // Cleanup runs after the muted unlock play resolves (or fails).
+    // CRITICAL: by the time it runs, the fetch effect may have already
+    // assigned the real audio URL and started playback. Pausing /
+    // resetting / clearing src unconditionally would interrupt that
+    // real audio — exactly the "Cover.mp3 is late" bug. So we ONLY
+    // touch the element here if our placeholder src is still in
+    // place. Otherwise we just restore muted and leave the real
+    // playback alone.
+    const cleanup = () => {
+      const stillPlaceholder =
+        !hadSrc && (el.src === SILENT_SRC || el.currentSrc === SILENT_SRC);
+      if (stillPlaceholder) {
+        el.pause();
+        el.currentTime = 0;
+        el.removeAttribute("src");
+      }
+      el.muted = prevMuted;
+    };
     try {
       el.muted = true;
       if (!hadSrc) el.src = SILENT_SRC;
       const p = el.play();
       if (p && typeof p.then === "function") {
-        p.then(() => {
-          el.pause();
-          el.currentTime = 0;
-          el.muted = prevMuted;
-          if (!hadSrc) el.removeAttribute("src");
-        }).catch(() => {
-          el.muted = prevMuted;
-          if (!hadSrc) el.removeAttribute("src");
-        });
+        p.then(cleanup).catch(cleanup);
+      } else {
+        cleanup();
       }
     } catch {
-      el.muted = prevMuted;
-      if (!hadSrc) {
-        try { el.removeAttribute("src"); } catch {}
-      }
+      cleanup();
     }
   }
 
