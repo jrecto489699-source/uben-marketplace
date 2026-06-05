@@ -106,15 +106,22 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // tiny silent WAV data URI just for the unlock, then clear it so
   // the real fetch can take over.
   const SILENT_SRC = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA=";
+  // True while we're in the middle of a muted unlock play() on the
+  // narrator element. The silent WAV used for the unlock is 0
+  // duration, so the browser fires `ended` immediately — and that
+  // event was reaching onAudioEnded → scheduleAdvance → goNext,
+  // turning the page before the real Cover.mp3 had loaded.
+  // While this is set, the audio event handlers no-op.
+  const isUnlockingRef = useRef(false);
   function unlockAudioElement(el: HTMLAudioElement | null) {
     if (!el) return;
     const prevMuted = el.muted;
     const hadSrc = !!el.getAttribute("src") || !!el.src;
+    const isNarrator = el === audioRef.current;
+    if (isNarrator) isUnlockingRef.current = true;
     // Cleanup runs after the muted unlock play resolves (or fails).
     // CRITICAL: by the time it runs, the fetch effect may have already
-    // assigned the real audio URL and started playback. Pausing /
-    // resetting / clearing src unconditionally would interrupt that
-    // real audio — exactly the "Cover.mp3 is late" bug. So we ONLY
+    // assigned the real audio URL and started playback. So we ONLY
     // touch the element here if our placeholder src is still in
     // place. Otherwise we just restore muted and leave the real
     // playback alone.
@@ -127,6 +134,7 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         el.removeAttribute("src");
       }
       el.muted = prevMuted;
+      if (isNarrator) isUnlockingRef.current = false;
     };
     try {
       el.muted = true;
@@ -595,6 +603,9 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   }
 
   function onAudioEnded() {
+    // Ignore the synthetic ended event fired by the zero-duration
+    // silent WAV used to unlock the element on iOS.
+    if (isUnlockingRef.current) return;
     if (audioQueueIndex < audioQueue.length - 1) {
       setAudioQueueIndex(audioQueueIndex + 1);
       return;
@@ -1249,8 +1260,8 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
         <audio
           ref={audioRef}
           onEnded={onAudioEnded}
-          onPause={() => setAudioPlaying(false)}
-          onPlay={() => setAudioPlaying(true)}
+          onPause={() => { if (!isUnlockingRef.current) setAudioPlaying(false); }}
+          onPlay={() => { if (!isUnlockingRef.current) setAudioPlaying(true); }}
           preload="auto"
           style={{ display: "none" }}
         />
