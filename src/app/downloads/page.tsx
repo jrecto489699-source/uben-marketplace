@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, ShoppingBag, Download, Palette, ChevronDown, Sparkles, Puzzle, BookOpen } from "lucide-react";
+import { FileText, ShoppingBag, Download, Palette, ChevronDown, Sparkles, Puzzle, BookOpen, Volume2 } from "lucide-react";
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -205,6 +205,15 @@ export default function DownloadsPage() {
                                   >
                                     <BookOpen size={12} strokeWidth={1.75} />
                                     Story
+                                  </a>
+                                )}
+                                {cat === "Identification" && prod?.instantDownload && (
+                                  <a
+                                    href={`/identify/${purchase.id}`}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#0F766E] text-[#0F766E] text-xs font-medium hover:bg-[#0F766E] hover:text-white transition-colors duration-200 whitespace-nowrap justify-center"
+                                  >
+                                    <Volume2 size={12} strokeWidth={1.75} />
+                                    Identify
                                   </a>
                                 )}
                               </div>
