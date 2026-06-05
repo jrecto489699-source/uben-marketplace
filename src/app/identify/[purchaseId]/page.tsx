@@ -1,24 +1,46 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Volume2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Volume2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
 import { allProducts } from "@/data/products";
 
-interface AnimalCard {
-  name: string;          // base filename, e.g. "dog"
-  label: string;         // human display, e.g. "Dog"
-  imageUrl: string | null;
-  audioUrl: string | null;
+// Per-product tap-region layouts. Each region is in percent of the
+// product image's intrinsic dimensions, so the buttons scale with
+// the image regardless of viewport.
+//
+// Naming: the `name` field is the MP3 base name. Upload
+// identification-assets/{productId}/{name}.mp3 and that region
+// will play it on tap.
+interface Region {
+  name: string;
+  label: string;
+  left: number;   // %
+  top: number;    // %
+  width: number;  // %
+  height: number; // %
 }
 
-function titleCase(s: string): string {
-  return s
-    .split(/[-_ ]+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
-}
+// Product 41 — Animal Identification. 3x3 grid laid out as:
+//   Lion / Elephant / Giraffe
+//   Panda / Zebra / Deer
+//   Fox / Rabbit / Koala
+const LAYOUT_41: Region[] = [
+  { name: "lion",     label: "Lion",     left: 0,    top: 0,    width: 33.34, height: 33.34 },
+  { name: "elephant", label: "Elephant", left: 33.33, top: 0,    width: 33.34, height: 33.34 },
+  { name: "giraffe",  label: "Giraffe",  left: 66.66, top: 0,    width: 33.34, height: 33.34 },
+  { name: "panda",    label: "Panda",    left: 0,    top: 33.33, width: 33.34, height: 33.34 },
+  { name: "zebra",    label: "Zebra",    left: 33.33, top: 33.33, width: 33.34, height: 33.34 },
+  { name: "deer",     label: "Deer",     left: 66.66, top: 33.33, width: 33.34, height: 33.34 },
+  { name: "fox",      label: "Fox",      left: 0,    top: 66.66, width: 33.34, height: 33.34 },
+  { name: "rabbit",   label: "Rabbit",   left: 33.33, top: 66.66, width: 33.34, height: 33.34 },
+  { name: "koala",    label: "Koala",    left: 66.66, top: 66.66, width: 33.34, height: 33.34 },
+];
+
+const LAYOUTS_BY_PRODUCT: Record<number, Region[]> = {
+  41: LAYOUT_41,
+};
 
 export default function IdentifyPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
@@ -27,13 +49,13 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
   const purchase = purchases.find((p) => p.id === purchaseId);
   const product  = purchase ? allProducts.find((p) => p.id === purchase.product_id) : null;
 
-  const [animals, setAnimals]   = useState<AnimalCard[]>([]);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [pageError,   setPageError]   = useState<string | null>(null);
-  const [activeName,  setActiveName]  = useState<string | null>(null);
+  const regions: Region[] = product ? (LAYOUTS_BY_PRODUCT[product.id] ?? []) : [];
 
-  // One shared audio element so a new tap interrupts the previous play.
+  const [activeName, setActiveName]   = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Cached audio URLs per animal, fetched lazily on first tap.
+  const urlCacheRef = useRef<Map<string, string>>(new Map());
+
   useEffect(() => {
     audioRef.current = new Audio();
     audioRef.current.preload = "auto";
@@ -41,87 +63,38 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
     return () => { try { a.pause(); } catch {} };
   }, []);
 
-  // Load the list of animals, then pre-fetch the signed image URLs so
-  // the grid can render without N round-trips. Audio URLs are fetched
-  // on demand (one per tap) to keep the initial load lean.
-  useEffect(() => {
-    if (!purchase?.id) return;
-    let cancelled = false;
-    async function load() {
-      setPageLoading(true); setPageError(null);
-      try {
-        const res = await fetch(`/api/identify/${purchase!.id}/animals`, { credentials: "include", cache: "no-store" });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          if (cancelled) return;
-          setPageError(body.error ?? "Couldn't load this pack yet.");
-          setPageLoading(false);
-          return;
-        }
-        const { animals: names } = (await res.json()) as { animals: string[] };
-        if (cancelled) return;
-        if (!names.length) {
-          setPageError("No animals uploaded for this pack yet.");
-          setPageLoading(false);
-          return;
-        }
-        // Fetch image URLs in parallel
-        const imageUrls = await Promise.all(
-          names.map((n) =>
-            fetch(`/api/identify/${purchase!.id}/asset?animal=${encodeURIComponent(n)}&type=image`, {
-              credentials: "include", cache: "no-store",
-            })
-              .then((r) => r.ok ? r.json() : { url: null })
-              .then((d: { url: string | null }) => d.url)
-              .catch(() => null)
-          )
-        );
-        if (cancelled) return;
-        setAnimals(
-          names.map((n, i) => ({
-            name: n,
-            label: titleCase(n),
-            imageUrl: imageUrls[i],
-            audioUrl: null,
-          }))
-        );
-        setPageLoading(false);
-      } catch (e) {
-        if (cancelled) return;
-        setPageError(e instanceof Error ? e.message : "Failed to load");
-        setPageLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [purchase?.id]);
-
-  async function playAnimal(card: AnimalCard) {
+  async function playAnimal(region: Region) {
     const el = audioRef.current;
     if (!el || !purchase) return;
-    // Resolve audio URL lazily and cache on the card so re-taps don't
-    // re-fetch.
-    let url = card.audioUrl;
+    let url = urlCacheRef.current.get(region.name);
     if (!url) {
       try {
         const r = await fetch(
-          `/api/identify/${purchase.id}/asset?animal=${encodeURIComponent(card.name)}&type=audio`,
+          `/api/identify/${purchase.id}/asset?animal=${encodeURIComponent(region.name)}&type=audio`,
           { credentials: "include", cache: "no-store" }
         );
         const d = (await r.json()) as { url: string | null };
-        url = d.url;
-        setAnimals((prev) => prev.map((a) => a.name === card.name ? { ...a, audioUrl: url } : a));
+        if (d.url) {
+          url = d.url;
+          urlCacheRef.current.set(region.name, url);
+        }
       } catch {}
     }
-    if (!url) return;
+    if (!url) {
+      // No sound uploaded yet for this animal — flash the active
+      // state briefly so the tap feels acknowledged, but stay silent.
+      setActiveName(region.name);
+      setTimeout(() => setActiveName((n) => (n === region.name ? null : n)), 400);
+      return;
+    }
     try {
       el.pause();
       el.currentTime = 0;
       el.src = url;
-      setActiveName(card.name);
+      setActiveName(region.name);
       const p = el.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
-      el.onended = () => setActiveName((n) => (n === card.name ? null : n));
+      el.onended = () => setActiveName((n) => (n === region.name ? null : n));
     } catch {}
   }
 
@@ -162,74 +135,91 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
           <p className="text-sm font-medium text-ink truncate flex-1">{product.title}</p>
         </div>
 
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <h1 className="font-serif text-2xl md:text-3xl font-semibold text-ink mb-2">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+          <h1 className="font-serif text-2xl md:text-3xl font-semibold text-ink mb-1 text-center">
             Tap an animal to hear it
           </h1>
-          <p className="text-sm text-ink-muted mb-8">
-            Each card plays its sound when you tap. Works great on a tablet.
+          <p className="text-sm text-ink-muted text-center mb-6 sm:mb-8">
+            Each animal plays its own sound.
           </p>
 
-          {pageLoading && (
-            <div className="flex items-center justify-center py-24">
-              <div className="text-center">
-                <div className="w-10 h-10 border-2 border-ink border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-sm text-ink-muted">Loading animals…</p>
-              </div>
+          {regions.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-border-muted p-8 text-center">
+              <p className="text-sm text-ink-muted">
+                This pack&apos;s tap layout isn&apos;t set up yet.
+              </p>
             </div>
-          )}
-
-          {!pageLoading && pageError && (
-            <div className="flex items-center justify-center py-24">
-              <div className="text-center max-w-sm">
-                <AlertCircle size={40} strokeWidth={1.5} className="text-ink-muted mx-auto mb-3" />
-                <p className="font-serif text-xl text-ink mb-2">Not ready yet</p>
-                <p className="text-sm text-ink-muted">{pageError}</p>
-              </div>
-            </div>
-          )}
-
-          {!pageLoading && !pageError && animals.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">
-              {animals.map((card) => {
-                const isActive = activeName === card.name;
+          ) : (
+            <div className="relative w-full max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-lg bg-white border border-border-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={product.image}
+                alt={product.title}
+                className="block w-full h-auto select-none pointer-events-none"
+                draggable={false}
+              />
+              {/* Tap regions */}
+              {regions.map((r) => {
+                const isActive = activeName === r.name;
                 return (
                   <button
-                    key={card.name}
-                    onClick={() => playAnimal(card)}
-                    className={`group relative aspect-square rounded-2xl overflow-hidden bg-white border-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4 ${
+                    key={r.name}
+                    onClick={() => playAnimal(r)}
+                    className={`absolute rounded-2xl transition-all duration-200 focus:outline-none ${
                       isActive
-                        ? "border-[#0F766E] ring-2 ring-[#0F766E]/30 shadow-lg"
-                        : "border-border-muted hover:border-[#0F766E]/40 hover:shadow-md focus:ring-[#0F766E]/30"
+                        ? "bg-[#0F766E]/15 ring-4 ring-[#0F766E]/60 scale-[1.02]"
+                        : "bg-transparent hover:bg-white/15 focus:ring-4 focus:ring-[#0F766E]/40"
                     }`}
-                    aria-label={`Play ${card.label} sound`}
+                    style={{
+                      left:   `${r.left}%`,
+                      top:    `${r.top}%`,
+                      width:  `${r.width}%`,
+                      height: `${r.height}%`,
+                    }}
+                    aria-label={`Play ${r.label} sound`}
                   >
-                    {card.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={card.imageUrl}
-                        alt={card.label}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        draggable={false}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-card-hover">
-                        <p className="text-xs text-ink-muted">Image missing</p>
-                      </div>
+                    <span className="sr-only">{r.label}</span>
+                    {isActive && (
+                      <span
+                        className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#0F766E] text-white text-[10px] font-semibold"
+                      >
+                        <Volume2 size={10} className="animate-pulse" />
+                        {r.label}
+                      </span>
                     )}
-                    {/* Label strip at bottom */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm px-3 py-2 border-t border-border-muted">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-ink truncate">{card.label}</span>
-                        <Volume2
-                          size={14}
-                          className={isActive ? "text-[#0F766E] animate-pulse" : "text-ink-muted group-hover:text-[#0F766E]"}
-                        />
-                      </div>
-                    </div>
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {/* Fallback list of buttons under the image — accessible row
+              of named buttons, useful on small screens or if the
+              picture overlay regions are hard to tap precisely. */}
+          {regions.length > 0 && (
+            <div className="mt-6 sm:mt-8">
+              <p className="text-xs text-ink-muted uppercase tracking-wider font-semibold mb-3 text-center">
+                Or pick one
+              </p>
+              <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-3">
+                {regions.map((r) => {
+                  const isActive = activeName === r.name;
+                  return (
+                    <button
+                      key={r.name}
+                      onClick={() => playAnimal(r)}
+                      className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-[#0F766E] text-white"
+                          : "bg-white border border-border-muted text-ink hover:bg-card-hover"
+                      }`}
+                    >
+                      <Volume2 size={12} className={isActive ? "animate-pulse" : ""} />
+                      {r.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
