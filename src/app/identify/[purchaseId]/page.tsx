@@ -54,36 +54,36 @@ const LAYOUT_41: Spot[] = [
 // identification-assets/42/a.mp3, b.mp3, … z.mp3 to pair sounds.
 const LAYOUT_42: Spot[] = [
   // Row 1 — Apple, Balloon, Cake, Dog, Egg, Flamingo
-  { name: "a", label: "A", x: 16, y: 3 },
-  { name: "b", label: "B", x: 32, y: 3 },
-  { name: "c", label: "C", x: 48, y: 3 },
-  { name: "d", label: "D", x: 64, y: 3 },
-  { name: "e", label: "E", x: 80, y: 3 },
-  { name: "f", label: "F", x: 96, y: 3 },
+  { name: "a", label: "A", x: 16, y: 2 },
+  { name: "b", label: "B", x: 32, y: 2 },
+  { name: "c", label: "C", x: 48, y: 2 },
+  { name: "d", label: "D", x: 64, y: 2 },
+  { name: "e", label: "E", x: 80, y: 2 },
+  { name: "f", label: "F", x: 96, y: 2 },
   // Row 2 — Grapes, House, Ice cream, Jellyfish, Kite, Lemon
-  { name: "g", label: "G", x: 16, y: 22 },
-  { name: "h", label: "H", x: 32, y: 22 },
-  { name: "i", label: "I", x: 48, y: 22 },
-  { name: "j", label: "J", x: 64, y: 22 },
-  { name: "k", label: "K", x: 80, y: 22 },
-  { name: "l", label: "L", x: 96, y: 22 },
+  { name: "g", label: "G", x: 16, y: 21 },
+  { name: "h", label: "H", x: 32, y: 21 },
+  { name: "i", label: "I", x: 48, y: 21 },
+  { name: "j", label: "J", x: 64, y: 21 },
+  { name: "k", label: "K", x: 80, y: 21 },
+  { name: "l", label: "L", x: 96, y: 21 },
   // Row 3 — Mouse, Nose, Orange, Pig, Queen, Rabbit
-  { name: "m", label: "M", x: 16, y: 44 },
-  { name: "n", label: "N", x: 32, y: 44 },
-  { name: "o", label: "O", x: 48, y: 44 },
-  { name: "p", label: "P", x: 64, y: 44 },
-  { name: "q", label: "Q", x: 80, y: 44 },
-  { name: "r", label: "R", x: 96, y: 44 },
+  { name: "m", label: "M", x: 16, y: 43 },
+  { name: "n", label: "N", x: 32, y: 43 },
+  { name: "o", label: "O", x: 48, y: 43 },
+  { name: "p", label: "P", x: 64, y: 43 },
+  { name: "q", label: "Q", x: 80, y: 43 },
+  { name: "r", label: "R", x: 96, y: 43 },
   // Row 4 — Sun, Tomato, Umbrella, Violin, Wizard, Xylophone
-  { name: "s", label: "S", x: 16, y: 65 },
-  { name: "t", label: "T", x: 32, y: 65 },
-  { name: "u", label: "U", x: 48, y: 65 },
-  { name: "v", label: "V", x: 64, y: 65 },
-  { name: "w", label: "W", x: 80, y: 65 },
-  { name: "x", label: "X", x: 96, y: 65 },
+  { name: "s", label: "S", x: 16, y: 64 },
+  { name: "t", label: "T", x: 32, y: 64 },
+  { name: "u", label: "U", x: 48, y: 64 },
+  { name: "v", label: "V", x: 64, y: 64 },
+  { name: "w", label: "W", x: 80, y: 64 },
+  { name: "x", label: "X", x: 96, y: 64 },
   // Row 5 — Yo-yo, Zebra
-  { name: "y", label: "Y", x: 16, y: 85 },
-  { name: "z", label: "Z", x: 32, y: 85 },
+  { name: "y", label: "Y", x: 16, y: 84 },
+  { name: "z", label: "Z", x: 32, y: 84 },
 ];
 
 const LAYOUTS_BY_PRODUCT: Record<number, Spot[]> = {
@@ -103,8 +103,8 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
   // corner-positioned speaker buttons are shrunk further to keep
   // them unobtrusive. Animals stay at 28 — the body of each
   // animal swallows that size comfortably.
-  const buttonPx = product?.id === 42 ? 22 : 28;
-  const iconPx   = product?.id === 42 ? 11 : 14;
+  const buttonPx = product?.id === 42 ? 28 : 28;
+  const iconPx   = product?.id === 42 ? 14 : 14;
 
   const [activeName, setActiveName]   = useState<string | null>(null);
   // One preloaded HTMLAudioElement per animal — keyed by spot.name.
