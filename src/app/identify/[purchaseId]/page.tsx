@@ -44,24 +44,39 @@ const LAYOUT_41: Spot[] = [
 // label at the bottom — all important details. The speaker button
 // sits in the TOP-RIGHT CORNER of each card where there's dead
 // space, so it doesn't cover anything important.
+//
+// The image has white margins around the grid; using literal 0–100%
+// of the IMAGE put corner icons on top of the gaps between cards
+// instead of inside the cards themselves. These offsets carve out
+// the grid as it actually appears in the artwork.
+//
 // Each spot's `name` is the lowercase letter — upload
 // identification-assets/42/a.mp3, b.mp3, … z.mp3 to pair sounds.
 const LAYOUT_42: Spot[] = (() => {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const cols = 6;
   const rows = 5;
-  const cardW = 100 / cols;
-  const cardH = 100 / rows;
+  // Grid bounds in % of the image. Tuned to the actual artwork —
+  // the grid starts ~1.5% from the left/top and is inset on the
+  // right/bottom too (Y / Z row has empty cells, but the grid as a
+  // whole still ends a bit before the image edge).
+  const gridLeft = 1.5;
+  const gridTop  = 2;
+  const gridW    = 97;
+  const gridH    = 90;
+  const cardW    = gridW / cols;
+  const cardH    = gridH / rows;
   return letters.map((L, idx) => {
     const col = idx % cols;
     const row = Math.floor(idx / cols);
     return {
       name:  L.toLowerCase(),
       label: L,
-      // Top-right of each card (85% across, 15% down) — sits above
-      // the illustration in the corner of the coloured frame.
-      x: col * cardW + cardW * 0.85,
-      y: row * cardH + cardH * 0.15,
+      // 80% across the card, 22% down — comfortably inside the
+      // coloured frame on the top-right, away from card borders /
+      // inter-card gaps, and above the illustration.
+      x: gridLeft + col * cardW + cardW * 0.80,
+      y: gridTop  + row * cardH + cardH * 0.22,
     };
   });
 })();
