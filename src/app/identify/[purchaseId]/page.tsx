@@ -39,24 +39,29 @@ const LAYOUT_41: Spot[] = [
 ];
 
 // Product 42 — Alphabet Chart. 26 letter cards in a 6-column grid
-// (rows of 6 for A–X, then Y/Z alone on the final row). Spots sit
-// just below each card's letter so the button doesn't cover the
-// big letter character or the word label.
+// (rows of 6 for A–X, then Y/Z alone on the final row). Each card
+// has a big letter at the top, a centred illustration, and a word
+// label at the bottom — all important details. The speaker button
+// sits in the TOP-RIGHT CORNER of each card where there's dead
+// space, so it doesn't cover anything important.
 // Each spot's `name` is the lowercase letter — upload
 // identification-assets/42/a.mp3, b.mp3, … z.mp3 to pair sounds.
 const LAYOUT_42: Spot[] = (() => {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const cols = 6;
-  const colCenters = [8.33, 25, 41.67, 58.33, 75, 91.67];
-  const rowCenters = [12, 30, 48, 66, 84];
+  const rows = 5;
+  const cardW = 100 / cols;
+  const cardH = 100 / rows;
   return letters.map((L, idx) => {
-    const row = Math.floor(idx / cols);
     const col = idx % cols;
+    const row = Math.floor(idx / cols);
     return {
       name:  L.toLowerCase(),
       label: L,
-      x: colCenters[col],
-      y: rowCenters[row],
+      // Top-right of each card (85% across, 15% down) — sits above
+      // the illustration in the corner of the coloured frame.
+      x: col * cardW + cardW * 0.85,
+      y: row * cardH + cardH * 0.15,
     };
   });
 })();
@@ -74,6 +79,12 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
   const product  = purchase ? allProducts.find((p) => p.id === purchase.product_id) : null;
 
   const spots: Spot[] = product ? (LAYOUTS_BY_PRODUCT[product.id] ?? []) : [];
+  // Alphabet's cards are denser than the 3x3 animal grid, so the
+  // corner-positioned speaker buttons are shrunk further to keep
+  // them unobtrusive. Animals stay at 28 — the body of each
+  // animal swallows that size comfortably.
+  const buttonPx = product?.id === 42 ? 22 : 28;
+  const iconPx   = product?.id === 42 ? 11 : 14;
 
   const [activeName, setActiveName]   = useState<string | null>(null);
   // One preloaded HTMLAudioElement per animal — keyed by spot.name.
@@ -222,13 +233,13 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
                     style={{
                       left: `${s.x}%`,
                       top:  `${s.y}%`,
-                      width: 28,
-                      height: 28,
+                      width: buttonPx,
+                      height: buttonPx,
                       transform: "translate(-50%, -50%)",
                     }}
                     aria-label={`Play ${s.label} sound`}
                   >
-                    <Volume2 size={14} className={isActive ? "animate-pulse" : ""} />
+                    <Volume2 size={iconPx} className={isActive ? "animate-pulse" : ""} />
                     <span className="sr-only">{s.label}</span>
                   </button>
                 );
