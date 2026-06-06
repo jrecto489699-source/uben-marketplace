@@ -39,47 +39,52 @@ const LAYOUT_41: Spot[] = [
 ];
 
 // Product 42 — Alphabet Chart. 26 letter cards in a 6-column grid
-// (rows of 6 for A–X, then Y/Z alone on the final row). Each card
-// has a big letter at the top, a centred illustration, and a word
-// label at the bottom — all important details. The speaker button
-// sits in the TOP-RIGHT CORNER of each card where there's dead
-// space, so it doesn't cover anything important.
+// (rows of 6 for A–X, then Y/Z alone on the final row). Hand-
+// tuned per-card positions to match the actual artwork:
 //
-// The image has white margins around the grid; using literal 0–100%
-// of the IMAGE put corner icons on top of the gaps between cards
-// instead of inside the cards themselves. These offsets carve out
-// the grid as it actually appears in the artwork.
+//   Column x (icon centre, top-right of card):
+//     A col   B col   C col   D col   E col   F col
+//     14.5   29.5    46     62     78     94.5
+//
+//   Row y (icon centre, top of card):
+//     Row 1   Row 2   Row 3   Row 4   Row 5
+//     3.5    23      43      62      81
 //
 // Each spot's `name` is the lowercase letter — upload
 // identification-assets/42/a.mp3, b.mp3, … z.mp3 to pair sounds.
-const LAYOUT_42: Spot[] = (() => {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-  const cols = 6;
-  const rows = 5;
-  // Grid bounds in % of the image. Tuned to the actual artwork —
-  // the grid starts ~1.5% from the left/top and is inset on the
-  // right/bottom too (Y / Z row has empty cells, but the grid as a
-  // whole still ends a bit before the image edge).
-  const gridLeft = 1.5;
-  const gridTop  = 2;
-  const gridW    = 97;
-  const gridH    = 90;
-  const cardW    = gridW / cols;
-  const cardH    = gridH / rows;
-  return letters.map((L, idx) => {
-    const col = idx % cols;
-    const row = Math.floor(idx / cols);
-    return {
-      name:  L.toLowerCase(),
-      label: L,
-      // 80% across the card, 22% down — comfortably inside the
-      // coloured frame on the top-right, away from card borders /
-      // inter-card gaps, and above the illustration.
-      x: gridLeft + col * cardW + cardW * 0.80,
-      y: gridTop  + row * cardH + cardH * 0.22,
-    };
-  });
-})();
+const LAYOUT_42: Spot[] = [
+  // Row 1 — Apple, Balloon, Cake, Dog, Egg, Flamingo
+  { name: "a", label: "A", x: 14.5, y: 3.5 },
+  { name: "b", label: "B", x: 29.5, y: 3.5 },
+  { name: "c", label: "C", x: 46.0, y: 3.5 },
+  { name: "d", label: "D", x: 62.0, y: 3.5 },
+  { name: "e", label: "E", x: 78.0, y: 3.5 },
+  { name: "f", label: "F", x: 94.5, y: 3.5 },
+  // Row 2 — Grapes, House, Ice cream, Jellyfish, Kite, Lemon
+  { name: "g", label: "G", x: 14.5, y: 23 },
+  { name: "h", label: "H", x: 29.5, y: 23 },
+  { name: "i", label: "I", x: 46.0, y: 23 },
+  { name: "j", label: "J", x: 62.0, y: 23 },
+  { name: "k", label: "K", x: 78.0, y: 23 },
+  { name: "l", label: "L", x: 94.5, y: 23 },
+  // Row 3 — Mouse, Nose, Orange, Pig, Queen, Rabbit
+  { name: "m", label: "M", x: 14.5, y: 43 },
+  { name: "n", label: "N", x: 29.5, y: 43 },
+  { name: "o", label: "O", x: 46.0, y: 43 },
+  { name: "p", label: "P", x: 62.0, y: 43 },
+  { name: "q", label: "Q", x: 78.0, y: 43 },
+  { name: "r", label: "R", x: 94.5, y: 43 },
+  // Row 4 — Sun, Tomato, Umbrella, Violin, Wizard, Xylophone
+  { name: "s", label: "S", x: 14.5, y: 62 },
+  { name: "t", label: "T", x: 29.5, y: 62 },
+  { name: "u", label: "U", x: 46.0, y: 62 },
+  { name: "v", label: "V", x: 62.0, y: 62 },
+  { name: "w", label: "W", x: 78.0, y: 62 },
+  { name: "x", label: "X", x: 94.5, y: 62 },
+  // Row 5 — Yo-yo, Zebra
+  { name: "y", label: "Y", x: 14.5, y: 81 },
+  { name: "z", label: "Z", x: 29.5, y: 81 },
+];
 
 const LAYOUTS_BY_PRODUCT: Record<number, Spot[]> = {
   41: LAYOUT_41,
