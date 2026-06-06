@@ -6,57 +6,59 @@ import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
 import { allProducts } from "@/data/products";
 
-// Per-product card layouts. Each Spot is a tap-rectangle in percent
-// of the product image — the entire card IS the button, so the
-// artwork is never covered by an icon. On hover / active the card
-// shows a subtle teal ring so the tap still feels acknowledged.
+// Per-product tap-point layouts. Each Spot is in percent of the
+// product image (x and y are the BUTTON CENTER, so it scales with
+// the image regardless of viewport). Position the spot just below
+// the animal's face / on the body so the button doesn't obscure
+// the artwork.
 //
 // Naming: the `name` field is the MP3 base name. Upload
-// identification-assets/{productId}/{name}.mp3 and tapping inside
-// that rectangle will play it.
+// identification-assets/{productId}/{name}.mp3 and that spot
+// will play it on tap.
 interface Spot {
   name: string;
   label: string;
-  left: number;   // % — top-left X
-  top: number;    // % — top-left Y
-  width: number;  // %
-  height: number; // %
+  x: number; // % — button center horizontal
+  y: number; // % — button center vertical
 }
 
-// Product 41 — Animal Identification. 3x3 grid: Lion / Elephant /
-// Giraffe across the top, Panda / Zebra / Deer across the middle,
-// Fox / Rabbit / Koala across the bottom.
-const LAYOUT_41: Spot[] = (() => {
-  const names = [
-    ["lion",   "Lion"],   ["elephant","Elephant"], ["giraffe","Giraffe"],
-    ["panda",  "Panda"],  ["zebra",   "Zebra"],    ["deer",   "Deer"],
-    ["fox",    "Fox"],    ["rabbit",  "Rabbit"],   ["koala",  "Koala"],
-  ];
-  const cols = 3, rows = 3;
-  const w = 100 / cols, h = 100 / rows;
-  return names.map(([n, l], i) => ({
-    name: n, label: l,
-    left: (i % cols) * w,
-    top:  Math.floor(i / cols) * h,
-    width: w, height: h,
-  }));
-})();
+// Product 41 — Animal Identification. 3x3 grid of nine animals.
+// Lion / Elephant / Giraffe across the top, Panda / Zebra / Deer
+// across the middle, Fox / Rabbit / Koala across the bottom. Each
+// spot sits roughly on the animal's body, below its face.
+const LAYOUT_41: Spot[] = [
+  { name: "lion",     label: "Lion",     x: 17, y: 30 },
+  { name: "elephant", label: "Elephant", x: 50, y: 30 },
+  { name: "giraffe",  label: "Giraffe",  x: 83, y: 30 },
+  { name: "panda",    label: "Panda",    x: 17, y: 60 },
+  { name: "zebra",    label: "Zebra",    x: 50, y: 60 },
+  { name: "deer",     label: "Deer",     x: 83, y: 60 },
+  { name: "fox",      label: "Fox",      x: 17, y: 90 },
+  { name: "rabbit",   label: "Rabbit",   x: 50, y: 90 },
+  { name: "koala",    label: "Koala",    x: 83, y: 90 },
+];
 
-// Product 42 — Alphabet Chart. 26 letter cards laid out as 6 per
-// row (A–F, G–L, M–R, S–X) with Y and Z alone on the final row.
+// Product 42 — Alphabet Chart. 26 letter cards in a 6-column grid
+// (rows of 6 for A–X, then Y/Z alone on the final row). Spots sit
+// just below each card's letter so the button doesn't cover the
+// big letter character or the word label.
 // Each spot's `name` is the lowercase letter — upload
 // identification-assets/42/a.mp3, b.mp3, … z.mp3 to pair sounds.
 const LAYOUT_42: Spot[] = (() => {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-  const cols = 6, rows = 5;
-  const w = 100 / cols, h = 100 / rows;
-  return letters.map((L, idx) => ({
-    name:  L.toLowerCase(),
-    label: L,
-    left:  (idx % cols) * w,
-    top:   Math.floor(idx / cols) * h,
-    width: w, height: h,
-  }));
+  const cols = 6;
+  const colCenters = [8.33, 25, 41.67, 58.33, 75, 91.67];
+  const rowCenters = [12, 30, 48, 66, 84];
+  return letters.map((L, idx) => {
+    const row = Math.floor(idx / cols);
+    const col = idx % cols;
+    return {
+      name:  L.toLowerCase(),
+      label: L,
+      x: colCenters[col],
+      y: rowCenters[row],
+    };
+  });
 })();
 
 const LAYOUTS_BY_PRODUCT: Record<number, Spot[]> = {
@@ -202,29 +204,28 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
                 className="block w-full h-auto select-none pointer-events-none"
                 draggable={false}
               />
-              {/* Each card is its own tap-rectangle. Transparent by
-                  default so the artwork is fully visible; on hover a
-                  teal ring fades in, on active (playing) the ring
-                  stays + a subtle tinted overlay confirms the tap. */}
+              {/* Small circular speaker buttons placed over each animal */}
               {spots.map((s) => {
                 const isActive = activeName === s.name;
                 return (
                   <button
                     key={s.name}
                     onClick={() => playAnimal(s)}
-                    className={`absolute rounded-xl transition-all duration-150 focus:outline-none ${
+                    className={`absolute flex items-center justify-center rounded-full shadow-lg ring-2 transition-all duration-200 focus:outline-none focus:ring-4 ${
                       isActive
-                        ? "bg-[#0F766E]/10 ring-2 ring-[#0F766E]/70 shadow-inner"
-                        : "bg-transparent hover:bg-[#0F766E]/5 ring-0 hover:ring-2 hover:ring-[#0F766E]/40 focus:ring-2 focus:ring-[#0F766E]/40"
+                        ? "bg-[#0F766E] text-white ring-white scale-110 focus:ring-[#0F766E]/40"
+                        : "bg-white text-[#0F766E] ring-[#0F766E]/30 hover:bg-[#0F766E] hover:text-white hover:scale-110 active:scale-95 focus:ring-[#0F766E]/30"
                     }`}
                     style={{
-                      left:   `${s.left}%`,
-                      top:    `${s.top}%`,
-                      width:  `${s.width}%`,
-                      height: `${s.height}%`,
+                      left: `${s.x}%`,
+                      top:  `${s.y}%`,
+                      width: 44,
+                      height: 44,
+                      transform: "translate(-50%, -50%)",
                     }}
                     aria-label={`Play ${s.label} sound`}
                   >
+                    <Volume2 size={20} className={isActive ? "animate-pulse" : ""} />
                     <span className="sr-only">{s.label}</span>
                   </button>
                 );
