@@ -38,8 +38,32 @@ const LAYOUT_41: Spot[] = [
   { name: "koala",    label: "Koala",    x: 83, y: 90 },
 ];
 
+// Product 42 — Alphabet Chart. 26 letter cards in a 6-column grid
+// (rows of 6 for A–X, then Y/Z alone on the final row). Spots sit
+// just below each card's letter so the button doesn't cover the
+// big letter character or the word label.
+// Each spot's `name` is the lowercase letter — upload
+// identification-assets/42/a.mp3, b.mp3, … z.mp3 to pair sounds.
+const LAYOUT_42: Spot[] = (() => {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const cols = 6;
+  const colCenters = [8.33, 25, 41.67, 58.33, 75, 91.67];
+  const rowCenters = [12, 30, 48, 66, 84];
+  return letters.map((L, idx) => {
+    const row = Math.floor(idx / cols);
+    const col = idx % cols;
+    return {
+      name:  L.toLowerCase(),
+      label: L,
+      x: colCenters[col],
+      y: rowCenters[row],
+    };
+  });
+})();
+
 const LAYOUTS_BY_PRODUCT: Record<number, Spot[]> = {
   41: LAYOUT_41,
+  42: LAYOUT_42,
 };
 
 export default function IdentifyPage({ params }: { params: Promise<{ purchaseId: string }> }) {

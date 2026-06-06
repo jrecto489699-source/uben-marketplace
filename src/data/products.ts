@@ -86,6 +86,7 @@ export const scratchArtProducts: Product[] = [
 // ── Identification ───────────────────────────────────────────────────────────
 export const identificationProducts: Product[] = [
   { id: 41, title: "Animal Identification",               salePrice: "$5", originalPrice: "$8",  seller: "Meadow Lane Prints", image: "/images/Animal Identification.png", rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
+  { id: 42, title: "Alphabet Chart",                      salePrice: "$5", originalPrice: "$8",  seller: "Meadow Lane Prints", image: "/images/Alphabet.png",             rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
 ];
 
 // ── Trending — curated mix across all categories ─────────────────────────────
