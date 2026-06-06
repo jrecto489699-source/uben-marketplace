@@ -204,28 +204,31 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
                 className="block w-full h-auto select-none pointer-events-none"
                 draggable={false}
               />
-              {/* Small circular speaker buttons placed over each animal */}
+              {/* Small circular speaker buttons placed over each animal /
+                  card. 28px so they don't dominate the artwork on a
+                  card-dense layout like the alphabet chart, but still
+                  give a clear touch target. */}
               {spots.map((s) => {
                 const isActive = activeName === s.name;
                 return (
                   <button
                     key={s.name}
                     onClick={() => playAnimal(s)}
-                    className={`absolute flex items-center justify-center rounded-full shadow-lg ring-2 transition-all duration-200 focus:outline-none focus:ring-4 ${
+                    className={`absolute flex items-center justify-center rounded-full shadow-md ring-1 transition-all duration-200 focus:outline-none focus:ring-2 ${
                       isActive
                         ? "bg-[#0F766E] text-white ring-white scale-110 focus:ring-[#0F766E]/40"
-                        : "bg-white text-[#0F766E] ring-[#0F766E]/30 hover:bg-[#0F766E] hover:text-white hover:scale-110 active:scale-95 focus:ring-[#0F766E]/30"
+                        : "bg-white/95 text-[#0F766E] ring-[#0F766E]/30 hover:bg-[#0F766E] hover:text-white hover:scale-110 active:scale-95 focus:ring-[#0F766E]/30"
                     }`}
                     style={{
                       left: `${s.x}%`,
                       top:  `${s.y}%`,
-                      width: 44,
-                      height: 44,
+                      width: 28,
+                      height: 28,
                       transform: "translate(-50%, -50%)",
                     }}
                     aria-label={`Play ${s.label} sound`}
                   >
-                    <Volume2 size={20} className={isActive ? "animate-pulse" : ""} />
+                    <Volume2 size={14} className={isActive ? "animate-pulse" : ""} />
                     <span className="sr-only">{s.label}</span>
                   </button>
                 );
