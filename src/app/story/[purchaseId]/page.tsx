@@ -583,11 +583,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
       }
       const data = (await r.json()) as { url: string | null };
       urlCacheRef.current.set(item, data.url);
-      if (data.url) {
-        // Fire-and-forget warm-up of the browser cache so the next
-        // <audio src=…> hit is served from disk.
-        fetch(data.url, { credentials: "omit" }).catch(() => {});
-      }
       return data.url;
     } catch {
       return null;
