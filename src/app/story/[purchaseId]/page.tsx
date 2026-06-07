@@ -21,11 +21,11 @@ async function getPdfJs() {
 
 const PAGE_RENDER_SCALE = 1.2; // 1.5 was overkill — pages display at ~480px wide
 const FLIP_DURATION    = 600;
-const AUTO_PLAY_DELAY  = 2800;
+const AUTO_PLAY_DELAY  = 5000;
 // Pause between the narrator finishing a spread and the next page
 // auto-turning — long enough for the listener to absorb the last
 // line, short enough that the story keeps moving.
-const POST_AUDIO_DWELL = 700;
+const POST_AUDIO_DWELL = 0;
 const SWIPE_THRESHOLD  = 45;
 
 export default function StoryPage({ params }: { params: Promise<{ purchaseId: string }> }) {
@@ -591,9 +591,6 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
           return;
         }
         el.src = data.url;
-        // Faster narration without sounding chipmunky. Browsers
-        // preserve pitch by default for playbackRate in 0.5–2.
-        el.playbackRate = 1.25;
         el.play().then(() => setAudioPlaying(true)).catch(() => setAudioPlaying(false));
       })
       .catch(() => {});
