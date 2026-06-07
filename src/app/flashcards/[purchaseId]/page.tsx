@@ -179,12 +179,12 @@ export default function FlashcardsPage({ params }: { params: Promise<{ purchaseI
           )}
 
           {!cardsLoading && cards.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="flex flex-wrap justify-center gap-8">
               {cards.map((card) => (
                 <button
                   key={card.name}
                   onClick={() => openCard(card.name)}
-                  className="group relative aspect-square rounded-2xl overflow-hidden bg-card-hover border border-border-muted hover:border-ink transition-colors duration-200 text-left"
+                  className="group relative w-full max-w-[420px] aspect-[3/4] rounded-2xl overflow-hidden bg-card-hover border border-border-muted hover:border-ink transition-colors duration-200 text-left shadow-sm hover:shadow-md"
                 >
                   {card.thumbUrl ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -199,12 +199,12 @@ export default function FlashcardsPage({ params }: { params: Promise<{ purchaseI
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center">
-                    <span className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <Play size={18} strokeWidth={2} className="text-ink ml-0.5" />
+                    <span className="w-16 h-16 rounded-full bg-white/95 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg">
+                      <Play size={24} strokeWidth={2} className="text-ink ml-0.5" />
                     </span>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 px-3 py-2 bg-gradient-to-t from-black/70 to-transparent">
-                    <p className="text-xs font-medium text-white capitalize">{card.name}</p>
+                  <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-gradient-to-t from-black/70 to-transparent">
+                    <p className="text-base font-semibold text-white capitalize">{card.name}</p>
                   </div>
                 </button>
               ))}
