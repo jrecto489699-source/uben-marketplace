@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Maximize, Minimize,
   Play, Pause, BookOpen, Volume2, VolumeX,
@@ -563,6 +563,55 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCover, currentPages.left, currentPages.right, isWide, isFlipping, pdfLoading, pdfError]);
 
+  // Cache of signed URLs per item (cover / page id) so we don't
+  // re-hit the API every time the queue advances. Also gives us a
+  // place to prefetch — calling fetchAudioUrl on the next-spread
+  // items while the current one is playing primes both this map AND
+  // the browser HTTP cache for the underlying audio file, so when
+  // the flip ends `el.src = url` plays immediately instead of
+  // waiting on a round-trip + buffer.
+  const urlCacheRef = useRef<Map<string, string | null>>(new Map());
+
+  const fetchAudioUrl = useCallback(async (item: string): Promise<string | null> => {
+    const cached = urlCacheRef.current.get(item);
+    if (cached !== undefined) return cached;
+    try {
+      const r = await fetch(`/api/story-audio/${purchaseId}/${item}`, { credentials: "include" });
+      if (!r.ok) {
+        urlCacheRef.current.set(item, null);
+        return null;
+      }
+      const data = (await r.json()) as { url: string | null };
+      urlCacheRef.current.set(item, data.url);
+      if (data.url) {
+        // Fire-and-forget warm-up of the browser cache so the next
+        // <audio src=…> hit is served from disk.
+        fetch(data.url, { credentials: "omit" }).catch(() => {});
+      }
+      return data.url;
+    } catch {
+      return null;
+    }
+  }, [purchaseId]);
+
+  // Items that should be prefetched once the current audio is loading:
+  // the rest of the current spread's queue, plus the first item of
+  // the next spread.
+  const itemsToPrefetch = useCallback((): string[] => {
+    const ahead: string[] = [];
+    for (let i = audioQueueIndex + 1; i < audioQueue.length; i++) ahead.push(audioQueue[i]);
+    if (showCover) {
+      const next = pagesForSpread(0);
+      if (isWide && next.left !== null) ahead.push(String(next.left));
+      if (next.right !== null)          ahead.push(String(next.right));
+    } else if (spread + 1 < totalSpreads) {
+      const next = pagesForSpread(spread + 1);
+      if (isWide && next.left !== null) ahead.push(String(next.left));
+      if (next.right !== null)          ahead.push(String(next.right));
+    }
+    return ahead;
+  }, [audioQueue, audioQueueIndex, showCover, spread, totalSpreads, isWide]);
+
   // Whenever the queue item changes, fetch its signed URL and (optionally)
   // start playback. If the page has no audio file, the route returns
   // `url: null`; we silently skip to the next queue item.
@@ -571,30 +620,32 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     const item = audioQueue[audioQueueIndex];
     if (!item) { setAudioPlaying(false); return; }
     let cancelled = false;
-    fetch(`/api/story-audio/${purchaseId}/${item}`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : { url: null })
-      .then((data: { url: string | null }) => {
-        if (cancelled) return;
-        const el = audioRef.current;
-        if (!el) return;
-        if (!data.url) {
-          // Skip silent pages within a spread; if the whole spread is
-          // silent and auto-play is on, hand off to scheduleAdvance
-          // so the page still turns at the same dwell as a narrated
-          // one (instead of stalling forever).
-          if (audioQueueIndex < audioQueue.length - 1) {
-            setAudioQueueIndex(audioQueueIndex + 1);
-          } else {
-            setAudioPlaying(false);
-            scheduleAdvance();
-          }
-          return;
+    fetchAudioUrl(item).then((url) => {
+      if (cancelled) return;
+      const el = audioRef.current;
+      if (!el) return;
+      // Kick off prefetches for the rest of the spread and the
+      // next spread's first page — these run in parallel with the
+      // current page's playback so transitions feel seamless.
+      itemsToPrefetch().forEach((it) => { fetchAudioUrl(it); });
+      if (!url) {
+        // Skip silent pages within a spread; if the whole spread is
+        // silent and auto-play is on, hand off to scheduleAdvance
+        // so the page still turns at the same dwell as a narrated
+        // one (instead of stalling forever).
+        if (audioQueueIndex < audioQueue.length - 1) {
+          setAudioQueueIndex(audioQueueIndex + 1);
+        } else {
+          setAudioPlaying(false);
+          scheduleAdvance();
         }
-        el.src = data.url;
-        el.play().then(() => setAudioPlaying(true)).catch(() => setAudioPlaying(false));
-      })
-      .catch(() => {});
+        return;
+      }
+      el.src = url;
+      el.play().then(() => setAudioPlaying(true)).catch(() => setAudioPlaying(false));
+    });
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioQueue, audioQueueIndex, audioOn, purchaseId]);
 
   // Schedule the next page-turn after POST_AUDIO_DWELL. Used by the
