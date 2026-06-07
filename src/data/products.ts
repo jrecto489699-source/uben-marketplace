@@ -62,7 +62,6 @@ export const flashcardProducts: Product[] = [
   { id: 29, title: "Number Flash Cards 1–100",             salePrice: "$6", originalPrice: "$9",  seller: "Little Letter Co.",   image: "/images/Number Flash Cards 1–100.png",                rating: 4.8, reviewCount: 188, onSale: false, instantDownload: true  },
   { id: 30, title: "Shape & Color Flash Card Pack",        salePrice: "$4", originalPrice: "$7",  seller: "Tiny Sprout Studio",  image: "/images/color and shape flash cards.png",             rating: 4.7, reviewCount: 97,  onSale: true,  instantDownload: true  },
   { id: 31, title: "Animal Names Flash Card Set",          salePrice: "$5", originalPrice: "$8",  seller: "Meadow Lane Prints",  image: "/images/Animal Names Flash Card Set.png",             rating: 4.8, reviewCount: 63,  onSale: false, instantDownload: true  },
-  { id: 43, title: "Shamcey Tutorial",                     salePrice: "$5", originalPrice: "$8",  seller: "Meadow Lane Prints",  image: "/images/Shamcey.png",                                 rating: 5.0, reviewCount: 0,   onSale: false, instantDownload: true  },
 ];
 
 // ── Party Kits ───────────────────────────────────────────────────────────────
