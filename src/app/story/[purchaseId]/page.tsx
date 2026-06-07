@@ -102,10 +102,20 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
   // If the element has no `src` yet (the narrator element on the very
   // first Read-Aloud tap, before any fetch has run), play() rejects
   // and iOS does NOT register the unlock — the next programmatic
-  // play() in the fetch effect is blocked. To avoid that, swap in a
-  // tiny silent WAV data URI just for the unlock, then clear it so
-  // the real fetch can take over.
-  const SILENT_SRC = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA=";
+  // play() in the fetch effect is blocked.
+  //
+  // Empirically, a zero-length silent WAV data URI is ALSO not enough
+  // for iPad Safari: the play() promise resolves, but iOS doesn't
+  // mark the element as media-activated and later src swaps to the
+  // Supabase signed URL stay silent. The flip-sound element works
+  // because it preloads a REAL MP3 file from the public folder, which
+  // iOS does treat as a genuine media play.
+  //
+  // So we point SILENT_SRC at the same real MP3 the flip sound uses,
+  // played muted at volume 0 — silent in practice, real media as far
+  // as iOS is concerned. Once the element is unlocked this way, the
+  // later src swap to the narrator's Supabase URL is allowed.
+  const SILENT_SRC = "/sounds/page-flip.mp3";
   // True while we're in the middle of a muted unlock play() on the
   // narrator element. The silent WAV used for the unlock is 0
   // duration, so the browser fires `ended` immediately — and that
@@ -127,8 +137,11 @@ export default function StoryPage({ params }: { params: Promise<{ purchaseId: st
     // place. Otherwise we just restore muted and leave the real
     // playback alone.
     const cleanup = () => {
+      // Browsers resolve a relative SILENT_SRC to an absolute URL on
+      // the element, so direct equality fails. Compare by suffix.
+      const isPlaceholderSrc = (s: string) => !!s && s.endsWith(SILENT_SRC);
       const stillPlaceholder =
-        !hadSrc && (el.src === SILENT_SRC || el.currentSrc === SILENT_SRC);
+        !hadSrc && (isPlaceholderSrc(el.src) || isPlaceholderSrc(el.currentSrc));
       if (stillPlaceholder) {
         el.pause();
         el.currentTime = 0;
