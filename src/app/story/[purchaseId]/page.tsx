@@ -20,7 +20,7 @@ async function getPdfJs() {
 }
 
 const PAGE_RENDER_SCALE = 1.2; // 1.5 was overkill — pages display at ~480px wide
-const FLIP_DURATION    = 600;
+const FLIP_DURATION    = 350;
 const AUTO_PLAY_DELAY  = 5000;
 // Pause between the narrator finishing a spread and the next page
 // auto-turning — long enough for the listener to absorb the last
