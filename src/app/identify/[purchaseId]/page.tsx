@@ -89,6 +89,12 @@ const LAYOUT_42: Spot[] = [
 const LAYOUTS_BY_PRODUCT: Record<number, Spot[]> = {
   41: LAYOUT_41,
   42: LAYOUT_42,
+  // Alphabet Chart 2 — same 6x5 grid as the original Alphabet
+  // (same image dimensions, same column / row geometry), only the
+  // illustrations and words differ. Reuse LAYOUT_42 so the icons
+  // land on the same corners. Upload identification-assets/43/
+  // a.mp3, b.mp3, … z.mp3 to pair sounds.
+  43: LAYOUT_42,
 };
 
 export default function IdentifyPage({ params }: { params: Promise<{ purchaseId: string }> }) {
@@ -103,8 +109,9 @@ export default function IdentifyPage({ params }: { params: Promise<{ purchaseId:
   // corner-positioned speaker buttons are shrunk further to keep
   // them unobtrusive. Animals stay at 28 — the body of each
   // animal swallows that size comfortably.
-  const buttonPx = product?.id === 42 ? 28 : 28;
-  const iconPx   = product?.id === 42 ? 14 : 14;
+  const isAlphabet = product?.id === 42 || product?.id === 43;
+  const buttonPx = isAlphabet ? 28 : 28;
+  const iconPx   = isAlphabet ? 14 : 14;
 
   const [activeName, setActiveName]   = useState<string | null>(null);
   // One preloaded HTMLAudioElement per animal — keyed by spot.name.
