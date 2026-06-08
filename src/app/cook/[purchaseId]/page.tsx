@@ -333,8 +333,8 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-cream">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <main className="min-h-screen bg-gradient-to-b from-[#FFEEF5] via-cream to-[#FFE4F1]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           {/* Top bar */}
           <div className="flex items-center justify-between mb-4">
             <a
@@ -384,8 +384,8 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
 
           {/* Stage */}
           <div
-            className="relative w-full bg-white rounded-3xl border border-border-muted overflow-hidden shadow-xl"
-            style={{ aspectRatio: "16 / 10" }}
+            className="relative w-full bg-white rounded-3xl border-2 border-[#FFC1D8] overflow-hidden shadow-xl"
+            style={{ aspectRatio: "4 / 3" }}
           >
             {/* Kitchen backdrop — shows under every interactive
                 step. Excluded from the checklist and done screens
