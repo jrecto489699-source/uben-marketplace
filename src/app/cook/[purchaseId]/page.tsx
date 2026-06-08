@@ -530,56 +530,64 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             {step === "pour-cups" && (
               <Scene>
                 <Counter />
-                {/* Pour-scene geometry (in % of stage):
-                     Cup centres   left=24, right=76; cup top  Y≈65
-                     Blender       sits on the counter (bottom-14%),
-                                   centre X=50, jug spout Y≈30
-                     When pouring, the blender slides slightly toward
-                     the target cup (just 8%) and tilts 22° — enough to
-                     read as "pouring" without looking like it's
-                     toppling over. transformOrigin sits at the BASE
-                     so the rotation pivots on the counter, not the
-                     middle of the body. */}
+                {/* Pour scene — blender HOVERS HIGH ABOVE the counter
+                    (like it's being held) so the pour is clearly
+                    downward into the cup below, not sideways across
+                    the counter. Resting position is centered between
+                    the two cups; when pouring, the blender slides
+                    directly OVER the target cup so the spout aligns
+                    with the cup mouth, then tilts to release the
+                    smoothie. Geometry (% of stage):
+                      Cup centres   left=25, right=75; cup mouth Y≈63
+                      Blender resting   centre X=50, top=4%
+                      Pouring cup-0     centre X=25 (directly above)
+                      Pouring cup-1     centre X=75
+                    Tilt direction matches gravity: blender tips its
+                    LID-side downward toward the cup it's pouring
+                    into. transformOrigin sits at the bottom-centre
+                    so the rotation pivots on an imaginary "hand
+                    grip" rather than mid-body. */}
                 <div
-                  className="absolute bottom-[14%] transition-all duration-500 ease-out"
+                  className="absolute top-[4%] transition-all duration-500 ease-out z-10"
                   style={{
-                    left: pouringCup === 0 ? "42%" : pouringCup === 1 ? "58%" : "50%",
-                    width: "34%",
+                    left:
+                      pouringCup === 0 ? "25%" :
+                      pouringCup === 1 ? "75%" :
+                                         "50%",
+                    width: "30%",
                     transform:
                       pouringCup === 0
-                        ? "translateX(-50%) rotate(-22deg)"
+                        ? "translateX(-50%) rotate(-28deg)"
                         : pouringCup === 1
-                        ? "translateX(-50%) rotate(22deg)"
+                        ? "translateX(-50%) rotate(28deg)"
                         : "translateX(-50%) rotate(0deg)",
-                    transformOrigin: "center 92%",
+                    transformOrigin: "center 100%",
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`${ASSET}/ingredients/blender-full.png`}
                     alt="blender"
-                    className="w-full h-auto select-none drop-shadow-xl"
+                    className="w-full h-auto select-none drop-shadow-2xl"
                     draggable={false}
                   />
                 </div>
 
-                {/* Pour stream — anchored to the BLENDER SPOUT side
-                    and angled toward the cup. Top of the stream sits
-                    just under the tilted blender's pour-edge (~38%),
-                    bottom touches the cup mouth (~60%). The image
-                    itself is tall+narrow so we stretch its height
-                    rather than width to span the gap. */}
+                {/* Pour stream — a tall, narrow column of smoothie
+                    that drops straight DOWN from the blender's spout
+                    edge to the cup mouth. Since the blender now hovers
+                    directly above the target cup, the stream is
+                    perfectly vertical, no diagonal awkwardness. Top
+                    of stream tucks under the tilted blender's lid
+                    (~32%), bottom dips into the cup mouth (~65%). */}
                 {pouringCup !== null && (
                   <div
                     className="absolute pointer-events-none"
                     style={{
-                      left:
-                        pouringCup === 0
-                          ? "31%" /* halfway between blender spout & left cup */
-                          : "69%",
-                      top:    "38%",
-                      width:  "10%",
-                      height: "28%",
+                      left:    pouringCup === 0 ? "25%" : "75%",
+                      top:     "32%",
+                      width:   "8%",
+                      height:  "33%",
                       transform: "translateX(-50%)",
                       animation: "pourWiggle 220ms ease-in-out infinite alternate",
                       filter: "drop-shadow(0 4px 8px rgba(233,30,99,0.4))",
