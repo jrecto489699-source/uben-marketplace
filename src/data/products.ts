@@ -90,6 +90,11 @@ export const identificationProducts: Product[] = [
   { id: 42, title: "Alphabet Chart",                      salePrice: "$5", originalPrice: "$8",  seller: "Meadow Lane Prints", image: "/images/Alphabet2.png",            rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
 ];
 
+// ── Cooking ──────────────────────────────────────────────────────────────────
+export const cookingProducts: Product[] = [
+  { id: 45, title: "Strawberry Banana Smoothie — Cook Along!", salePrice: "$5", originalPrice: "$8", seller: "Sunshine Stories", image: "/images/cook/strawberry-smoothie/cover.png", rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true },
+];
+
 // ── Trending — curated mix across all categories ─────────────────────────────
 export const printableProducts: Product[] = [
   worksheetProducts[0], // Alphabet Tracing
@@ -122,6 +127,7 @@ export const allProducts: Product[] = [
   ...scratchArtProducts,
   ...puzzleProducts,
   ...identificationProducts,
+  ...cookingProducts,
 ];
 
 export function getProductById(id: number): Product | undefined {
@@ -152,5 +158,6 @@ export function getCategoryLabel(product: Product): string {
   if (scratchArtProducts.find((p) => p.id === product.id)) return "Scratch Art";
   if (puzzleProducts.find((p) => p.id === product.id))     return "Puzzle";
   if (identificationProducts.find((p) => p.id === product.id)) return "Identification";
+  if (cookingProducts.find((p) => p.id === product.id)) return "Cooking";
   return "Printables";
 }

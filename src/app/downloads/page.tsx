@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, ShoppingBag, Download, Palette, ChevronDown, Sparkles, Puzzle, BookOpen, Volume2 } from "lucide-react";
+import { FileText, ShoppingBag, Download, Palette, ChevronDown, Sparkles, Puzzle, BookOpen, Volume2, ChefHat } from "lucide-react";
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -20,6 +20,7 @@ const CATEGORY_ORDER = [
   "Scratch Art",
   "Puzzle",
   "Identification",
+  "Cooking",
   "Printables",
 ];
 
@@ -214,6 +215,15 @@ export default function DownloadsPage() {
                                   >
                                     <Volume2 size={12} strokeWidth={1.75} />
                                     Identify
+                                  </a>
+                                )}
+                                {cat === "Cooking" && prod?.instantDownload && (
+                                  <a
+                                    href={`/cook/${purchase.id}`}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E91E63] text-[#E91E63] text-xs font-medium hover:bg-[#E91E63] hover:text-white transition-colors duration-200 whitespace-nowrap justify-center"
+                                  >
+                                    <ChefHat size={12} strokeWidth={1.75} />
+                                    Cook
                                   </a>
                                 )}
                               </div>

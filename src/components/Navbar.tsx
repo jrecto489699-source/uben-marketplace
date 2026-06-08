@@ -26,6 +26,7 @@ const categories: Array<{ label: string; slug: string; href?: string; badge?: st
   { label: "Scratch Art", slug: "scratch-art" },
   { label: "Puzzle",      slug: "puzzle"      },
   { label: "Identification", slug: "identification" },
+  { label: "Cooking",     slug: "cooking",    badge: "New" },
   { label: "Classroom",   slug: "classroom"   },
   { label: "Holiday",     slug: "holiday",    badge: "New" },
   { label: "Trace",       slug: "trace",      href: "/trace", badge: "New" },
