@@ -101,11 +101,12 @@ interface FlyingItem {
 }
 
 // Blender position (centre of jug opening) for the add-ingredient
-// scenes. The blender is rendered at right-[8%] width 32% so its
-// horizontal centre is at 100 - 8 - 32/2 = 76% of stage. The jug
-// opening is roughly at the top quarter of the blender image.
+// scenes. The blender container is anchored to the counter surface
+// at bottom-[14%], so its horizontal centre is still at 76% of
+// stage but its vertical jug-opening centre is around 52% — that's
+// where the fly-to-blender arcs need to terminate.
 const BLENDER_TARGET_X = 76;
-const BLENDER_TARGET_Y = 38;
+const BLENDER_TARGET_Y = 52;
 
 // Pre-rendered blender state images. Each shows the cumulative
 // contents of the jug at a point in the recipe. Picking the right
@@ -241,9 +242,10 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
   }
 
   function tapSimpleItem(src: string, ingredient: IngredientId) {
-    // The ingredient button is anchored at left 25%, top 50% in
-    // SimpleAddScene, so that's the start of the arc.
-    flyToBlender(src, 25, 50, ingredient);
+    // The ingredient button sits on the counter at left 25%, top 70%
+    // in SimpleAddScene, so that's the start of the arc up to the
+    // blender on the right.
+    flyToBlender(src, 25, 70, ingredient);
     setTimeout(advance, 950);
   }
 
@@ -730,7 +732,7 @@ function BlenderTarget({ added }: { added: Set<IngredientId> }) {
   // anything. drop-shadow stays on the image even though it's keyed.
   const src = blenderImageFor(added);
   return (
-    <div className="absolute right-[8%] top-1/2 -translate-y-1/2" style={{ width: "32%" }}>
+    <div className="absolute right-[8%] bottom-[14%]" style={{ width: "32%" }}>
       <div className="relative">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -757,7 +759,7 @@ function SimpleAddScene({ itemSrc, itemLabel, onTap, added }: {
       <BlenderTarget added={added} />
       <button
         onClick={onTap}
-        className="absolute left-[25%] top-[50%] -translate-x-1/2 -translate-y-1/2 hover:scale-110 active:scale-95 transition-transform duration-100"
+        className="absolute left-[25%] top-[70%] -translate-x-1/2 -translate-y-1/2 hover:scale-110 active:scale-95 transition-transform duration-100"
         style={{ width: "26%" }}
         aria-label={`Add ${itemLabel}`}
       >
