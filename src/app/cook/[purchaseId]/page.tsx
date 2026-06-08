@@ -760,7 +760,7 @@ function BlenderTarget({ stage, added }: {
         <img
           src={stage === "empty" ? `${ASSET}/ingredients/blender-empty.png` : `${ASSET}/ingredients/blender-full.png`}
           alt="blender"
-          className="w-full h-auto drop-shadow-xl animate-[bounce_3s_ease-in-out_infinite]"
+          className="w-full h-auto drop-shadow-xl"
           draggable={false}
         />
         {/* Splash drops — one PNG per ingredient that's landed
