@@ -96,9 +96,26 @@ interface FlyingItem {
   src: string;
   startX: number;  // % of stage
   startY: number;  // % of stage
-  rotation: number; // deg
-  scale: number;
+  dx: number;      // delta to target (stage %)
+  dy: number;      // delta to target (stage %)
 }
+
+// Blender position (centre of jug opening) for the add-ingredient
+// scenes. The blender is rendered at right-[8%] width 32% so its
+// horizontal centre is at 100 - 8 - 32/2 = 76% of stage. The jug
+// opening is roughly at the top quarter of the blender image.
+const BLENDER_TARGET_X = 76;
+const BLENDER_TARGET_Y = 38;
+
+// Splash drops shown inside the blender body — one per added
+// ingredient. Positioned relative to the blender container.
+type IngredientId = "strawberry" | "banana" | "milk" | "yogurt";
+const SPLASH_LAYOUT: Record<IngredientId, { x: number; y: number; color: string; size: number }> = {
+  strawberry: { x: 35, y: 56, color: "#E91E63", size: 22 },
+  banana:     { x: 62, y: 60, color: "#FFD54F", size: 24 },
+  milk:       { x: 45, y: 48, color: "#FFFFFF", size: 26 },
+  yogurt:     { x: 55, y: 64, color: "#FFD8E6", size: 24 },
+};
 
 export default function CookPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
@@ -111,21 +128,25 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
   const [stepIdx, setStepIdx] = useState(0);
   const step = STEPS[stepIdx];
 
-  // Strawberry step — track which strawberries are still on the
-  // counter. Five fixed scattered positions for visual variety; we
-  // hide each one as it gets tapped.
-  const strawberryPositions = useRef<Array<{ x: number; y: number; rot: number; scale: number }>>(
-    Array.from({ length: STRAWBERRY_COUNT }, (_, i) => ({
-      x: 10 + i * 18 + ((i % 2) * 4),
-      y: 55 + ((i % 3) * 10),
-      rot: -15 + i * 8,
-      scale: 0.85 + ((i % 3) * 0.1),
-    }))
-  );
+  // Strawberry step — five strawberries clustered on the LEFT half
+  // of the counter so the fly-to-blender arc heads right-and-up
+  // toward the blender (which sits on the right).
+  const strawberryPositions = useRef<Array<{ x: number; y: number; rot: number; scale: number }>>([
+    { x: 12, y: 78, rot: -18, scale: 0.95 },
+    { x: 26, y: 72, rot:   8, scale: 1.05 },
+    { x: 18, y: 64, rot: -10, scale: 0.85 },
+    { x: 34, y: 80, rot:  15, scale: 0.92 },
+    { x: 38, y: 65, rot:  -5, scale: 1.00 },
+  ]);
   const [strawberriesGone, setStrawberriesGone] = useState<Set<number>>(new Set());
 
-  // Pour step — which cups have been filled.
+  // Which ingredients have landed in the blender (for splash drops).
+  const [addedIngredients, setAddedIngredients] = useState<Set<IngredientId>>(new Set());
+
+  // Pour step — which cups have been filled, and which (if any) is
+  // currently mid-pour for the tilt + stream animation.
   const [cupsFilled, setCupsFilled] = useState<Set<number>>(new Set());
+  const [pouringCup, setPouringCup] = useState<number | null>(null);
 
   // "Flying" items animation — when something gets added to the
   // blender we push a flying clone onto this array; it animates to
@@ -168,41 +189,57 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
   function restart() {
     setStepIdx(0);
     setStrawberriesGone(new Set());
+    setAddedIngredients(new Set());
     setCupsFilled(new Set());
+    setPouringCup(null);
     setBlending(false);
     setBlended(false);
     setFlying([]);
   }
 
-  // Spawn a "flying" copy of an ingredient that animates from its
-  // current spot to the blender mouth.
-  function flyToBlender(src: string, startX: number, startY: number) {
+  // Spawn a flying clone that arcs from (startX, startY) toward the
+  // blender's actual position. We pre-compute the delta so the CSS
+  // keyframe can scale to any starting spot.
+  function flyToBlender(src: string, startX: number, startY: number, ingredient?: IngredientId) {
     const id = ++flyingIdRef.current;
-    setFlying((prev) => [...prev, { id, src, startX, startY, rotation: 0, scale: 1 }]);
-    // Remove the flying item after the animation duration.
+    const dx = BLENDER_TARGET_X - startX;
+    const dy = BLENDER_TARGET_Y - startY;
+    setFlying((prev) => [...prev, { id, src, startX, startY, dx, dy }]);
+    // Drop the flying clone after it lands.
     setTimeout(() => {
       setFlying((prev) => prev.filter((f) => f.id !== id));
-    }, 700);
+      // Splash drop appears inside the blender as it "lands" —
+      // timed so it pops in just as the clone fades out.
+      if (ingredient) {
+        setAddedIngredients((prev) => {
+          const next = new Set(prev);
+          next.add(ingredient);
+          return next;
+        });
+      }
+    }, 750);
   }
 
   function tapStrawberry(idx: number) {
     if (strawberriesGone.has(idx)) return;
     const pos = strawberryPositions.current[idx];
-    flyToBlender(`${ASSET}/ingredients/strawberry.png`, pos.x, pos.y);
+    flyToBlender(`${ASSET}/ingredients/strawberry.png`, pos.x, pos.y, "strawberry");
     setStrawberriesGone((prev) => {
       const next = new Set(prev);
       next.add(idx);
       if (next.size === STRAWBERRY_COUNT) {
         // All five collected — auto-advance after the last fly-in lands.
-        setTimeout(advance, 800);
+        setTimeout(advance, 950);
       }
       return next;
     });
   }
 
-  function tapSimpleItem(src: string, startX: number, startY: number) {
-    flyToBlender(src, startX, startY);
-    setTimeout(advance, 800);
+  function tapSimpleItem(src: string, ingredient: IngredientId) {
+    // The ingredient button is anchored at left 25%, top 50% in
+    // SimpleAddScene, so that's the start of the arc.
+    flyToBlender(src, 25, 50, ingredient);
+    setTimeout(advance, 950);
   }
 
   function tapBlend() {
@@ -216,13 +253,20 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
   }
 
   function tapCup(idx: number) {
-    if (cupsFilled.has(idx)) return;
-    setCupsFilled((prev) => {
-      const next = new Set(prev);
-      next.add(idx);
-      if (next.size === 2) setTimeout(advance, 700);
-      return next;
-    });
+    if (cupsFilled.has(idx) || pouringCup !== null) return;
+    // Phase 1: blender tilts toward cup, stream appears. Phase 2:
+    // after the stream finishes (~1.2s), swap empty cup → full cup
+    // and straighten the blender. Phase 3: if both cups full, advance.
+    setPouringCup(idx);
+    setTimeout(() => {
+      setCupsFilled((prev) => {
+        const next = new Set(prev);
+        next.add(idx);
+        if (next.size === 2) setTimeout(advance, 900);
+        return next;
+      });
+      setPouringCup(null);
+    }, 1200);
   }
 
   if (loading) {
@@ -315,7 +359,7 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             {step === "tap-strawberries" && (
               <Scene>
                 <Counter />
-                <BlenderTarget blendedSrc={null} stage="empty" added={[]} />
+                <BlenderTarget stage="empty" added={addedIngredients} />
                 {strawberryPositions.current.map((pos, i) =>
                   strawberriesGone.has(i) ? null : (
                     <button
@@ -348,8 +392,8 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
               <SimpleAddScene
                 itemSrc={`${ASSET}/ingredients/banana.png`}
                 itemLabel="Banana"
-                onTap={() => tapSimpleItem(`${ASSET}/ingredients/banana.png`, 25, 70)}
-                addedSoFar={["strawberry"]}
+                onTap={() => tapSimpleItem(`${ASSET}/ingredients/banana.png`, "banana")}
+                added={addedIngredients}
               />
             )}
 
@@ -357,8 +401,8 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
               <SimpleAddScene
                 itemSrc={`${ASSET}/ingredients/milk-carton.png`}
                 itemLabel="Milk"
-                onTap={() => tapSimpleItem(`${ASSET}/ingredients/milk-carton.png`, 25, 70)}
-                addedSoFar={["strawberry", "banana"]}
+                onTap={() => tapSimpleItem(`${ASSET}/ingredients/milk-carton.png`, "milk")}
+                added={addedIngredients}
               />
             )}
 
@@ -366,24 +410,56 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
               <SimpleAddScene
                 itemSrc={`${ASSET}/ingredients/yogurt-cup.png`}
                 itemLabel="Yogurt"
-                onTap={() => tapSimpleItem(`${ASSET}/ingredients/yogurt-cup.png`, 25, 70)}
-                addedSoFar={["strawberry", "banana", "milk"]}
+                onTap={() => tapSimpleItem(`${ASSET}/ingredients/yogurt-cup.png`, "yogurt")}
+                added={addedIngredients}
               />
             )}
 
             {step === "tap-blend" && (
               <Scene>
                 <Counter />
-                {/* The blender takes center stage — gets bigger so the
-                    button is an obvious target. */}
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ width: "55%" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={blended ? `${ASSET}/ingredients/blender-full.png` : `${ASSET}/ingredients/blender-empty.png`}
-                    alt="blender"
-                    className={`w-full h-auto select-none drop-shadow-2xl ${blending ? "animate-[shake_120ms_linear_infinite]" : ""}`}
-                    draggable={false}
-                  />
+                {/* Blender takes centre stage. Pre-blend we still show
+                    the splash drops from all the added ingredients
+                    inside the jug — so the kid sees what they're about
+                    to blend. During the blend it shakes and the drops
+                    spin; afterwards the contents are swapped to the
+                    fully-blended pink smoothie image. */}
+                <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${blending ? "animate-[shake_120ms_linear_infinite]" : ""}`} style={{ width: "55%" }}>
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={blended ? `${ASSET}/ingredients/blender-full.png` : `${ASSET}/ingredients/blender-empty.png`}
+                      alt="blender"
+                      className="w-full h-auto select-none drop-shadow-2xl"
+                      draggable={false}
+                    />
+                    {/* Show splash drops only before blending — once
+                        the blender-full image is in place it carries
+                        its own colour. */}
+                    {!blended && (Object.keys(SPLASH_LAYOUT) as IngredientId[]).map((key) => {
+                      if (!addedIngredients.has(key)) return null;
+                      const drop = SPLASH_LAYOUT[key];
+                      return (
+                        <span
+                          key={key}
+                          className="absolute pointer-events-none"
+                          style={{
+                            left:   `${drop.x}%`,
+                            top:    `${drop.y}%`,
+                            width:  `${drop.size}%`,
+                            height: `${drop.size}%`,
+                            background: drop.color,
+                            borderRadius: "50%",
+                            opacity: 0.92,
+                            boxShadow: `0 4px 10px ${drop.color}80, inset -2px -3px 0 rgba(0,0,0,0.12)`,
+                            animation: blending
+                              ? "splashSpin 350ms linear infinite"
+                              : "splashPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
                 {/* Big tappable BLEND button */}
                 {!blended && (
@@ -401,8 +477,26 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             {step === "pour-cups" && (
               <Scene>
                 <Counter />
-                {/* The full blender — tilts a bit when a cup gets a pour */}
-                <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2" style={{ width: "40%" }}>
+                {/* The full blender — slides horizontally + tilts toward
+                    the cup being poured. Translation is computed from
+                    which cup is the target; tilt sign matches.
+                    Cup positions:  left cup centre ~29%, right cup ~71%.
+                    Blender centre starts at 50%, slides to ~38% (left)
+                    or ~62% (right) to look like it's pouring INTO it. */}
+                <div
+                  className="absolute top-[42%] -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ease-out"
+                  style={{
+                    left: pouringCup === 0 ? "38%" : pouringCup === 1 ? "62%" : "50%",
+                    width: "40%",
+                    transform:
+                      pouringCup === 0
+                        ? "translate(-50%, -50%) rotate(-30deg)"
+                        : pouringCup === 1
+                        ? "translate(-50%, -50%) rotate(30deg)"
+                        : "translate(-50%, -50%) rotate(0deg)",
+                    transformOrigin: "center 70%",
+                  }}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`${ASSET}/ingredients/blender-full.png`}
@@ -411,25 +505,62 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                     draggable={false}
                   />
                 </div>
+
+                {/* Pour stream — pink gradient bar from the tilted
+                    blender spout down toward the target cup, with a
+                    little wiggle animation to feel like flowing liquid. */}
+                {pouringCup !== null && (
+                  <div
+                    className="absolute pointer-events-none"
+                    style={{
+                      left:    pouringCup === 0 ? "29%" : "71%",
+                      top:     "52%",
+                      width:   "3.5%",
+                      height:  "30%",
+                      transform: "translateX(-50%)",
+                      background:
+                        "linear-gradient(to bottom, rgba(233,30,99,0.95), rgba(233,30,99,0.7))",
+                      borderRadius: "999px",
+                      animation: "pourWiggle 220ms ease-in-out infinite alternate",
+                      boxShadow: "0 0 12px rgba(233,30,99,0.4)",
+                    }}
+                  />
+                )}
+
                 {/* Two cups along the bottom */}
                 {[0, 1].map((i) => {
                   const filled = cupsFilled.has(i);
+                  const isThisPouring = pouringCup === i;
                   return (
                     <button
                       key={i}
                       onClick={() => tapCup(i)}
-                      disabled={filled}
-                      className={`absolute bottom-[8%] ${i === 0 ? "left-[18%]" : "right-[18%]"} pointer-events-auto ${filled ? "" : "hover:scale-110 active:scale-95"} transition-transform duration-150`}
+                      disabled={filled || pouringCup !== null}
+                      className={`absolute bottom-[8%] ${i === 0 ? "left-[18%]" : "right-[18%]"} pointer-events-auto ${filled || pouringCup !== null ? "" : "hover:scale-110 active:scale-95"} transition-transform duration-150`}
                       style={{ width: "22%" }}
                       aria-label={filled ? "Filled cup" : "Tap to fill"}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={filled ? `${ASSET}/ingredients/cup-full.png` : `${ASSET}/ingredients/cup-empty.png`}
-                        alt={filled ? "Full cup" : "Empty cup"}
-                        className={`w-full h-auto select-none drop-shadow-md ${filled ? "" : "animate-[bounce_2s_ease-in-out_infinite]"}`}
-                        draggable={false}
-                      />
+                      <div className="relative">
+                        {/* Empty cup base — stays visible underneath
+                            while the full cup fades in on top, giving
+                            a "filling up" cross-fade rather than an
+                            instant swap. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`${ASSET}/ingredients/cup-empty.png`}
+                          alt=""
+                          className={`w-full h-auto select-none drop-shadow-md ${filled || isThisPouring ? "" : "animate-[bounce_2s_ease-in-out_infinite]"}`}
+                          draggable={false}
+                        />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`${ASSET}/ingredients/cup-full.png`}
+                          alt={filled ? "Full cup" : ""}
+                          className="absolute inset-0 w-full h-auto select-none drop-shadow-md transition-opacity duration-700"
+                          style={{ opacity: filled ? 1 : isThisPouring ? 0.5 : 0 }}
+                          draggable={false}
+                        />
+                      </div>
                     </button>
                   );
                 })}
@@ -449,7 +580,12 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             )}
 
             {/* Flying-item layer — sits above the scene to animate
-                ingredient-to-blender flights. */}
+                ingredient-to-blender flights. Each flying item carries
+                its own dx/dy (% of stage) so the keyframe can arc to
+                whatever the actual blender position is for this scene.
+                The stage container is `position: relative`, so absolute
+                children positioned in % use the stage as the reference
+                box — that's what makes the delta math work. */}
             <div className="absolute inset-0 pointer-events-none">
               {flying.map((f) => (
                 <div
@@ -459,8 +595,12 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                     left:  `${f.startX}%`,
                     top:   `${f.startY}%`,
                     width: "12%",
-                    transform: "translate(-50%, -50%)",
-                    animation: "flyToBlender 700ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards",
+                    // Use the actual stage-relative end coordinates as
+                    // CSS custom properties; the keyframe interpolates
+                    // top/left changes which use the parent's box.
+                    ["--end-left" as string]:  `${f.startX + f.dx}%`,
+                    ["--end-top"  as string]:  `${f.startY + f.dy}%`,
+                    animation: "flyToBlender 750ms cubic-bezier(0.3, 0.6, 0.4, 1) forwards",
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -468,6 +608,10 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                     src={f.src}
                     alt=""
                     className="w-full h-auto"
+                    style={{
+                      transform: "translate(-50%, -50%)",
+                      animation: "flySpin 750ms linear forwards",
+                    }}
                     draggable={false}
                   />
                 </div>
@@ -500,10 +644,20 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
         <audio ref={audioRef} preload="auto" style={{ display: "none" }} />
 
         <style>{`
+          /* Flying-item container slides from the ingredient's start
+             position to the blender mouth using the inline custom
+             properties --end-top / --end-left. Combined with the
+             inner <img>'s spin/scale, the result is an arc that lands
+             inside the blender jug and fades out as if dropped in. */
           @keyframes flyToBlender {
-            0%   { transform: translate(-50%, -50%) scale(1)   rotate(0deg); opacity: 1; }
-            60%  { transform: translate(-50%, -180%) scale(0.8) rotate(180deg); opacity: 1; }
-            100% { transform: translate(-50%, -200%) scale(0.3) rotate(360deg); opacity: 0; }
+            0%   { opacity: 1; }
+            85%  { opacity: 1; }
+            100% { top: var(--end-top); left: var(--end-left); opacity: 0; }
+          }
+          @keyframes flySpin {
+            0%   { transform: translate(-50%, -50%) scale(1)   rotate(0deg); }
+            50%  { transform: translate(-50%, -130%) scale(0.8) rotate(180deg); }
+            100% { transform: translate(-50%, -50%) scale(0.25) rotate(540deg); }
           }
           @keyframes shake {
             0%, 100% { transform: translateX(0); }
@@ -513,6 +667,19 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
           @keyframes pop {
             from { transform: scale(0.5); opacity: 0; }
             to   { transform: scale(1);   opacity: 1; }
+          }
+          @keyframes splashPop {
+            0%   { transform: scale(0); opacity: 0; }
+            60%  { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.9; }
+          }
+          @keyframes splashSpin {
+            from { transform: rotate(0deg) scale(1.05); }
+            to   { transform: rotate(360deg) scale(0.95); }
+          }
+          @keyframes pourWiggle {
+            0%   { transform: translateX(-50%) skewX(-3deg); }
+            100% { transform: translateX(-50%) skewX(3deg); }
           }
         `}</style>
       </main>
@@ -540,35 +707,61 @@ function Counter() {
   );
 }
 
-function BlenderTarget({ stage, added, blendedSrc }: {
+function BlenderTarget({ stage, added }: {
   stage: "empty" | "full";
-  added: string[];
-  blendedSrc: string | null;
+  added: Set<IngredientId>;
 }) {
-  void added; // reserved for future "show ingredients piling up" variant
   return (
     <div className="absolute right-[8%] top-1/2 -translate-y-1/2" style={{ width: "32%" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={stage === "empty" ? `${ASSET}/ingredients/blender-empty.png` : (blendedSrc ?? `${ASSET}/ingredients/blender-full.png`)}
-        alt="blender"
-        className="w-full h-auto drop-shadow-xl animate-[bounce_3s_ease-in-out_infinite]"
-        draggable={false}
-      />
+      <div className="relative">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={stage === "empty" ? `${ASSET}/ingredients/blender-empty.png` : `${ASSET}/ingredients/blender-full.png`}
+          alt="blender"
+          className="w-full h-auto drop-shadow-xl animate-[bounce_3s_ease-in-out_infinite]"
+          draggable={false}
+        />
+        {/* Splash drops — one per ingredient that's landed inside. Each
+            pops in with a bounce as it lands. Position is in % of the
+            blender container, NOT the stage, so the drops stay anchored
+            to the jug body regardless of how big the blender renders. */}
+        {(Object.keys(SPLASH_LAYOUT) as IngredientId[]).map((key) => {
+          if (!added.has(key)) return null;
+          const drop = SPLASH_LAYOUT[key];
+          return (
+            <span
+              key={key}
+              className="absolute pointer-events-none"
+              style={{
+                left:   `${drop.x}%`,
+                top:    `${drop.y}%`,
+                width:  `${drop.size}%`,
+                height: `${drop.size}%`,
+                background: drop.color,
+                borderRadius: "50%",
+                opacity: 0.92,
+                boxShadow: `0 4px 10px ${drop.color}80, inset -2px -3px 0 rgba(0,0,0,0.12)`,
+                animation: "splashPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+                transformOrigin: "center",
+              }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function SimpleAddScene({ itemSrc, itemLabel, onTap, addedSoFar }: {
+function SimpleAddScene({ itemSrc, itemLabel, onTap, added }: {
   itemSrc: string;
   itemLabel: string;
   onTap: () => void;
-  addedSoFar: string[];
+  added: Set<IngredientId>;
 }) {
   return (
     <Scene>
       <Counter />
-      <BlenderTarget stage="empty" added={addedSoFar} blendedSrc={null} />
+      <BlenderTarget stage="empty" added={added} />
       <button
         onClick={onTap}
         className="absolute left-[25%] top-[50%] -translate-x-1/2 -translate-y-1/2 hover:scale-110 active:scale-95 transition-transform duration-100"
