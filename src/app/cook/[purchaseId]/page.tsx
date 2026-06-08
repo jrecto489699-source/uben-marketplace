@@ -108,13 +108,16 @@ const BLENDER_TARGET_X = 76;
 const BLENDER_TARGET_Y = 38;
 
 // Splash drops shown inside the blender body — one per added
-// ingredient. Positioned relative to the blender container.
+// ingredient. Each one is a real PNG of the ingredient as it would
+// sit inside the jug. Positions are % of the blender container,
+// not the stage, so they stay anchored to the jug body regardless
+// of how big the blender renders.
 type IngredientId = "strawberry" | "banana" | "milk" | "yogurt";
-const SPLASH_LAYOUT: Record<IngredientId, { x: number; y: number; color: string; size: number }> = {
-  strawberry: { x: 35, y: 56, color: "#E91E63", size: 22 },
-  banana:     { x: 62, y: 60, color: "#FFD54F", size: 24 },
-  milk:       { x: 45, y: 48, color: "#FFFFFF", size: 26 },
-  yogurt:     { x: 55, y: 64, color: "#FFD8E6", size: 24 },
+const SPLASH_LAYOUT: Record<IngredientId, { src: string; x: number; y: number; size: number }> = {
+  strawberry: { src: `${ASSET}/ingredients/strawberry-chunk.png`, x: 32, y: 56, size: 30 },
+  banana:     { src: `${ASSET}/ingredients/banana-chunk.png`,     x: 62, y: 58, size: 32 },
+  milk:       { src: `${ASSET}/ingredients/milk-blob.png`,        x: 47, y: 48, size: 38 },
+  yogurt:     { src: `${ASSET}/ingredients/yogurt-blob.png`,      x: 50, y: 65, size: 34 },
 };
 
 export default function CookPage({ params }: { params: Promise<{ purchaseId: string }> }) {
@@ -354,6 +357,21 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             className="relative w-full bg-white rounded-3xl border-2 border-[#FFC1D8] overflow-hidden shadow-xl"
             style={{ aspectRatio: "4 / 3" }}
           >
+            {/* Kitchen backdrop — shows under every interactive
+                step. Excluded from the checklist and done screens
+                because they have their own backgrounds (pink panel
+                and done.png respectively). */}
+            {step !== "checklist" && step !== "done" && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={`${ASSET}/extras/counter-bg.png`}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                draggable={false}
+              />
+            )}
+
             {step === "checklist" && <Checklist recipe={RECIPE} onStart={advance} />}
 
             {step === "tap-strawberries" && (
@@ -426,37 +444,47 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                     fully-blended pink smoothie image. */}
                 <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${blending ? "animate-[shake_120ms_linear_infinite]" : ""}`} style={{ width: "55%" }}>
                   <div className="relative">
+                    {/* Three-state blender: empty (with ingredient
+                        chunks layered on top) → blending (motion-blur
+                        PNG, no chunks needed since the art shows the
+                        swirling smoothie) → full (clear pink smoothie). */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={blended ? `${ASSET}/ingredients/blender-full.png` : `${ASSET}/ingredients/blender-empty.png`}
+                      src={
+                        blended  ? `${ASSET}/ingredients/blender-full.png` :
+                        blending ? `${ASSET}/ingredients/blender-blending.png` :
+                                   `${ASSET}/ingredients/blender-empty.png`
+                      }
                       alt="blender"
                       className="w-full h-auto select-none drop-shadow-2xl"
                       draggable={false}
                     />
-                    {/* Show splash drops only before blending — once
-                        the blender-full image is in place it carries
-                        its own colour. */}
-                    {!blended && (Object.keys(SPLASH_LAYOUT) as IngredientId[]).map((key) => {
+                    {/* Show ingredient chunks only BEFORE the blend
+                        starts. The blender-blending PNG has motion
+                        blur baked in, so chunks layered on top would
+                        clash; and the blender-full PNG already shows
+                        the finished smoothie. */}
+                    {!blended && !blending && (Object.keys(SPLASH_LAYOUT) as IngredientId[]).map((key) => {
                       if (!addedIngredients.has(key)) return null;
                       const drop = SPLASH_LAYOUT[key];
                       return (
-                        <span
+                        <div
                           key={key}
                           className="absolute pointer-events-none"
                           style={{
                             left:   `${drop.x}%`,
                             top:    `${drop.y}%`,
                             width:  `${drop.size}%`,
-                            height: `${drop.size}%`,
-                            background: drop.color,
-                            borderRadius: "50%",
-                            opacity: 0.92,
-                            boxShadow: `0 4px 10px ${drop.color}80, inset -2px -3px 0 rgba(0,0,0,0.12)`,
+                            transform: "translate(-50%, -50%)",
                             animation: blending
                               ? "splashSpin 350ms linear infinite"
                               : "splashPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+                            filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))",
                           }}
-                        />
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={drop.src} alt="" className="w-full h-auto" draggable={false} />
+                        </div>
                       );
                     })}
                   </div>
@@ -506,25 +534,30 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                   />
                 </div>
 
-                {/* Pour stream — pink gradient bar from the tilted
-                    blender spout down toward the target cup, with a
-                    little wiggle animation to feel like flowing liquid. */}
+                {/* Pour stream — illustrated PNG of pink liquid arcing
+                    from the blender spout into the cup. A subtle wiggle
+                    skew makes the liquid feel like it's flowing rather
+                    than a static frame. */}
                 {pouringCup !== null && (
                   <div
                     className="absolute pointer-events-none"
                     style={{
                       left:    pouringCup === 0 ? "29%" : "71%",
-                      top:     "52%",
-                      width:   "3.5%",
-                      height:  "30%",
+                      top:     "48%",
+                      width:   "12%",
                       transform: "translateX(-50%)",
-                      background:
-                        "linear-gradient(to bottom, rgba(233,30,99,0.95), rgba(233,30,99,0.7))",
-                      borderRadius: "999px",
                       animation: "pourWiggle 220ms ease-in-out infinite alternate",
-                      boxShadow: "0 0 12px rgba(233,30,99,0.4)",
+                      filter: "drop-shadow(0 4px 8px rgba(233,30,99,0.35))",
                     }}
-                  />
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`${ASSET}/extras/pour-stream.png`}
+                      alt=""
+                      className="w-full h-auto select-none"
+                      draggable={false}
+                    />
+                  </div>
                 )}
 
                 {/* Two cups along the bottom */}
@@ -568,12 +601,23 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             )}
 
             {step === "done" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-gradient-to-br from-[#FFEAF3] via-[#FFF5FA] to-[#FFE0EC]">
+                {/* Confetti — settles in behind the done image with a
+                    gentle fade so the celebration reads as "the room
+                    filled with confetti the moment you finished". */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`${ASSET}/extras/confetti.png`}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none animate-[confettiIn_700ms_ease-out]"
+                  draggable={false}
+                />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`${ASSET}/done.png`}
                   alt="Done!"
-                  className="max-h-full max-w-full object-contain animate-[pop_500ms_ease-out]"
+                  className="relative max-h-full max-w-full object-contain animate-[pop_500ms_ease-out]"
                   draggable={false}
                 />
               </div>
@@ -669,17 +713,21 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             to   { transform: scale(1);   opacity: 1; }
           }
           @keyframes splashPop {
-            0%   { transform: scale(0); opacity: 0; }
-            60%  { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.9; }
+            0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            60%  { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
           }
           @keyframes splashSpin {
-            from { transform: rotate(0deg) scale(1.05); }
-            to   { transform: rotate(360deg) scale(0.95); }
+            from { transform: translate(-50%, -50%) rotate(0deg) scale(1.05); }
+            to   { transform: translate(-50%, -50%) rotate(360deg) scale(0.95); }
           }
           @keyframes pourWiggle {
             0%   { transform: translateX(-50%) skewX(-3deg); }
             100% { transform: translateX(-50%) skewX(3deg); }
+          }
+          @keyframes confettiIn {
+            0%   { opacity: 0; transform: scale(1.15); }
+            100% { opacity: 1; transform: scale(1); }
           }
         `}</style>
       </main>
@@ -694,17 +742,11 @@ function Scene({ children }: { children: React.ReactNode }) {
 }
 
 function Counter() {
-  // Wooden counter line — purely decorative, sits at the bottom.
-  return (
-    <div
-      className="absolute left-0 right-0 bottom-0 pointer-events-none"
-      style={{
-        height: "8%",
-        background: "linear-gradient(to bottom, #E8C9A8, #B88555)",
-        borderTop: "2px solid #8B5A2B",
-      }}
-    />
-  );
+  // Reserved for future scene-specific overlays; the actual kitchen
+  // counter background is now painted on the stage container itself
+  // via counter-bg.png so it shows on every step without each Scene
+  // having to repeat it.
+  return null;
 }
 
 function BlenderTarget({ stage, added }: {
@@ -721,30 +763,35 @@ function BlenderTarget({ stage, added }: {
           className="w-full h-auto drop-shadow-xl animate-[bounce_3s_ease-in-out_infinite]"
           draggable={false}
         />
-        {/* Splash drops — one per ingredient that's landed inside. Each
-            pops in with a bounce as it lands. Position is in % of the
-            blender container, NOT the stage, so the drops stay anchored
-            to the jug body regardless of how big the blender renders. */}
+        {/* Splash drops — one PNG per ingredient that's landed
+            inside. Each pops in with a bounce as it lands.
+            Positions are % of the blender container, so the chunks
+            stay anchored to the jug body regardless of render size. */}
         {(Object.keys(SPLASH_LAYOUT) as IngredientId[]).map((key) => {
           if (!added.has(key)) return null;
           const drop = SPLASH_LAYOUT[key];
           return (
-            <span
+            <div
               key={key}
               className="absolute pointer-events-none"
               style={{
                 left:   `${drop.x}%`,
                 top:    `${drop.y}%`,
                 width:  `${drop.size}%`,
-                height: `${drop.size}%`,
-                background: drop.color,
-                borderRadius: "50%",
-                opacity: 0.92,
-                boxShadow: `0 4px 10px ${drop.color}80, inset -2px -3px 0 rgba(0,0,0,0.12)`,
+                transform: "translate(-50%, -50%)",
                 animation: "splashPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
                 transformOrigin: "center",
+                filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))",
               }}
-            />
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={drop.src}
+                alt=""
+                className="w-full h-auto"
+                draggable={false}
+              />
+            </div>
           );
         })}
       </div>
