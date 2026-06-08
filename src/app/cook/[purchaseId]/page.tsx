@@ -134,9 +134,9 @@ const PRELOAD_SRCS = [
   `${ASSET}/ingredients/blender-strawberry-banana-milk-yogurt.png`,
   `${ASSET}/ingredients/blender-blending.png`,
   `${ASSET}/ingredients/blender-full.png`,
+  `${ASSET}/ingredients/blender-pouring.png`,
   `${ASSET}/ingredients/cup-empty.png`,
   `${ASSET}/ingredients/cup-full.png`,
-  `${ASSET}/extras/pour-stream.png`,
 ];
 
 export default function CookPage({ params }: { params: Promise<{ purchaseId: string }> }) {
@@ -530,23 +530,22 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             {step === "pour-cups" && (
               <Scene>
                 <Counter />
-                {/* Pour scene — blender HOVERS HIGH ABOVE the counter
-                    (like it's being held) so the pour is clearly
-                    downward into the cup below, not sideways across
-                    the counter. Resting position is centered between
-                    the two cups; when pouring, the blender slides
-                    directly OVER the target cup so the spout aligns
-                    with the cup mouth, then tilts to release the
-                    smoothie. Geometry (% of stage):
+                {/* Pour scene
+                    Two visual states per cup:
+                      RESTING — blender-full sits centered, upright,
+                        hovering above the counter; both cups await
+                        a tap below.
+                      POURING — blender-pouring.png slides directly
+                        above the target cup. The image itself is
+                        pre-tilted with the smoothie stream attached
+                        to the spout, so no CSS rotation or separate
+                        stream sprite is needed. Mirrored via
+                        scaleX(-1) when pouring the RIGHT cup so the
+                        same artwork covers both directions.
+                    Geometry (% of stage):
                       Cup centres   left=25, right=75; cup mouth Y≈63
-                      Blender resting   centre X=50, top=4%
-                      Pouring cup-0     centre X=25 (directly above)
-                      Pouring cup-1     centre X=75
-                    Tilt direction matches gravity: blender tips its
-                    LID-side downward toward the cup it's pouring
-                    into. transformOrigin sits at the bottom-centre
-                    so the rotation pivots on an imaginary "hand
-                    grip" rather than mid-body. */}
+                      Blender X     resting 50, pouring 25 / 75
+                      Blender top   4% (hovers high so pour drops down) */}
                 <div
                   className="absolute top-[4%] transition-all duration-500 ease-out z-10"
                   style={{
@@ -555,53 +554,23 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                       pouringCup === 1 ? "75%" :
                                          "50%",
                     width: "30%",
-                    transform:
-                      pouringCup === 0
-                        ? "translateX(-50%) rotate(-28deg)"
-                        : pouringCup === 1
-                        ? "translateX(-50%) rotate(28deg)"
-                        : "translateX(-50%) rotate(0deg)",
-                    transformOrigin: "center 100%",
+                    transform: pouringCup === 1
+                      ? "translateX(-50%) scaleX(-1)"
+                      : "translateX(-50%)",
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`${ASSET}/ingredients/blender-full.png`}
+                    src={
+                      pouringCup === null
+                        ? `${ASSET}/ingredients/blender-full.png`
+                        : `${ASSET}/ingredients/blender-pouring.png`
+                    }
                     alt="blender"
                     className="w-full h-auto select-none drop-shadow-2xl"
                     draggable={false}
                   />
                 </div>
-
-                {/* Pour stream — a tall, narrow column of smoothie
-                    that drops straight DOWN from the blender's spout
-                    edge to the cup mouth. Since the blender now hovers
-                    directly above the target cup, the stream is
-                    perfectly vertical, no diagonal awkwardness. Top
-                    of stream tucks under the tilted blender's lid
-                    (~32%), bottom dips into the cup mouth (~65%). */}
-                {pouringCup !== null && (
-                  <div
-                    className="absolute pointer-events-none"
-                    style={{
-                      left:    pouringCup === 0 ? "25%" : "75%",
-                      top:     "32%",
-                      width:   "8%",
-                      height:  "33%",
-                      transform: "translateX(-50%)",
-                      animation: "pourWiggle 220ms ease-in-out infinite alternate",
-                      filter: "drop-shadow(0 4px 8px rgba(233,30,99,0.4))",
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`${ASSET}/extras/pour-stream.png`}
-                      alt=""
-                      className="w-full h-full object-contain select-none"
-                      draggable={false}
-                    />
-                  </div>
-                )}
 
                 {/* Two cups along the bottom. Larger now so the pour
                     target reads clearly on phones, and the cup-full
