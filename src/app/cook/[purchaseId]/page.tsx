@@ -549,9 +549,18 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                 <div
                   className="absolute top-[4%] transition-all duration-500 ease-out z-10"
                   style={{
+                    // The pour PNG has its smoothie stream offset to
+                    // one side of the blender body (the spout is left
+                    // of the body in the source artwork). Shift the
+                    // wrapper so the STREAM aligns with the cup mouth,
+                    // not the body centre — moves right for cup-0 (the
+                    // left cup) since the stream is on the body's left
+                    // and we want it over cup-0's centre; moves left
+                    // for cup-1 since we mirror the image and the
+                    // stream is on the right.
                     left:
-                      pouringCup === 0 ? "25%" :
-                      pouringCup === 1 ? "75%" :
+                      pouringCup === 0 ? "32%" :
+                      pouringCup === 1 ? "68%" :
                                          "50%",
                     width: "30%",
                     transform: pouringCup === 1
@@ -572,16 +581,12 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                   />
                 </div>
 
-                {/* Two cups along the bottom. Larger now so the pour
-                    target reads clearly on phones, and the cup-full
-                    image is revealed via a clip-path that travels from
-                    bottom to top — feels like the smoothie level is
-                    rising, not just cross-fading. */}
+                {/* Two cups along the bottom. The cup-full image is
+                    revealed via a clip-path that travels from bottom
+                    to top, so the smoothie level visibly rises. */}
                 {[0, 1].map((i) => {
                   const filled = cupsFilled.has(i);
                   const isThisPouring = pouringCup === i;
-                  // Reveal % — 0 when empty, animates to 100 over the
-                  // 1.2s pour, sticks at 100 when filled.
                   return (
                     <button
                       key={i}
@@ -595,39 +600,46 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                       aria-label={filled ? "Filled cup" : "Tap to fill"}
                     >
                       <div className="relative">
-                        {/* Empty cup base — always rendered so the cup
-                            outline stays visible behind the rising
-                            smoothie fill. */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`${ASSET}/ingredients/cup-empty.png`}
-                          alt=""
-                          className={`w-full h-auto select-none drop-shadow-md ${filled || pouringCup !== null ? "" : "animate-[bounce_2s_ease-in-out_infinite]"}`}
-                          draggable={false}
-                        />
-                        {/* Cup-full image, clipped to a rising
-                            rectangle. Inset top% goes from 100 (fully
-                            hidden) to 0 (fully revealed) — driven by
-                            the cupFill animation, which only runs
-                            while this cup is being poured. Once
-                            filled, sit at inset(0). */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`${ASSET}/ingredients/cup-full.png`}
-                          alt={filled ? "Full cup" : ""}
-                          className="absolute inset-0 w-full h-auto select-none drop-shadow-md"
-                          style={{
-                            clipPath: filled
-                              ? "inset(0 0 0 0)"
-                              : isThisPouring
-                              ? undefined /* drive via animation */
-                              : "inset(100% 0 0 0)",
-                            animation: isThisPouring
-                              ? "cupFill 1200ms ease-out forwards"
-                              : undefined,
-                          }}
-                          draggable={false}
-                        />
+                        {/* Empty cup base — shown while the cup is
+                            empty OR being poured (so the rising fill
+                            has an outline behind it). Hidden once
+                            the cup is fully filled so we don't get
+                            the empty-cup rim peeking around the
+                            full-cup image (the two PNGs have slightly
+                            different silhouettes). */}
+                        {!filled && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={`${ASSET}/ingredients/cup-empty.png`}
+                            alt=""
+                            className={`w-full h-auto select-none drop-shadow-md ${pouringCup !== null ? "" : "animate-[bounce_2s_ease-in-out_infinite]"}`}
+                            draggable={false}
+                          />
+                        )}
+                        {/* Cup-full image. Two render modes:
+                              FILLED   — full opacity, no clip, sits
+                                          alone (no empty cup behind).
+                              POURING — clip-path rises from bottom
+                                          via the cupFill animation,
+                                          overlaid on the empty cup.
+                              EMPTY   — not rendered. */}
+                        {(filled || isThisPouring) && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={`${ASSET}/ingredients/cup-full.png`}
+                            alt={filled ? "Full cup" : ""}
+                            className={filled ? "w-full h-auto select-none drop-shadow-md" : "absolute inset-0 w-full h-auto select-none drop-shadow-md"}
+                            style={
+                              filled
+                                ? undefined
+                                : {
+                                    clipPath: "inset(100% 0 0 0)",
+                                    animation: "cupFill 1200ms ease-out forwards",
+                                  }
+                            }
+                            draggable={false}
+                          />
+                        )}
                       </div>
                     </button>
                   );
