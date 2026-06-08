@@ -107,18 +107,20 @@ interface FlyingItem {
 const BLENDER_TARGET_X = 76;
 const BLENDER_TARGET_Y = 38;
 
-// Splash drops shown inside the blender body — one per added
-// ingredient. Each one is a real PNG of the ingredient as it would
-// sit inside the jug. Positions are % of the blender container,
-// not the stage, so they stay anchored to the jug body regardless
-// of how big the blender renders.
+// Pre-rendered blender state images. Each shows the cumulative
+// contents of the jug at a point in the recipe. Picking the right
+// state image is just a function of which ingredients have been
+// added so far — no per-chunk positioning to keep aligned.
 type IngredientId = "strawberry" | "banana" | "milk" | "yogurt";
-const SPLASH_LAYOUT: Record<IngredientId, { src: string; x: number; y: number; size: number }> = {
-  strawberry: { src: `${ASSET}/ingredients/strawberry-chunk.png`, x: 32, y: 56, size: 30 },
-  banana:     { src: `${ASSET}/ingredients/banana-chunk.png`,     x: 62, y: 58, size: 32 },
-  milk:       { src: `${ASSET}/ingredients/milk-blob.png`,        x: 47, y: 48, size: 38 },
-  yogurt:     { src: `${ASSET}/ingredients/yogurt-blob.png`,      x: 50, y: 65, size: 34 },
-};
+
+function blenderImageFor(added: Set<IngredientId>): string {
+  const has = (k: IngredientId) => added.has(k);
+  if (has("yogurt"))     return `${ASSET}/ingredients/blender-strawberry-banana-milk-yogurt.png`;
+  if (has("milk"))       return `${ASSET}/ingredients/blender-strawberry-banana-milk.png`;
+  if (has("banana"))     return `${ASSET}/ingredients/blender-strawberry-banana.png`;
+  if (has("strawberry")) return `${ASSET}/ingredients/blender-strawberry.png`;
+  return `${ASSET}/ingredients/blender-empty.png`;
+}
 
 export default function CookPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
@@ -377,7 +379,7 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             {step === "tap-strawberries" && (
               <Scene>
                 <Counter />
-                <BlenderTarget stage="empty" added={addedIngredients} />
+                <BlenderTarget added={addedIngredients} />
                 {strawberryPositions.current.map((pos, i) =>
                   strawberriesGone.has(i) ? null : (
                     <button
@@ -443,51 +445,23 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                     spin; afterwards the contents are swapped to the
                     fully-blended pink smoothie image. */}
                 <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${blending ? "animate-[shake_120ms_linear_infinite]" : ""}`} style={{ width: "55%" }}>
-                  <div className="relative">
-                    {/* Three-state blender: empty (with ingredient
-                        chunks layered on top) → blending (motion-blur
-                        PNG, no chunks needed since the art shows the
-                        swirling smoothie) → full (clear pink smoothie). */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={
-                        blended  ? `${ASSET}/ingredients/blender-full.png` :
-                        blending ? `${ASSET}/ingredients/blender-blending.png` :
-                                   `${ASSET}/ingredients/blender-empty.png`
-                      }
-                      alt="blender"
-                      className="w-full h-auto select-none drop-shadow-2xl"
-                      draggable={false}
-                    />
-                    {/* Show ingredient chunks only BEFORE the blend
-                        starts. The blender-blending PNG has motion
-                        blur baked in, so chunks layered on top would
-                        clash; and the blender-full PNG already shows
-                        the finished smoothie. */}
-                    {!blended && !blending && (Object.keys(SPLASH_LAYOUT) as IngredientId[]).map((key) => {
-                      if (!addedIngredients.has(key)) return null;
-                      const drop = SPLASH_LAYOUT[key];
-                      return (
-                        <div
-                          key={key}
-                          className="absolute pointer-events-none"
-                          style={{
-                            left:   `${drop.x}%`,
-                            top:    `${drop.y}%`,
-                            width:  `${drop.size}%`,
-                            transform: "translate(-50%, -50%)",
-                            animation: blending
-                              ? "splashSpin 350ms linear infinite"
-                              : "splashPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
-                            filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))",
-                          }}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={drop.src} alt="" className="w-full h-auto" draggable={false} />
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {/* Three-state blender: full pre-blend state (showing
+                      all 4 ingredients waiting to be blended) → blending
+                      (motion-blur PNG) → full (blended pink smoothie).
+                      The pre-blend state always shows the
+                      four-ingredient image because the kid only reaches
+                      this step after adding everything. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={
+                      blended  ? `${ASSET}/ingredients/blender-full.png` :
+                      blending ? `${ASSET}/ingredients/blender-blending.png` :
+                                 blenderImageFor(addedIngredients)
+                    }
+                    alt="blender"
+                    className="w-full h-auto select-none drop-shadow-2xl"
+                    draggable={false}
+                  />
                 </div>
                 {/* Big tappable BLEND button */}
                 {!blended && (
@@ -712,14 +686,13 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             from { transform: scale(0.5); opacity: 0; }
             to   { transform: scale(1);   opacity: 1; }
           }
-          @keyframes splashPop {
-            0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-            60%  { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-          }
-          @keyframes splashSpin {
-            from { transform: translate(-50%, -50%) rotate(0deg) scale(1.05); }
-            to   { transform: translate(-50%, -50%) rotate(360deg) scale(0.95); }
+          /* Soft pop when the blender swaps from one cumulative-state
+             image to the next (e.g. strawberry added → strawberry+banana).
+             A keyed React element triggers this once per swap. */
+          @keyframes stateSwap {
+            0%   { transform: scale(0.92); opacity: 0.4; }
+            70%  { transform: scale(1.04); opacity: 1; }
+            100% { transform: scale(1);    opacity: 1; }
           }
           @keyframes pourWiggle {
             0%   { transform: translateX(-50%) skewX(-3deg); }
@@ -749,51 +722,24 @@ function Counter() {
   return null;
 }
 
-function BlenderTarget({ stage, added }: {
-  stage: "empty" | "full";
-  added: Set<IngredientId>;
-}) {
+function BlenderTarget({ added }: { added: Set<IngredientId> }) {
+  // Picks one of the pre-rendered cumulative-state blender PNGs based
+  // on what's been added. A keyed wrapper triggers a soft pop animation
+  // each time the state image changes — gives the kid a moment of
+  // feedback ("something landed in there!") without us having to overlay
+  // anything. drop-shadow stays on the image even though it's keyed.
+  const src = blenderImageFor(added);
   return (
     <div className="absolute right-[8%] top-1/2 -translate-y-1/2" style={{ width: "32%" }}>
       <div className="relative">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={stage === "empty" ? `${ASSET}/ingredients/blender-empty.png` : `${ASSET}/ingredients/blender-full.png`}
+          key={src}
+          src={src}
           alt="blender"
-          className="w-full h-auto drop-shadow-xl"
+          className="w-full h-auto drop-shadow-xl animate-[stateSwap_420ms_cubic-bezier(0.34,1.56,0.64,1)]"
           draggable={false}
         />
-        {/* Splash drops — one PNG per ingredient that's landed
-            inside. Each pops in with a bounce as it lands.
-            Positions are % of the blender container, so the chunks
-            stay anchored to the jug body regardless of render size. */}
-        {(Object.keys(SPLASH_LAYOUT) as IngredientId[]).map((key) => {
-          if (!added.has(key)) return null;
-          const drop = SPLASH_LAYOUT[key];
-          return (
-            <div
-              key={key}
-              className="absolute pointer-events-none"
-              style={{
-                left:   `${drop.x}%`,
-                top:    `${drop.y}%`,
-                width:  `${drop.size}%`,
-                transform: "translate(-50%, -50%)",
-                animation: "splashPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
-                transformOrigin: "center",
-                filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))",
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={drop.src}
-                alt=""
-                className="w-full h-auto"
-                draggable={false}
-              />
-            </div>
-          );
-        })}
       </div>
     </div>
   );
@@ -808,7 +754,7 @@ function SimpleAddScene({ itemSrc, itemLabel, onTap, added }: {
   return (
     <Scene>
       <Counter />
-      <BlenderTarget stage="empty" added={added} />
+      <BlenderTarget added={added} />
       <button
         onClick={onTap}
         className="absolute left-[25%] top-[50%] -translate-x-1/2 -translate-y-1/2 hover:scale-110 active:scale-95 transition-transform duration-100"
