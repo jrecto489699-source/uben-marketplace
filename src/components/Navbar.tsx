@@ -12,7 +12,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useCurrency, CURRENCIES, type Currency } from "@/context/CurrencyContext";
 import { allProducts } from "@/data/products";
 
-const categories = [
+// `href` is optional: items without it go to /all?category=<slug>;
+// items with it link directly (used for tool routes like /trace that
+// aren't a product list).
+const categories: Array<{ label: string; slug: string; href?: string; badge?: string }> = [
   { label: "Printables",  slug: "printables"  },
   { label: "Worksheets",  slug: "worksheets"  },
   { label: "Coloring",    slug: "coloring"    },
@@ -25,6 +28,7 @@ const categories = [
   { label: "Identification", slug: "identification" },
   { label: "Classroom",   slug: "classroom"   },
   { label: "Holiday",     slug: "holiday",    badge: "New" },
+  { label: "Trace",       slug: "trace",      href: "/trace", badge: "New" },
 ];
 
 const DEFAULT_SUGGESTIONS = [
@@ -187,12 +191,15 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
       <div className="hidden md:block border-t border-border-muted">
         <div className="max-w-7xl mx-auto px-6">
           <ul className="flex items-center gap-1 h-10">
-            {categories.map(({ label, slug, badge }) => {
-              const isActive = currentSlug === slug || (currentSlug === "" && active === label);
+            {categories.map(({ label, slug, href, badge }) => {
+              const linkHref = href ?? `/all?category=${slug}`;
+              const isActive = href
+                ? pathname === href
+                : (currentSlug === slug || (currentSlug === "" && active === label));
               return (
                 <li key={label}>
                   <a
-                    href={`/all?category=${slug}`}
+                    href={linkHref}
                     onClick={() => setActive(label)}
                     className={[
                       "relative flex items-center gap-1.5 px-3 h-7 rounded-full text-[13px] transition-colors duration-200 whitespace-nowrap",
@@ -226,10 +233,10 @@ function CategoryStrip({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; set
             <p className="px-3 pb-1 text-[11px] font-bold tracking-widest text-ink uppercase">
               Browse
             </p>
-            {categories.map(({ label, slug, badge }) => (
+            {categories.map(({ label, slug, href, badge }) => (
               <a
                 key={label}
-                href={`/all?category=${slug}`}
+                href={href ?? `/all?category=${slug}`}
                 onClick={() => { setActive(label); setMobileOpen(false); }}
                 className="flex items-center justify-between px-3 py-2.5 text-sm text-ink-muted rounded-xl hover:bg-card-hover hover:text-ink transition-colors duration-200"
               >
