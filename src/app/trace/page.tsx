@@ -137,10 +137,10 @@ function TraceRow({ row, index, color, onChange, onRemove, canRemove, registerCa
     if (c && c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
   }
 
-  // Tracing word is uppercased for the SVG so the dotted outlines
-  // are uniform; the input retains its original case so the user can
-  // see what they typed.
-  const display = (row.word || " ").toUpperCase();
+  // Whatever case the user typed is what gets traced. Lowercase
+  // letters work fine — the viewBox below has enough headroom under
+  // the baseline for descenders (g, j, p, q, y).
+  const display = row.word || " ";
 
   return (
     <div className="mb-6">
@@ -183,29 +183,36 @@ function TraceRow({ row, index, color, onChange, onRemove, canRemove, registerCa
         className="w-full text-sm text-ink-muted bg-transparent border-0 outline-none focus:text-ink mb-2 px-1 placeholder:text-ink-muted/50"
       />
 
-      {/* Tracing stage — ruled paper background + SVG letters + canvas. */}
+      {/* Tracing stage — ruled paper background + SVG letters + canvas.
+          ViewBox is taller than the uppercase-only version so descenders
+          (g, j, p, q, y) on lowercase letters don't get clipped. */}
       <div
         ref={stageRef}
         className="relative w-full bg-white rounded-2xl border border-border-muted overflow-hidden shadow-sm"
-        style={{ aspectRatio: "1000 / 220" }}
+        style={{ aspectRatio: "1000 / 250" }}
       >
-        {/* Ruled-paper lines — top solid, middle dashed, bottom solid.
-            Matches the classic K–2 handwriting practice sheet. */}
-        <div className="absolute inset-x-0 pointer-events-none border-t" style={{ top: "20%", borderColor: "#9CA3AF" }} />
-        <div className="absolute inset-x-0 pointer-events-none border-t border-dashed" style={{ top: "55%", borderColor: "#D1D5DB" }} />
-        <div className="absolute inset-x-0 pointer-events-none border-t" style={{ top: "90%", borderColor: "#9CA3AF" }} />
+        {/* Ruled-paper lines — solid cap line / dashed x-height / solid
+            baseline. Percentages match the SVG y-coordinates where the
+            font's cap top, x-height, and baseline actually sit, so a
+            lowercase "abc" lines up with the dashed midline and an
+            uppercase "ABC" tops out at the solid cap line. */}
+        <div className="absolute inset-x-0 pointer-events-none border-t" style={{ top: "34%", borderColor: "#9CA3AF" }} />
+        <div className="absolute inset-x-0 pointer-events-none border-t border-dashed" style={{ top: "45%", borderColor: "#D1D5DB" }} />
+        <div className="absolute inset-x-0 pointer-events-none border-t" style={{ top: "80%", borderColor: "#9CA3AF" }} />
 
-        {/* Letters — drawn at fixed viewBox coords. textLength + lengthAdjust
-            forces the word to fit horizontally regardless of how long it is,
-            so a 2-char "Hi" and a 20-char phrase both fill the row. */}
+        {/* Letters — fixed viewBox coords. textLength + lengthAdjust
+            forces the word to fit horizontally so a 2-char "Hi" and a
+            20-char phrase both fill the line. y=200 places the baseline
+            on the bottom solid rule, leaving 50 viewBox units of
+            descender room below. */}
         <svg
-          viewBox="0 0 1000 220"
+          viewBox="0 0 1000 250"
           preserveAspectRatio="none"
           className="absolute inset-0 w-full h-full pointer-events-none"
         >
           <text
             x="500"
-            y="170"
+            y="200"
             textAnchor="middle"
             fontFamily="'Fredoka', 'Baloo 2', 'Comic Sans MS', system-ui, sans-serif"
             fontSize="160"
@@ -219,7 +226,7 @@ function TraceRow({ row, index, color, onChange, onRemove, canRemove, registerCa
           </text>
           <text
             x="500"
-            y="170"
+            y="200"
             textAnchor="middle"
             fontFamily="'Fredoka', 'Baloo 2', 'Comic Sans MS', system-ui, sans-serif"
             fontSize="160"
