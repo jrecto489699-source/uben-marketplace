@@ -28,7 +28,14 @@ const COLORS = [
   { name: "Plum",  value: "#7C3AED" },
 ];
 
-const STROKE_WIDTH = 10;
+// Stroke width scales with the row's rendered height so the brush
+// feels marker-sized on every viewport — a fixed pixel width looked
+// fine on desktop but chunky on phones, where each row is only ~80px
+// tall. Clamped so it never gets invisibly thin or comically thick.
+function strokeWidthFor(canvas: HTMLCanvasElement): number {
+  const h = canvas.getBoundingClientRect().height;
+  return Math.max(3, Math.min(14, h * 0.06));
+}
 
 interface Row {
   label: string;
@@ -106,9 +113,10 @@ function TraceRow({ row, index, color, onChange, onRemove, canRemove, registerCa
     activePointersRef.current.set(e.pointerId, p);
     const ctx = c.getContext("2d");
     if (!ctx) return;
+    const w = strokeWidthFor(c);
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, STROKE_WIDTH / 2, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, w / 2, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -121,7 +129,7 @@ function TraceRow({ row, index, color, onChange, onRemove, canRemove, registerCa
     if (!ctx) return;
     const next = pointerPos(e);
     ctx.strokeStyle = color;
-    ctx.lineWidth = STROKE_WIDTH;
+    ctx.lineWidth = strokeWidthFor(c);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
