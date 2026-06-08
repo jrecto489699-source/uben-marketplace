@@ -1,14 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Eraser, Sparkles, RotateCcw } from "lucide-react";
+import { Eraser, Sparkles, RotateCcw, Plus, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-const MAX_CHARS = 8;
-const DEFAULT_WORD = "TRACE";
+const MAX_CHARS = 28;
 
-// Color palette the kid can pick from for their tracing pencil.
+// Default rows mimic the classic Monday–Friday tracing worksheet,
+// but every label and every word is editable so a parent can turn
+// it into a spelling list, a name-practice sheet, or whatever else
+// they like.
+const DEFAULT_ROWS = [
+  { label: "Monday",    word: "Editable Tracing" },
+  { label: "Tuesday",   word: "Editable Tracing" },
+  { label: "Wednesday", word: "Editable Tracing" },
+  { label: "Thursday",  word: "Editable Tracing" },
+  { label: "Friday",    word: "Editable Tracing" },
+];
+
 const COLORS = [
   { name: "Ink",   value: "#222222" },
   { name: "Sky",   value: "#1E88E5" },
@@ -18,32 +28,40 @@ const COLORS = [
   { name: "Plum",  value: "#7C3AED" },
 ];
 
-const STROKE_WIDTH = 14;
+const STROKE_WIDTH = 10;
 
-export default function TracePage() {
-  const [word, setWord] = useState(DEFAULT_WORD);
-  const [color, setColor] = useState(COLORS[1].value);
-  const [showCelebrate, setShowCelebrate] = useState(false);
+interface Row {
+  label: string;
+  word: string;
+}
 
+interface TraceRowProps {
+  row: Row;
+  index: number;
+  color: string;
+  onChange: (next: Row) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+  registerCanvas: (idx: number, el: HTMLCanvasElement | null) => void;
+  onClear: () => void;
+}
+
+function TraceRow({ row, index, color, onChange, onRemove, canRemove, registerCanvas, onClear }: TraceRowProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef  = useRef<HTMLDivElement  | null>(null);
-
-  // Active pointer state — Map keyed by pointerId so multi-touch on
-  // tablets doesn't snarl up the strokes.
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
 
-  // ── Canvas setup — DPR-aware resize ─────────────────────────────────────
+  // DPR-aware canvas sizing — same pattern as before, scoped to this row.
   useEffect(() => {
     const canvas = canvasRef.current;
     const stage  = stageRef.current;
     if (!canvas || !stage) return;
+    registerCanvas(index, canvas);
 
     function resize() {
       if (!canvas || !stage) return;
       const dpr = window.devicePixelRatio || 1;
       const rect = stage.getBoundingClientRect();
-      // Preserve the existing drawing through a resize so the trace
-      // doesn't get wiped just because the user rotated their tablet.
       const prev = document.createElement("canvas");
       prev.width  = canvas.width;
       prev.height = canvas.height;
@@ -66,24 +84,27 @@ export default function TracePage() {
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(stage);
-    return () => ro.disconnect();
-  }, []);
+    return () => {
+      ro.disconnect();
+      registerCanvas(index, null);
+    };
+  // registerCanvas is stable; intentionally only re-running on index change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
 
-  function pointerPos(e: React.PointerEvent<HTMLCanvasElement>): { x: number; y: number } {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
+  function pointerPos(e: React.PointerEvent<HTMLCanvasElement>) {
+    const c = canvasRef.current!;
+    const rect = c.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.setPointerCapture(e.pointerId);
+    const c = canvasRef.current;
+    if (!c) return;
+    c.setPointerCapture(e.pointerId);
     const p = pointerPos(e);
     activePointersRef.current.set(e.pointerId, p);
-    // Draw a tiny dot at the start so tap-without-drag still shows
-    // something — feels responsive.
-    const ctx = canvas.getContext("2d");
+    const ctx = c.getContext("2d");
     if (!ctx) return;
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -94,9 +115,9 @@ export default function TracePage() {
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
     const last = activePointersRef.current.get(e.pointerId);
     if (!last) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
     if (!ctx) return;
     const next = pointerPos(e);
     ctx.strokeStyle = color;
@@ -112,39 +133,175 @@ export default function TracePage() {
 
   function onPointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
     activePointersRef.current.delete(e.pointerId);
-    const canvas = canvasRef.current;
-    if (canvas && canvas.hasPointerCapture(e.pointerId)) {
-      canvas.releasePointerCapture(e.pointerId);
-    }
+    const c = canvasRef.current;
+    if (c && c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
   }
 
-  function clearCanvas() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+  // Tracing word is uppercased for the SVG so the dotted outlines
+  // are uniform; the input retains its original case so the user can
+  // see what they typed.
+  const display = (row.word || " ").toUpperCase();
+
+  return (
+    <div className="mb-6">
+      {/* Header — editable day/section label and trash button */}
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <input
+          value={row.label}
+          onChange={(e) => onChange({ ...row, label: e.target.value.slice(0, 24) })}
+          className="font-serif text-xl md:text-2xl font-semibold text-ink bg-transparent border-0 outline-none focus:bg-white focus:border focus:border-border-muted focus:rounded-lg focus:px-2 focus:py-0.5 transition-all duration-150 max-w-[280px]"
+          aria-label="Row label"
+        />
+        <div className="flex-1" />
+        <button
+          onClick={onClear}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-ink-muted hover:bg-card-hover hover:text-ink transition-colors duration-150"
+          aria-label="Clear this row"
+        >
+          <Eraser size={11} strokeWidth={2} />
+          Clear
+        </button>
+        {canRemove && (
+          <button
+            onClick={onRemove}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-muted hover:bg-red-50 hover:text-red-600 transition-colors duration-150"
+            aria-label="Remove row"
+          >
+            <X size={14} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+
+      {/* Editable word input — visible just under the label so it's
+          obvious what the kid will trace. Type to change. */}
+      <input
+        value={row.word}
+        onChange={(e) => onChange({ ...row, word: e.target.value.slice(0, MAX_CHARS) })}
+        placeholder="Type a word or phrase…"
+        maxLength={MAX_CHARS}
+        aria-label="Word to trace"
+        className="w-full text-sm text-ink-muted bg-transparent border-0 outline-none focus:text-ink mb-2 px-1 placeholder:text-ink-muted/50"
+      />
+
+      {/* Tracing stage — ruled paper background + SVG letters + canvas. */}
+      <div
+        ref={stageRef}
+        className="relative w-full bg-white rounded-2xl border border-border-muted overflow-hidden shadow-sm"
+        style={{ aspectRatio: "1000 / 220" }}
+      >
+        {/* Ruled-paper lines — top solid, middle dashed, bottom solid.
+            Matches the classic K–2 handwriting practice sheet. */}
+        <div className="absolute inset-x-0 pointer-events-none border-t" style={{ top: "20%", borderColor: "#9CA3AF" }} />
+        <div className="absolute inset-x-0 pointer-events-none border-t border-dashed" style={{ top: "55%", borderColor: "#D1D5DB" }} />
+        <div className="absolute inset-x-0 pointer-events-none border-t" style={{ top: "90%", borderColor: "#9CA3AF" }} />
+
+        {/* Letters — drawn at fixed viewBox coords. textLength + lengthAdjust
+            forces the word to fit horizontally regardless of how long it is,
+            so a 2-char "Hi" and a 20-char phrase both fill the row. */}
+        <svg
+          viewBox="0 0 1000 220"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <text
+            x="500"
+            y="170"
+            textAnchor="middle"
+            fontFamily="'Fredoka', 'Baloo 2', 'Comic Sans MS', system-ui, sans-serif"
+            fontSize="160"
+            fontWeight="700"
+            fill="#F3F0EA"
+            letterSpacing="4"
+            textLength="940"
+            lengthAdjust="spacingAndGlyphs"
+          >
+            {display}
+          </text>
+          <text
+            x="500"
+            y="170"
+            textAnchor="middle"
+            fontFamily="'Fredoka', 'Baloo 2', 'Comic Sans MS', system-ui, sans-serif"
+            fontSize="160"
+            fontWeight="700"
+            fill="none"
+            stroke="#9CA3AF"
+            strokeWidth="3.5"
+            strokeDasharray="10 8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            letterSpacing="4"
+            textLength="940"
+            lengthAdjust="spacingAndGlyphs"
+          >
+            {display}
+          </text>
+        </svg>
+
+        <canvas
+          ref={canvasRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
+        />
+      </div>
+    </div>
+  );
+}
+
+export default function TracePage() {
+  const [rows, setRows] = useState<Row[]>(DEFAULT_ROWS);
+  const [color, setColor] = useState(COLORS[1].value);
+  const [showCelebrate, setShowCelebrate] = useState(false);
+
+  // Track canvases per row so the global "Clear all" button can wipe
+  // every one without each row having to expose its own clear method.
+  const canvasMapRef = useRef<Map<number, HTMLCanvasElement>>(new Map());
+  function registerCanvas(idx: number, el: HTMLCanvasElement | null) {
+    if (el) canvasMapRef.current.set(idx, el);
+    else    canvasMapRef.current.delete(idx);
+  }
+
+  function clearOne(idx: number) {
+    const c = canvasMapRef.current.get(idx);
+    if (!c) return;
+    const ctx = c.getContext("2d");
     if (!ctx) return;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, c.width, c.height);
     ctx.restore();
+  }
+
+  function clearAll() {
+    canvasMapRef.current.forEach((_, idx) => clearOne(idx));
   }
 
   function celebrate() {
     setShowCelebrate(true);
   }
 
-  function newWord() {
+  function reset() {
     setShowCelebrate(false);
-    clearCanvas();
+    clearAll();
   }
 
-  // Reset the canvas whenever the word changes so old strokes don't
-  // overlap with the new letters.
-  useEffect(() => {
-    clearCanvas();
-  }, [word]);
+  function updateRow(idx: number, next: Row) {
+    setRows((prev) => prev.map((r, i) => (i === idx ? next : r)));
+    // Wipe just that row's strokes — the letters are about to change.
+    clearOne(idx);
+  }
 
-  const displayWord = (word || DEFAULT_WORD).toUpperCase();
+  function removeRow(idx: number) {
+    setRows((prev) => prev.filter((_, i) => i !== idx));
+    canvasMapRef.current.delete(idx);
+  }
+
+  function addRow() {
+    setRows((prev) => [...prev, { label: `Row ${prev.length + 1}`, word: "Editable Tracing" }]);
+  }
 
   return (
     <>
@@ -157,52 +314,22 @@ export default function TracePage() {
               Trace & Learn
             </span>
             <h1 className="font-serif text-4xl md:text-5xl font-semibold text-ink tracking-tight mb-2">
-              Trace your name!
+              Editable Tracing Sheet
             </h1>
             <p className="text-sm md:text-base text-ink-muted">
-              Type a name or word, then trace the letters with your finger.
+              Type any label, type any word — trace each row with your finger or stylus.
             </p>
           </div>
 
-          {/* Name input */}
-          <div className="flex justify-center mb-6">
-            <div className="relative w-full max-w-md">
-              <input
-                value={word}
-                onChange={(e) => {
-                  const next = e.target.value
-                    .replace(/[^A-Za-z ]/g, "")
-                    .slice(0, MAX_CHARS);
-                  setWord(next);
-                }}
-                placeholder="Type a name…"
-                maxLength={MAX_CHARS}
-                aria-label="Word to trace"
-                className="w-full text-center text-2xl md:text-3xl font-serif font-semibold text-ink bg-white border-2 border-border-muted rounded-full px-6 py-3 outline-none focus:border-ink transition-colors duration-150 placeholder:text-ink-muted/50"
-              />
-              {word && (
-                <button
-                  onClick={() => setWord("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-card-hover hover:bg-border-muted flex items-center justify-center text-ink-muted text-xs font-bold"
-                  aria-label="Clear word"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Color picker */}
-          <div className="flex justify-center gap-2 mb-4">
+          {/* Color picker — applies to every row. */}
+          <div className="flex justify-center gap-2 mb-6">
             {COLORS.map((c) => (
               <button
                 key={c.value}
                 onClick={() => setColor(c.value)}
                 aria-label={`${c.name} crayon`}
                 className={`w-9 h-9 rounded-full transition-all duration-150 ${
-                  color === c.value
-                    ? "ring-4 ring-offset-2 ring-offset-cream scale-110"
-                    : "hover:scale-105"
+                  color === c.value ? "ring-4 ring-offset-2 ring-offset-cream scale-110" : "hover:scale-105"
                 }`}
                 style={{
                   background: c.value,
@@ -213,129 +340,39 @@ export default function TracePage() {
             ))}
           </div>
 
-          {/* Tracing stage */}
-          <div
-            ref={stageRef}
-            className="relative w-full bg-white rounded-3xl border border-border-muted overflow-hidden shadow-sm"
-            style={{ aspectRatio: "16 / 7" }}
-          >
-            {/* Decorative dotted baseline rows — like ruled paper */}
-            <div className="absolute inset-0 pointer-events-none">
-              {[35, 65].map((y) => (
-                <div
-                  key={y}
-                  className="absolute left-0 right-0 border-t border-dashed"
-                  style={{ top: `${y}%`, borderColor: "#E5E0D8" }}
-                />
-              ))}
-            </div>
+          {/* Worksheet rows */}
+          <div className="bg-white/40 rounded-3xl border-2 border-dashed border-border-muted p-4 md:p-6">
+            {rows.map((row, idx) => (
+              <TraceRow
+                key={idx}
+                row={row}
+                index={idx}
+                color={color}
+                onChange={(next) => updateRow(idx, next)}
+                onRemove={() => removeRow(idx)}
+                canRemove={rows.length > 1}
+                registerCanvas={registerCanvas}
+                onClear={() => clearOne(idx)}
+              />
+            ))}
 
-            {/* Letters — SVG covers the whole stage. The text element
-                uses an outlined dashed stroke for the "trace me"
-                effect; viewBox is fixed at 800x350 so the text scales
-                naturally with the container regardless of viewport. */}
-            <svg
-              viewBox="0 0 800 350"
-              preserveAspectRatio="xMidYMid meet"
-              className="absolute inset-0 w-full h-full pointer-events-none"
+            <button
+              onClick={addRow}
+              className="w-full inline-flex items-center justify-center gap-2 mt-2 py-3 rounded-2xl border-2 border-dashed border-border-muted text-ink-muted text-sm font-medium hover:bg-cream hover:text-ink hover:border-ink transition-colors duration-150"
             >
-              <defs>
-                {/* Small green arrow + start dot per letter to hint at
-                    stroke direction. Placed at each char's left edge. */}
-                <marker
-                  id="startDot"
-                  viewBox="0 0 10 10"
-                  refX="5" refY="5"
-                  markerWidth="6" markerHeight="6"
-                >
-                  <circle cx="5" cy="5" r="4" fill="#16A34A" />
-                </marker>
-              </defs>
-              <text
-                x="400" y="240"
-                textAnchor="middle"
-                fontFamily="'Fredoka', 'Baloo 2', 'Comic Sans MS', system-ui, sans-serif"
-                fontSize="220"
-                fontWeight="700"
-                fill="none"
-                stroke="#9CA3AF"
-                strokeWidth="4"
-                strokeDasharray="12 10"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                letterSpacing="6"
-                style={{ paintOrder: "stroke" }}
-              >
-                {displayWord}
-              </text>
-              {/* Faint guide fill underneath so it reads as a letter,
-                  not just dashes floating in space. */}
-              <text
-                x="400" y="240"
-                textAnchor="middle"
-                fontFamily="'Fredoka', 'Baloo 2', 'Comic Sans MS', system-ui, sans-serif"
-                fontSize="220"
-                fontWeight="700"
-                fill="#F3F0EA"
-                letterSpacing="6"
-                style={{ opacity: 0.7 }}
-              >
-                {displayWord}
-              </text>
-            </svg>
-
-            {/* Drawing canvas — sits on top of the SVG. Pointer events
-                are routed here; the SVG behind it is pointer-events:none. */}
-            <canvas
-              ref={canvasRef}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
-              className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
-            />
-
-            {/* Celebration overlay */}
-            {showCelebrate && (
-              <div className="absolute inset-0 bg-cream/95 flex items-center justify-center backdrop-blur-sm">
-                <div className="text-center px-6 animate-[pop_400ms_ease-out]">
-                  <div className="flex justify-center gap-2 mb-4 text-[#F59E0B]">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <Sparkles
-                        key={i}
-                        size={28}
-                        strokeWidth={2.5}
-                        className="animate-[twinkle_900ms_ease-in-out_infinite]"
-                        style={{ animationDelay: `${i * 90}ms` }}
-                      />
-                    ))}
-                  </div>
-                  <h2 className="font-serif text-4xl md:text-5xl font-semibold text-ink mb-2">
-                    Great job!
-                  </h2>
-                  <p className="text-sm text-ink-muted mb-6">
-                    You traced <span className="font-semibold text-ink">{displayWord}</span>.
-                  </p>
-                  <button
-                    onClick={newWord}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] transition-colors duration-200"
-                  >
-                    <RotateCcw size={14} strokeWidth={2.5} />
-                    Try again
-                  </button>
-                </div>
-              </div>
-            )}
+              <Plus size={14} strokeWidth={2} />
+              Add another row
+            </button>
           </div>
 
-          {/* Controls */}
-          <div className="flex justify-center gap-3 mt-6">
+          {/* Bottom controls */}
+          <div className="flex justify-center gap-3 mt-8">
             <button
-              onClick={clearCanvas}
+              onClick={clearAll}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-border-muted text-ink text-sm font-medium hover:bg-card-hover transition-colors duration-200"
             >
               <Eraser size={14} strokeWidth={2} />
-              Clear
+              Clear all
             </button>
             <button
               onClick={celebrate}
@@ -351,7 +388,37 @@ export default function TracePage() {
           </p>
         </div>
 
-        {/* Google Font + animation keyframes */}
+        {/* Celebration overlay — fullscreen so it covers every row. */}
+        {showCelebrate && (
+          <div
+            className="fixed inset-0 z-50 bg-cream/95 backdrop-blur-sm flex items-center justify-center"
+            onClick={reset}
+          >
+            <div className="text-center px-6 animate-[pop_400ms_ease-out]">
+              <div className="flex justify-center gap-2 mb-4 text-[#F59E0B]">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Sparkles
+                    key={i}
+                    size={36}
+                    strokeWidth={2.5}
+                    className="animate-[twinkle_900ms_ease-in-out_infinite]"
+                    style={{ animationDelay: `${i * 90}ms` }}
+                  />
+                ))}
+              </div>
+              <h2 className="font-serif text-4xl md:text-5xl font-semibold text-ink mb-2">Great job!</h2>
+              <p className="text-sm text-ink-muted mb-6">You finished your tracing sheet.</p>
+              <button
+                onClick={reset}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-ink text-cream text-sm font-semibold hover:bg-[#3a3a3a] transition-colors duration-200"
+              >
+                <RotateCcw size={14} strokeWidth={2.5} />
+                Start over
+              </button>
+            </div>
+          </div>
+        )}
+
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap"
