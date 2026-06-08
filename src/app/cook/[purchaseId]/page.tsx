@@ -376,6 +376,29 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
               />
             )}
 
+            {/* Chef mascot — friendly cheerleader in the top-left
+                corner of every interactive step. Gentle bob keeps her
+                feeling alive without competing with the tap targets.
+                Hidden on the checklist (own scene) and done
+                (own celebration). Keyed by step so she re-pops with a
+                little scale-in each time the step changes — reads as
+                "good job, here's the next thing!". */}
+            {step !== "checklist" && step !== "done" && (
+              <div
+                key={`mascot-${step}`}
+                className="absolute top-[3%] left-[3%] pointer-events-none z-20 animate-[mascotPop_500ms_cubic-bezier(0.34,1.56,0.64,1)]"
+                style={{ width: "16%" }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`${ASSET}/chef-mascot.png`}
+                  alt="Chef mascot"
+                  className="w-full h-auto drop-shadow-lg animate-[mascotBob_3s_ease-in-out_infinite]"
+                  draggable={false}
+                />
+              </div>
+            )}
+
             {step === "checklist" && <Checklist recipe={RECIPE} onStart={advance} />}
 
             {step === "tap-strawberries" && (
@@ -703,6 +726,17 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
           @keyframes confettiIn {
             0%   { opacity: 0; transform: scale(1.15); }
             100% { opacity: 1; transform: scale(1); }
+          }
+          /* Mascot enters with a bouncy scale-in when the step changes
+             (keyed wrapper triggers this), then bobs gently forever. */
+          @keyframes mascotPop {
+            0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+            70%  { transform: scale(1.08) rotate(3deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+          }
+          @keyframes mascotBob {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-6px); }
           }
         `}</style>
       </main>
