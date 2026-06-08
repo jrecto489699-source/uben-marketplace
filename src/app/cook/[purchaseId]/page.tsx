@@ -123,9 +123,35 @@ function blenderImageFor(added: Set<IngredientId>): string {
   return `${ASSET}/ingredients/blender-empty.png`;
 }
 
+// Preload every blender + pour-stream image on mount so the
+// state-swap during the add-ingredient steps is instant — no
+// download flash where the blender disappears for a frame.
+const PRELOAD_SRCS = [
+  `${ASSET}/ingredients/blender-empty.png`,
+  `${ASSET}/ingredients/blender-strawberry.png`,
+  `${ASSET}/ingredients/blender-strawberry-banana.png`,
+  `${ASSET}/ingredients/blender-strawberry-banana-milk.png`,
+  `${ASSET}/ingredients/blender-strawberry-banana-milk-yogurt.png`,
+  `${ASSET}/ingredients/blender-blending.png`,
+  `${ASSET}/ingredients/blender-full.png`,
+  `${ASSET}/ingredients/cup-empty.png`,
+  `${ASSET}/ingredients/cup-full.png`,
+  `${ASSET}/extras/pour-stream.png`,
+];
+
 export default function CookPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = use(params);
   const { purchases, loading } = usePurchases();
+
+  // Warm the browser image cache for every blender state up front.
+  // Triggered on mount; subsequent <img src=…> swaps hit the cache
+  // and paint immediately instead of unmounting+downloading.
+  useEffect(() => {
+    PRELOAD_SRCS.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
 
   const purchase = purchases.find((p) => p.id === purchaseId);
   const product  = purchase ? allProducts.find((p) => p.id === purchase.product_id) : null;
@@ -386,8 +412,8 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             {step !== "checklist" && step !== "done" && (
               <div
                 key={`mascot-${step}`}
-                className="absolute top-[3%] left-[3%] pointer-events-none z-20 animate-[mascotPop_500ms_cubic-bezier(0.34,1.56,0.64,1)]"
-                style={{ width: "16%" }}
+                className="absolute top-[2%] left-[2%] pointer-events-none z-20 animate-[mascotPop_500ms_cubic-bezier(0.34,1.56,0.64,1)]"
+                style={{ width: "24%" }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -504,24 +530,28 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             {step === "pour-cups" && (
               <Scene>
                 <Counter />
-                {/* The full blender — slides horizontally + tilts toward
-                    the cup being poured. Translation is computed from
-                    which cup is the target; tilt sign matches.
-                    Cup positions:  left cup centre ~29%, right cup ~71%.
-                    Blender centre starts at 50%, slides to ~38% (left)
-                    or ~62% (right) to look like it's pouring INTO it. */}
+                {/* Pour-scene geometry (in % of stage):
+                     Cup centres   left=24, right=76; cup top  Y≈65
+                     Blender       sits on the counter (bottom-14%),
+                                   centre X=50, jug spout Y≈30
+                     When pouring, the blender slides slightly toward
+                     the target cup (just 8%) and tilts 22° — enough to
+                     read as "pouring" without looking like it's
+                     toppling over. transformOrigin sits at the BASE
+                     so the rotation pivots on the counter, not the
+                     middle of the body. */}
                 <div
-                  className="absolute top-[42%] -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ease-out"
+                  className="absolute bottom-[14%] transition-all duration-500 ease-out"
                   style={{
-                    left: pouringCup === 0 ? "38%" : pouringCup === 1 ? "62%" : "50%",
-                    width: "40%",
+                    left: pouringCup === 0 ? "42%" : pouringCup === 1 ? "58%" : "50%",
+                    width: "34%",
                     transform:
                       pouringCup === 0
-                        ? "translate(-50%, -50%) rotate(-30deg)"
+                        ? "translateX(-50%) rotate(-22deg)"
                         : pouringCup === 1
-                        ? "translate(-50%, -50%) rotate(30deg)"
-                        : "translate(-50%, -50%) rotate(0deg)",
-                    transformOrigin: "center 70%",
+                        ? "translateX(-50%) rotate(22deg)"
+                        : "translateX(-50%) rotate(0deg)",
+                    transformOrigin: "center 92%",
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -533,63 +563,92 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                   />
                 </div>
 
-                {/* Pour stream — illustrated PNG of pink liquid arcing
-                    from the blender spout into the cup. A subtle wiggle
-                    skew makes the liquid feel like it's flowing rather
-                    than a static frame. */}
+                {/* Pour stream — anchored to the BLENDER SPOUT side
+                    and angled toward the cup. Top of the stream sits
+                    just under the tilted blender's pour-edge (~38%),
+                    bottom touches the cup mouth (~60%). The image
+                    itself is tall+narrow so we stretch its height
+                    rather than width to span the gap. */}
                 {pouringCup !== null && (
                   <div
                     className="absolute pointer-events-none"
                     style={{
-                      left:    pouringCup === 0 ? "29%" : "71%",
-                      top:     "48%",
-                      width:   "12%",
+                      left:
+                        pouringCup === 0
+                          ? "31%" /* halfway between blender spout & left cup */
+                          : "69%",
+                      top:    "38%",
+                      width:  "10%",
+                      height: "28%",
                       transform: "translateX(-50%)",
                       animation: "pourWiggle 220ms ease-in-out infinite alternate",
-                      filter: "drop-shadow(0 4px 8px rgba(233,30,99,0.35))",
+                      filter: "drop-shadow(0 4px 8px rgba(233,30,99,0.4))",
                     }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`${ASSET}/extras/pour-stream.png`}
                       alt=""
-                      className="w-full h-auto select-none"
+                      className="w-full h-full object-contain select-none"
                       draggable={false}
                     />
                   </div>
                 )}
 
-                {/* Two cups along the bottom */}
+                {/* Two cups along the bottom. Larger now so the pour
+                    target reads clearly on phones, and the cup-full
+                    image is revealed via a clip-path that travels from
+                    bottom to top — feels like the smoothie level is
+                    rising, not just cross-fading. */}
                 {[0, 1].map((i) => {
                   const filled = cupsFilled.has(i);
                   const isThisPouring = pouringCup === i;
+                  // Reveal % — 0 when empty, animates to 100 over the
+                  // 1.2s pour, sticks at 100 when filled.
                   return (
                     <button
                       key={i}
                       onClick={() => tapCup(i)}
                       disabled={filled || pouringCup !== null}
-                      className={`absolute bottom-[8%] ${i === 0 ? "left-[18%]" : "right-[18%]"} pointer-events-auto ${filled || pouringCup !== null ? "" : "hover:scale-110 active:scale-95"} transition-transform duration-150`}
-                      style={{ width: "22%" }}
+                      className={`absolute bottom-[8%] pointer-events-auto ${filled || pouringCup !== null ? "" : "hover:scale-105 active:scale-95"} transition-transform duration-150`}
+                      style={{
+                        left: i === 0 ? "12%" : "62%",
+                        width: "26%",
+                      }}
                       aria-label={filled ? "Filled cup" : "Tap to fill"}
                     >
                       <div className="relative">
-                        {/* Empty cup base — stays visible underneath
-                            while the full cup fades in on top, giving
-                            a "filling up" cross-fade rather than an
-                            instant swap. */}
+                        {/* Empty cup base — always rendered so the cup
+                            outline stays visible behind the rising
+                            smoothie fill. */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={`${ASSET}/ingredients/cup-empty.png`}
                           alt=""
-                          className={`w-full h-auto select-none drop-shadow-md ${filled || isThisPouring ? "" : "animate-[bounce_2s_ease-in-out_infinite]"}`}
+                          className={`w-full h-auto select-none drop-shadow-md ${filled || pouringCup !== null ? "" : "animate-[bounce_2s_ease-in-out_infinite]"}`}
                           draggable={false}
                         />
+                        {/* Cup-full image, clipped to a rising
+                            rectangle. Inset top% goes from 100 (fully
+                            hidden) to 0 (fully revealed) — driven by
+                            the cupFill animation, which only runs
+                            while this cup is being poured. Once
+                            filled, sit at inset(0). */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={`${ASSET}/ingredients/cup-full.png`}
                           alt={filled ? "Full cup" : ""}
-                          className="absolute inset-0 w-full h-auto select-none drop-shadow-md transition-opacity duration-700"
-                          style={{ opacity: filled ? 1 : isThisPouring ? 0.5 : 0 }}
+                          className="absolute inset-0 w-full h-auto select-none drop-shadow-md"
+                          style={{
+                            clipPath: filled
+                              ? "inset(0 0 0 0)"
+                              : isThisPouring
+                              ? undefined /* drive via animation */
+                              : "inset(100% 0 0 0)",
+                            animation: isThisPouring
+                              ? "cupFill 1200ms ease-out forwards"
+                              : undefined,
+                          }}
                           draggable={false}
                         />
                       </div>
@@ -711,17 +770,29 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             from { transform: scale(0.5); opacity: 0; }
             to   { transform: scale(1);   opacity: 1; }
           }
-          /* Soft pop when the blender swaps from one cumulative-state
-             image to the next (e.g. strawberry added → strawberry+banana).
-             A keyed React element triggers this once per swap. */
-          @keyframes stateSwap {
-            0%   { transform: scale(0.92); opacity: 0.4; }
-            70%  { transform: scale(1.04); opacity: 1; }
-            100% { transform: scale(1);    opacity: 1; }
+          /* Subtle "thump" pulse around the blender each time a new
+             ingredient lands inside (e.g. strawberry added → image
+             swaps + this fires). Scale-only, no opacity change so
+             the blender never disappears mid-transition. The wrapper
+             is keyed by addedCount so it replays per ingredient. */
+          @keyframes blenderThump {
+            0%   { transform: scale(1); }
+            35%  { transform: scale(0.95); }
+            70%  { transform: scale(1.06); }
+            100% { transform: scale(1); }
           }
           @keyframes pourWiggle {
             0%   { transform: translateX(-50%) skewX(-3deg); }
             100% { transform: translateX(-50%) skewX(3deg); }
+          }
+          /* Smoothie rises in the cup. clip-path inset(top right bottom left)
+             — animating the TOP value from 100% down to 0% reveals the
+             cup-full image from bottom upward, like liquid filling.
+             ease-out front-loads the animation so the cup looks like
+             it's filling fastest at the start, slowing as it tops off. */
+          @keyframes cupFill {
+            0%   { clip-path: inset(100% 0 0 0); }
+            100% { clip-path: inset(0 0 0 0); }
           }
           @keyframes confettiIn {
             0%   { opacity: 0; transform: scale(1.15); }
@@ -759,21 +830,25 @@ function Counter() {
 }
 
 function BlenderTarget({ added }: { added: Set<IngredientId> }) {
-  // Picks one of the pre-rendered cumulative-state blender PNGs based
-  // on what's been added. A keyed wrapper triggers a soft pop animation
-  // each time the state image changes — gives the kid a moment of
-  // feedback ("something landed in there!") without us having to overlay
-  // anything. drop-shadow stays on the image even though it's keyed.
+  // Picks one of the pre-rendered cumulative-state blender PNGs.
+  // The <img> element is NOT keyed — swapping the same element's src
+  // is instant once images are preloaded, so the blender never
+  // disappears mid-transition. A keyed sibling wrapper triggers a
+  // small "thump" pulse around the blender each time the state
+  // changes — visual feedback without unmounting the image.
   const src = blenderImageFor(added);
+  const addedCount = added.size;
   return (
     <div className="absolute right-[8%] bottom-[14%]" style={{ width: "32%" }}>
-      <div className="relative">
+      <div
+        key={`thump-${addedCount}`}
+        className="relative animate-[blenderThump_420ms_cubic-bezier(0.34,1.56,0.64,1)]"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          key={src}
           src={src}
           alt="blender"
-          className="w-full h-auto drop-shadow-xl animate-[stateSwap_420ms_cubic-bezier(0.34,1.56,0.64,1)]"
+          className="w-full h-auto drop-shadow-xl"
           draggable={false}
         />
       </div>
