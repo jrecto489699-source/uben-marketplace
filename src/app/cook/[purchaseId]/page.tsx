@@ -333,7 +333,7 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-gradient-to-b from-[#FFEEF5] via-cream to-[#FFE4F1]">
+      <main className="min-h-screen bg-cream">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           {/* Top bar */}
           <div className="flex items-center justify-between mb-4">
@@ -373,9 +373,9 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                 key={s}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   i + 1 < stepIdx
-                    ? "w-6 bg-[#F1641E]"
+                    ? "w-6 bg-[#E91E63]"
                     : i + 1 === stepIdx
-                    ? "w-10 bg-[#F1641E]"
+                    ? "w-10 bg-[#E91E63]"
                     : "w-6 bg-white border border-border-muted"
                 }`}
               />
@@ -518,7 +518,7 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                 {!blended && (
                   <button
                     onClick={tapBlend}
-                    className="absolute left-1/2 bottom-6 -translate-x-1/2 px-8 py-4 rounded-full bg-gradient-to-b from-[#F1641E] to-[#C04A0F] text-white font-bold text-lg shadow-xl hover:scale-105 active:scale-95 transition-transform duration-100 border-2 border-white/60"
+                    className="absolute left-1/2 bottom-6 -translate-x-1/2 px-8 py-4 rounded-full bg-gradient-to-b from-[#FF4757] to-[#C92038] text-white font-bold text-lg shadow-xl hover:scale-105 active:scale-95 transition-transform duration-100 border-2 border-white/60"
                     disabled={blending}
                   >
                     {blending ? "Blending…" : "BLEND!"}
@@ -667,7 +667,7 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
             )}
 
             {step === "done" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-cream">
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-gradient-to-br from-[#FFEAF3] via-[#FFF5FA] to-[#FFE0EC]">
                 {/* Confetti — settles in behind the done image with a
                     gentle fade so the celebration reads as "the room
                     filled with confetti the moment you finished". */}
@@ -905,7 +905,7 @@ function Checklist({ recipe, onStart }: { recipe: typeof RECIPE; onStart: () => 
   const ready = checked.size === total;
 
   return (
-    <div className="absolute inset-0 overflow-auto p-5 sm:p-8 bg-cream">
+    <div className="absolute inset-0 overflow-auto p-5 sm:p-8 bg-gradient-to-br from-white to-[#FFF5F9]">
       <div className="max-w-2xl mx-auto">
         <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-ink mb-1">{recipe.title}</h2>
         <div className="flex flex-wrap items-center gap-2 mb-4 text-[11px] font-medium text-ink-muted">
@@ -928,7 +928,7 @@ function Checklist({ recipe, onStart }: { recipe: typeof RECIPE; onStart: () => 
                     className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-white/80 transition-colors duration-150 text-left"
                   >
                     <span className={`flex items-center justify-center w-5 h-5 rounded-md border-2 transition-colors duration-150 ${
-                      checked.has(`i:${ing}`) ? "bg-[#F1641E] border-[#F1641E]" : "border-border-muted"
+                      checked.has(`i:${ing}`) ? "bg-[#E91E63] border-[#E91E63]" : "border-border-muted"
                     }`}>
                       {checked.has(`i:${ing}`) && <Check size={12} strokeWidth={3} className="text-white" />}
                     </span>
@@ -950,7 +950,7 @@ function Checklist({ recipe, onStart }: { recipe: typeof RECIPE; onStart: () => 
                     className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-white/80 transition-colors duration-150 text-left"
                   >
                     <span className={`flex items-center justify-center w-5 h-5 rounded-md border-2 transition-colors duration-150 ${
-                      checked.has(`e:${eq}`) ? "bg-[#F1641E] border-[#F1641E]" : "border-border-muted"
+                      checked.has(`e:${eq}`) ? "bg-[#E91E63] border-[#E91E63]" : "border-border-muted"
                     }`}>
                       {checked.has(`e:${eq}`) && <Check size={12} strokeWidth={3} className="text-white" />}
                     </span>
@@ -968,7 +968,7 @@ function Checklist({ recipe, onStart }: { recipe: typeof RECIPE; onStart: () => 
           onClick={onStart}
           className={`w-full inline-flex items-center justify-center gap-2 py-4 rounded-full text-sm font-semibold transition-colors duration-200 ${
             ready
-              ? "bg-gradient-to-b from-[#F1641E] to-[#C04A0F] text-white shadow-lg hover:scale-[1.01]"
+              ? "bg-gradient-to-b from-[#FF4757] to-[#C92038] text-white shadow-lg hover:scale-[1.01]"
               : "bg-card-hover text-ink-muted hover:bg-border-muted"
           }`}
         >
