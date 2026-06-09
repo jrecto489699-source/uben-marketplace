@@ -191,7 +191,14 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
     }
     const existing = sfxStopTimersRef.current.get(id);
     if (existing) clearTimeout(existing);
+    // Explicitly unmute + restore volume in case the iOS unlock left
+    // the element muted (its play.then cleanup may not have run yet
+    // by the time this play call fires). Without this, the very
+    // first tap on every session would play silently because the
+    // unlock muted the element and never got a chance to un-mute it.
     try {
+      el.muted = false;
+      el.volume = 1;
       el.currentTime = 0;
       el.play().catch(() => {});
     } catch { /* element not ready, skip */ }
@@ -213,11 +220,23 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
     (Object.keys(SFX_MANIFEST) as SfxId[]).forEach((id) => {
       const manifest = SFX_MANIFEST[id];
       const el = new Audio(manifest.src);
+      el.preload = "auto";
       el.muted = true;
-      el.play()
-        .then(() => { el.pause(); el.currentTime = 0; el.muted = false; })
-        .catch(() => {});
       sfxElementsRef.current.set(id, el);
+      el.play()
+        .then(() => {
+          // Only tear down the unlock playback if the element is
+          // STILL muted (i.e. nobody else has started a real play
+          // on it). playSfx sets muted=false before its own play,
+          // so this check stops us from pausing audio that the
+          // caller actually wants to hear.
+          if (el.muted) {
+            el.pause();
+            el.currentTime = 0;
+            el.muted = false;
+          }
+        })
+        .catch(() => {});
     });
   }, []);
 
