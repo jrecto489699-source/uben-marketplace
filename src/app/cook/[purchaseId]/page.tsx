@@ -134,7 +134,7 @@ const SFX_MANIFEST: Record<SfxId, { src: string; maxMs: number | null }> = {
   land:      { src: "/sounds/cook-land.mp3",      maxMs:  400 },
   blender:   { src: "/sounds/cook-blender.mp3",   maxMs: 1600 },
   pour:      { src: "/sounds/cook-pour.mp3",      maxMs: 1200 },
-  success:   { src: "/sounds/cook-success.mp3",   maxMs: 5000 },
+  success:   { src: "/sounds/cook-success.mp3",   maxMs: 1500 },
   celebrate: { src: "/sounds/cook-celebrate.mp3", maxMs: 5000 },
 };
 
