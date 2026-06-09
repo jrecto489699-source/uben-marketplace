@@ -18,8 +18,8 @@
  * different art + a different sequence.
  */
 
-import { use, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ChefHat, Sparkles, RotateCcw, Volume2, VolumeX, Check } from "lucide-react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, ChefHat, Sparkles, RotateCcw, Volume2, VolumeX, Music2, Check } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { usePurchases } from "@/context/PurchasesContext";
 import { allProducts, cookingProducts } from "@/data/products";
@@ -123,6 +123,21 @@ function blenderImageFor(added: Set<IngredientId>): string {
   return `${ASSET}/ingredients/blender-empty.png`;
 }
 
+// Sound-effect manifest. Each entry is `[filename, maxDurationMs]`
+// — playback auto-stops at maxDuration so an over-long source MP3
+// gets clipped to the right beat without you having to edit the
+// audio file itself. Tunable per effect; if a sound should play to
+// its natural end, set maxDurationMs to `null`.
+type SfxId = "tap" | "land" | "blender" | "pour" | "success" | "celebrate";
+const SFX_MANIFEST: Record<SfxId, { src: string; maxMs: number | null }> = {
+  tap:       { src: "/sounds/cook-tap.mp3",       maxMs:  300 },
+  land:      { src: "/sounds/cook-land.mp3",      maxMs:  400 },
+  blender:   { src: "/sounds/cook-blender.mp3",   maxMs: 1600 },
+  pour:      { src: "/sounds/cook-pour.mp3",      maxMs: 1200 },
+  success:   { src: "/sounds/cook-success.mp3",   maxMs:  600 },
+  celebrate: { src: "/sounds/cook-celebrate.mp3", maxMs: 2000 },
+};
+
 // Preload every blender + pour-stream image on mount so the
 // state-swap during the add-ingredient steps is instant — no
 // download flash where the blender disappears for a frame.
@@ -150,6 +165,59 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
     PRELOAD_SRCS.forEach((src) => {
       const img = new Image();
       img.src = src;
+    });
+  }, []);
+
+  // ── Sound effects ────────────────────────────────────────────────────────
+  // One persistent <Audio> per effect, lazily created on first play.
+  // Each play() resets currentTime=0 (so rapid taps don't wait for
+  // the previous instance to end) and sets a timeout to pause at the
+  // configured maxMs — auto-clipping over-long source MP3s.
+  const sfxElementsRef = useRef<Map<SfxId, HTMLAudioElement>>(new Map());
+  const sfxStopTimersRef = useRef<Map<SfxId, ReturnType<typeof setTimeout>>>(new Map());
+  const [sfxOn, setSfxOn] = useState(true);
+  const sfxOnRef = useRef(sfxOn);
+  useEffect(() => { sfxOnRef.current = sfxOn; }, [sfxOn]);
+
+  const playSfx = useCallback((id: SfxId) => {
+    if (!sfxOnRef.current) return;
+    const manifest = SFX_MANIFEST[id];
+    if (!manifest) return;
+    let el = sfxElementsRef.current.get(id);
+    if (!el) {
+      el = new Audio(manifest.src);
+      el.preload = "auto";
+      sfxElementsRef.current.set(id, el);
+    }
+    const existing = sfxStopTimersRef.current.get(id);
+    if (existing) clearTimeout(existing);
+    try {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    } catch { /* element not ready, skip */ }
+    if (manifest.maxMs !== null) {
+      const t = setTimeout(() => {
+        try { el!.pause(); } catch {}
+      }, manifest.maxMs);
+      sfxStopTimersRef.current.set(id, t);
+    }
+  }, []);
+
+  // iOS Safari unlock — silently mute-plays every SFX inside a user
+  // gesture once, registering all elements for later programmatic
+  // playback from timers / non-gesture handlers.
+  const sfxUnlockedRef = useRef(false);
+  const unlockSfx = useCallback(() => {
+    if (sfxUnlockedRef.current) return;
+    sfxUnlockedRef.current = true;
+    (Object.keys(SFX_MANIFEST) as SfxId[]).forEach((id) => {
+      const manifest = SFX_MANIFEST[id];
+      const el = new Audio(manifest.src);
+      el.muted = true;
+      el.play()
+        .then(() => { el.pause(); el.currentTime = 0; el.muted = false; })
+        .catch(() => {});
+      sfxElementsRef.current.set(id, el);
     });
   }, []);
 
@@ -254,6 +322,11 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
 
   function tapStrawberry(idx: number) {
     if (strawberriesGone.has(idx)) return;
+    unlockSfx();
+    playSfx("tap");
+    // The "land" sound plays as the splash drop pops in — same
+    // timeout as the addedIngredients update inside flyToBlender.
+    setTimeout(() => playSfx("land"), 750);
     const pos = strawberryPositions.current[idx];
     flyToBlender(`${ASSET}/ingredients/strawberry.png`, pos.x, pos.y, "strawberry");
     setStrawberriesGone((prev) => {
@@ -268,6 +341,9 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
   }
 
   function tapSimpleItem(src: string, ingredient: IngredientId) {
+    unlockSfx();
+    playSfx("tap");
+    setTimeout(() => playSfx("land"), 750);
     // The ingredient button sits on the counter at left 25%, top 70%
     // in SimpleAddScene, so that's the start of the arc up to the
     // blender on the right.
@@ -277,25 +353,33 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
 
   function tapBlend() {
     if (blending || blended) return;
+    unlockSfx();
     setBlending(true);
+    playSfx("blender");
     setTimeout(() => {
       setBlending(false);
       setBlended(true);
+      playSfx("success");
       setTimeout(advance, 900);
     }, 1600);
   }
 
   function tapCup(idx: number) {
     if (cupsFilled.has(idx) || pouringCup !== null) return;
-    // Phase 1: blender tilts toward cup, stream appears. Phase 2:
-    // after the stream finishes (~1.2s), swap empty cup → full cup
-    // and straighten the blender. Phase 3: if both cups full, advance.
+    unlockSfx();
+    playSfx("pour");
     setPouringCup(idx);
     setTimeout(() => {
       setCupsFilled((prev) => {
         const next = new Set(prev);
         next.add(idx);
-        if (next.size === 2) setTimeout(advance, 900);
+        playSfx("success");
+        if (next.size === 2) {
+          setTimeout(() => {
+            playSfx("celebrate");
+            advance();
+          }, 900);
+        }
         return next;
       });
       setPouringCup(null);
@@ -344,14 +428,24 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
               <ArrowLeft size={14} strokeWidth={2} />
               Back to library
             </a>
-            <button
-              onClick={() => setAudioOn((v) => !v)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-border-muted hover:bg-card-hover transition-colors duration-150"
-              title={audioOn ? "Turn narration off" : "Turn narration on"}
-            >
-              {audioOn ? <Volume2 size={12} strokeWidth={2} /> : <VolumeX size={12} strokeWidth={2} />}
-              <span className="hidden sm:inline">{audioOn ? "Narration on" : "Narration off"}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { unlockSfx(); setSfxOn((v) => !v); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-border-muted hover:bg-card-hover transition-colors duration-150"
+                title={sfxOn ? "Turn sound effects off" : "Turn sound effects on"}
+              >
+                <Music2 size={12} strokeWidth={2} className={sfxOn ? "" : "opacity-30"} />
+                <span className="hidden sm:inline">{sfxOn ? "Sounds on" : "Sounds off"}</span>
+              </button>
+              <button
+                onClick={() => setAudioOn((v) => !v)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-border-muted hover:bg-card-hover transition-colors duration-150"
+                title={audioOn ? "Turn narration off" : "Turn narration on"}
+              >
+                {audioOn ? <Volume2 size={12} strokeWidth={2} /> : <VolumeX size={12} strokeWidth={2} />}
+                <span className="hidden sm:inline">{audioOn ? "Narration on" : "Narration off"}</span>
+              </button>
+            </div>
           </div>
 
           {/* Title */}
