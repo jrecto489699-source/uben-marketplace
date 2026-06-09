@@ -547,8 +547,15 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                       Blender X     resting 50, pouring 25 / 75
                       Blender top   4% (hovers high so pour drops down) */}
                 <div
-                  className="absolute top-[4%] transition-all duration-500 ease-out z-10"
+                  className="absolute transition-all duration-500 ease-out z-10"
                   style={{
+                    // Vertical position: when pouring, the blender
+                    // drops down so its stream-end sits just above the
+                    // cup mouth — the pour image's built-in stream
+                    // naturally feeds INTO the cup, no separate
+                    // bridging animation needed. When idle, the
+                    // blender sits higher up centred on the stage.
+                    top: pouringCup !== null ? "20%" : "8%",
                     // The pour PNG has its smoothie stream offset to
                     // one side of the blender body (the spout is left
                     // of the body in the source artwork). Shift the
@@ -581,57 +588,6 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                   />
                 </div>
 
-                {/* Animated smoothie flow connecting the blender's
-                    pour stream to the cup mouth. The blender-pouring
-                    PNG has its own stream + drip but it ends in mid-
-                    air; this column bridges from where the PNG stream
-                    runs out (~y=42%) down to the cup mouth (~y=63%).
-                    Repeating-linear-gradient + a 350ms background-
-                    position animation gives the look of liquid
-                    continuously flowing downward — like motion-blur
-                    bands on a falling stream. Mirrors the cup-X
-                    position so it always lands inside the cup, not
-                    on the rim. z-[5] keeps it ABOVE the cup outline
-                    but BELOW the blender (z-10) so the spout looks
-                    like it's attached. */}
-                {pouringCup !== null && (
-                  <>
-                    <div
-                      className="absolute pointer-events-none z-[5]"
-                      style={{
-                        left:    pouringCup === 0 ? "25%" : "75%",
-                        top:     "42%",
-                        height:  "22%",
-                        width:   "4%",
-                        transform: "translateX(-50%)",
-                        borderRadius: "999px",
-                        background:
-                          "repeating-linear-gradient(to bottom, #FF6B9B 0px, #E91E63 8px, #FF6B9B 16px)",
-                        backgroundSize: "100% 16px",
-                        animation: "pourFlow 350ms linear infinite",
-                        boxShadow: "0 0 14px rgba(233,30,99,0.5)",
-                      }}
-                    />
-                    {/* Splash pulse at the cup mouth — radial fade
-                        gives the smoothie a moment of "spreading
-                        out" as it hits the rising smoothie level
-                        inside the cup. */}
-                    <div
-                      className="absolute pointer-events-none z-[5]"
-                      style={{
-                        left:    pouringCup === 0 ? "25%" : "75%",
-                        top:     "63%",
-                        width:   "9%",
-                        height:  "3.5%",
-                        transform: "translate(-50%, -50%)",
-                        borderRadius: "50%",
-                        background:
-                          "radial-gradient(ellipse, rgba(233,30,99,0.85), rgba(233,30,99,0))",
-                        animation: "splashPulse 500ms ease-in-out infinite",
-                      }}
-                    />
-                  </>
-                )}
 
                 {/* Two cups along the bottom. The cup-full image is
                     revealed via a clip-path that travels from bottom
