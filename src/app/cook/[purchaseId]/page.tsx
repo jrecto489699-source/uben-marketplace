@@ -557,17 +557,17 @@ export default function CookPage({ params }: { params: Promise<{ purchaseId: str
                     // blender sits higher up centred on the stage.
                     top: pouringCup !== null ? "20%" : "8%",
                     // The pour PNG has its smoothie stream offset to
-                    // one side of the blender body (the spout is left
-                    // of the body in the source artwork). Shift the
-                    // wrapper so the STREAM aligns with the cup mouth,
-                    // not the body centre — moves right for cup-0 (the
-                    // left cup) since the stream is on the body's left
-                    // and we want it over cup-0's centre; moves left
-                    // for cup-1 since we mirror the image and the
-                    // stream is on the right.
+                    // the RIGHT of the blender body (the spout extends
+                    // out the right side in the source artwork). Shift
+                    // the wrapper LEFT for cup-0 so the stream lands
+                    // on the cup; for cup-1 the image is mirrored, so
+                    // shift RIGHT to compensate. Cup centres are at
+                    // 25% / 75%; offsetting by ~7% in the right
+                    // direction puts the stream exactly over the cup
+                    // mouth instead of past it.
                     left:
-                      pouringCup === 0 ? "32%" :
-                      pouringCup === 1 ? "68%" :
+                      pouringCup === 0 ? "18%" :
+                      pouringCup === 1 ? "82%" :
                                          "50%",
                     width: "30%",
                     transform: pouringCup === 1
