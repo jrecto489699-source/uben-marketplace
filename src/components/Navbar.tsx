@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrency, CURRENCIES, type Currency } from "@/context/CurrencyContext";
 import { allProducts } from "@/data/products";
+import SignInModal from "@/components/SignInModal";
 
 // `href` is optional: items without it go to /all?category=<slug>;
 // items with it link directly (used for tool routes like /trace that
@@ -263,6 +264,7 @@ export default function Navbar() {
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen2, setMobileOpen2] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   const { cartCount } = useCart();
   const { favoriteCount } = useFavorites();
   const { user, signOut } = useAuth();
@@ -401,10 +403,10 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <a href="/signin" className="flex items-center gap-1.5 h-9 px-3.5 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
+            <button onClick={() => setSignInOpen(true)} className="flex items-center gap-1.5 h-9 px-3.5 text-[13px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
               <User size={14} strokeWidth={1.75} />
               Sign in
-            </a>
+            </button>
           )}
           {/* Currency picker */}
           <div ref={currencyDesktopRef} className="relative">
@@ -503,10 +505,10 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <a href="/signin" className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
+            <button onClick={() => setSignInOpen(true)} className="flex items-center gap-1 h-8 px-3 text-[12px] font-medium text-ink rounded-full hover:bg-card-hover transition-colors duration-200 whitespace-nowrap">
               <User size={13} strokeWidth={1.75} />
               Sign in
-            </a>
+            </button>
           )}
           {/* Mobile currency picker */}
           <div ref={currencyMobileRef} className="relative">
@@ -611,6 +613,11 @@ export default function Navbar() {
       </Suspense>
 
       <div className="border-b border-border-muted" />
+
+      {/* Sign-in modal — opened by either of the two Sign in buttons
+          above (desktop + mobile). Renders outside the header layout
+          so the fixed-position overlay covers the whole viewport. */}
+      <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
     </header>
   );
 }
