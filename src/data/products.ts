@@ -44,6 +44,7 @@ export const storybookProducts: Product[] = [
   { id: 39, title: "Dino's Big Adventure",                 salePrice: "$6", originalPrice: "$10", seller: "Sunshine Stories",    image: "/images/dinosuar.png",                                rating: 5.0, reviewCount: 0,   onSale: false, instantDownload: true  },
   { id: 40, title: "Penny's Amazing Planet Adventure",     salePrice: "$6", originalPrice: "$10", seller: "Sunshine Stories",    image: "/images/Planet.png",                                  rating: 5.0, reviewCount: 0,   onSale: false, instantDownload: true  },
   { id: 44, title: "Impostor Syndrome",                    salePrice: "$6", originalPrice: "$10", seller: "Sunshine Stories",    image: "/images/Impostor Syndrome.png",                       rating: 5.0, reviewCount: 0,   onSale: false, instantDownload: true  },
+  { id: 46, title: "Adam and Eve: The Beginning of God's Story", salePrice: "$6", originalPrice: "$10", seller: "Sunshine Stories", image: "/images/Adam and Eve The Beginning of God's Story.png", rating: 5.0, reviewCount: 0, onSale: false, instantDownload: true  },
 ];
 
 // ── Activities ───────────────────────────────────────────────────────────────
